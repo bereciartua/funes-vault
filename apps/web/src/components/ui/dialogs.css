@@ -1,0 +1,66 @@
+.ui-tooltip-content {
+  z-index: 1100;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) var(--space-4);
+  color: var(--surface);
+  background: var(--text);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: var(--shadow-popover);
+}
+
+.ui-tooltip-arrow {
+  fill: var(--text);
+}
+
+.ui-alert-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: var(--space-7);
+  background: rgb(15 23 42 / 52%);
+}
+
+.ui-alert-dialog-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 1001;
+  display: grid;
+  width: min(420px, calc(100vw - 40px));
+  max-height: calc(100dvh - 40px);
+  gap: var(--space-6);
+  overflow: auto;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-7);
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: 0 24px 70px rgb(15 23 42 / 24%);
+}
+
+.ui-alert-dialog-title,
+.ui-alert-dialog-description {
+  margin: 0;
+}
+
+.ui-alert-dialog-title {
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
+.ui-alert-dialog-description {
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.ui-alert-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

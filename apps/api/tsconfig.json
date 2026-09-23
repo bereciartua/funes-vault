@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "types": ["node", "vitest"],
+    "noEmit": true
+  },
+  "exclude": ["node_modules", "dist", "dist-e2e"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "scripts/**/*.ts"],
+  "references": [
+    {
+      "path": "../../packages/db"
+    },
+    {
+      "path": "../../packages/shared"
+    }
+  ]
+}

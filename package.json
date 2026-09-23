@@ -1,0 +1,86 @@
+{
+  "name": "funes-vault",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=24.0.0 <25",
+    "pnpm": ">=11.7.0 <12"
+  },
+  "scripts": {
+    "dev": "pnpm db:generate && pnpm --filter \"./packages/*\" build && pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm db:generate && pnpm --filter @funes-vault/web exec next typegen && tsc -b",
+    "lint": "eslint .",
+    "test": "pnpm -r test",
+    "test:privacy": "pnpm --filter @funes-vault/api exec vitest run --project unit --project privacy-e2e -t privacy",
+    "test:e2e": "pnpm --filter @funes-vault/api test:e2e",
+    "test:e2e:web": "playwright test",
+    "test:e2e:demo": "playwright test --config playwright.demo.config.ts",
+    "audit:dependencies": "pnpm audit --audit-level high",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @funes-vault/db db:generate",
+    "db:migrate": "pnpm --filter @funes-vault/db db:migrate",
+    "db:migrate:dev": "pnpm --filter @funes-vault/db db:migrate:dev",
+    "db:reset": "pnpm --filter @funes-vault/db db:reset",
+    "db:seed": "pnpm --filter @funes-vault/db db:seed",
+    "publish:images": "scripts/publish-images.sh",
+    "clean": "node scripts/clean.mjs",
+    "icons:generate": "node scripts/generate-pwa-icons.mjs",
+    "db:check-migrations": "node scripts/check-migrations.mjs",
+    "test:e2e:setup": "pnpm db:generate && pnpm --filter @funes-vault/db exec tsx scripts/setup-test-db.ts",
+    "test:coverage": "pnpm -r --if-present test:coverage",
+    "lint:css": "stylelint \"apps/web/src/**/*.css\"",
+    "lint:unused": "knip",
+    "test:e2e:live": "playwright test --config playwright.live.config.ts",
+    "docs:openapi": "pnpm --filter @funes-vault/api exec tsc -p tsconfig.e2e.json && node apps/api/dist-e2e/scripts/export-openapi.js && prettier --write docs/openapi.json",
+    "docs:erd": "pnpm --filter @funes-vault/db docs:erd && node scripts/embed-erd.mjs && prettier --write docs/database-schema.md"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@next/eslint-plugin-next": "^16.3.5",
+    "@playwright/test": "^1.63.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/node": "^26.6.2",
+    "@vitest/coverage-v8": "4.1.11",
+    "eslint": "^10.11.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-simple-import-sort": "^14.0.0",
+    "globals": "^17.12.0",
+    "jsdom": "^29.1.1",
+    "knip": "^6.37.0",
+    "lint-staged": "^17.5.1",
+    "prettier": "^3.9.8",
+    "simple-git-hooks": "^2.14.0",
+    "stylelint": "^17.15.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^4.1.11"
+  },
+  "license": "Apache-2.0",
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec lint-staged"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,mjs}": [
+      "prettier --check",
+      "eslint"
+    ],
+    "*.{json,yml,yaml,md,css}": [
+      "prettier --check"
+    ]
+  },
+  "description": "Self-hosted personal memory vault for AI tools with policy-controlled disclosure, audit trails, MCP and OAuth.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bereciartua/funes-vault.git"
+  },
+  "homepage": "https://github.com/bereciartua/funes-vault#readme",
+  "bugs": {
+    "url": "https://github.com/bereciartua/funes-vault/issues"
+  },
+  "author": "Martin Bereciartua"
+}

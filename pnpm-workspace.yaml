@@ -1,0 +1,19 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+overrides:
+  # Remove overrides as upstream dependencies adopt patched releases.
+  # Nest platform-express: multipart parser security fixes.
+  multer: ">=2.3.0 <3"
+  # Bull Board optional SQL adapter: patched mysql2 parser.
+  mysql2: ">=3.23.1 <4"
+  # Prisma configuration dependency: use the maintained merge implementation.
+  deepmerge-ts: "^8.0.0"
+allowBuilds:
+  simple-git-hooks: true
+  "@prisma/engines": true
+  "@scarf/scarf": false
+  esbuild: true
+  msgpackr-extract: false
+  prisma: true
+  sharp: true

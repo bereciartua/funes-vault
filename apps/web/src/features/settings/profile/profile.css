@@ -1,0 +1,31 @@
+.profile-panel {
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-7);
+}
+
+.profile-section-title {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--text-base);
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.appearance-settings .segmented-control {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.appearance-setting-status {
+  margin: 0;
+}
+@media (max-width: 640px) {
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+}

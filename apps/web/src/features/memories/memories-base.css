@@ -1,0 +1,112 @@
+.vault-layout {
+  display: grid;
+  min-height: calc(100vh - 76px);
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  align-items: start;
+}
+
+.vault-search {
+  gap: 5px;
+}
+
+.vault-search input {
+  min-height: 40px;
+}
+.memory-dot-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4) 14px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.empty-detail p {
+  margin: 0;
+}
+
+.vault-main {
+  display: grid;
+  gap: 18px;
+  align-content: start;
+  padding: 14px 18px 18px var(--space-4);
+}
+
+.editor-panel {
+  display: grid;
+  gap: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-7);
+  background: var(--surface);
+}
+
+.editor-panel h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+
+.privacy-summary {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  background: var(--surface-muted);
+}
+
+.selection-note {
+  margin: 0;
+  border-left: 3px solid var(--brand);
+  padding-left: 10px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.editor-note {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  border-color: var(--info-border);
+  color: var(--info-text);
+  background: var(--info-surface);
+  font-size: var(--text-body);
+  font-weight: 700;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.chips span {
+  width: fit-content;
+  min-height: 32px;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-3) 9px;
+  color: var(--brand-strong);
+  background: var(--brand-surface);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+.vault-sensitivity-filter {
+  min-width: 0;
+}
+
+@media (max-width: 980px) {
+  .vault-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .vault-main {
+    padding: var(--space-5);
+  }
+}

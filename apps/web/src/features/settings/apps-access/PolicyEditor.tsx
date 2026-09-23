@@ -1,0 +1,167 @@
+import { type MemoryCategory, type Policy } from "@funes-vault/shared";
+
+import { Button, DeleteButton } from "../../../components/ui/button";
+import { CheckboxField } from "../../../components/ui/checkbox";
+import { FormField } from "../../../components/ui/form-field";
+import { SelectField } from "../../../components/ui/select";
+import { label } from "../../../lib/domain/labels";
+import {
+  policyRiskFactors,
+  policySummary
+} from "../../../lib/domain/policy-summary";
+import { CategoryAccessMatrix } from "./CategoryAccessMatrix";
+import {
+  operations,
+  purposeSuggestions,
+  sensitivities,
+  togglePolicyOperation
+} from "./policy-draft";
+import type { PolicyWorkspace } from "./use-policy-workspace";
+export function PolicyEditor({
+  editingPolicy,
+  model,
+  categories
+}: {
+  editingPolicy: Policy | null;
+  model: PolicyWorkspace;
+  categories: MemoryCategory[];
+}) {
+  const {
+    draftPolicy,
+    policyDraft,
+    setPolicyDraft,
+    savePolicy,
+    isSaving,
+    confirmDeletePolicy,
+    setPolicyEditor
+  } = model;
+  const toggleOperation = (operation: Policy["operations"][number]) =>
+    setPolicyDraft((current) => togglePolicyOperation(current, operation));
+
+  return (
+    <div className="policy-editor">
+      <div className="policy-summary">
+        <p>{policySummary(draftPolicy)}</p>
+        {policyRiskFactors(draftPolicy, categories.length).length > 0 ? (
+          <p className="risk-sentence">
+            {policyRiskFactors(draftPolicy, categories.length)
+              .map((factor) => factor.label)
+              .join(" · ")}{" "}
+            — consider tightening this policy.
+          </p>
+        ) : null}
+      </div>
+      <form className="form-stack" onSubmit={savePolicy}>
+        <div className="form-grid">
+          <FormField label="Purpose">
+            <SelectField
+              ariaLabel="Policy purpose"
+              value={policyDraft.purpose}
+              options={[
+                ...purposeSuggestions,
+                ...(purposeSuggestions.includes(policyDraft.purpose)
+                  ? []
+                  : [policyDraft.purpose])
+              ].map((purpose) => ({
+                label: label(purpose),
+                value: purpose
+              }))}
+              onValueChange={(purpose) =>
+                setPolicyDraft((current) => ({
+                  ...current,
+                  purpose
+                }))
+              }
+              required
+            />
+            <span className="field-hint">
+              What the app says it needs memory for. Requests must declare this
+              same purpose to match. One policy per purpose.
+            </span>
+          </FormField>
+          <FormField label="Max sensitivity">
+            <SelectField
+              ariaLabel="Policy max sensitivity"
+              value={policyDraft.maxSensitivity}
+              options={sensitivities.map((sensitivity) => ({
+                label: label(sensitivity),
+                value: sensitivity
+              }))}
+              onValueChange={(maxSensitivity) =>
+                setPolicyDraft((current) => ({
+                  ...current,
+                  maxSensitivity
+                }))
+              }
+            />
+          </FormField>
+          <FormField label="Expires">
+            <input
+              type="date"
+              value={policyDraft.expiresAt}
+              onChange={(event) =>
+                setPolicyDraft((current) => ({
+                  ...current,
+                  expiresAt: event.target.value
+                }))
+              }
+            />
+          </FormField>
+        </div>
+
+        <fieldset>
+          <legend>Allowed operations</legend>
+          <div className="category-options">
+            {operations.map((operation) => (
+              <CheckboxField
+                key={operation}
+                checked={policyDraft.operations.includes(operation)}
+                onCheckedChange={() => toggleOperation(operation)}
+              >
+                {label(operation)}
+              </CheckboxField>
+            ))}
+          </div>
+          <CheckboxField
+            checked={policyDraft.requiresConfirmation}
+            onCheckedChange={(requiresConfirmation) =>
+              setPolicyDraft((current) => ({
+                ...current,
+                requiresConfirmation
+              }))
+            }
+          >
+            Ask me before each disclosure
+          </CheckboxField>
+        </fieldset>
+
+        <CategoryAccessMatrix
+          categories={categories}
+          draft={policyDraft}
+          setDraft={setPolicyDraft}
+        />
+
+        <div className="form-actions">
+          <Button type="submit" variant="secondary" disabled={isSaving}>
+            {isSaving ? "Saving..." : editingPolicy ? "Save" : "Create"}
+          </Button>
+          {editingPolicy ? (
+            <DeleteButton
+              type="button"
+              disabled={isSaving}
+              onClick={() => void confirmDeletePolicy(editingPolicy)}
+            />
+          ) : null}
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={isSaving}
+            onClick={() => setPolicyEditor(null)}
+          >
+            Cancel
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}

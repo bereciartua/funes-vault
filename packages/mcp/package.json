@@ -1,0 +1,46 @@
+{
+  "name": "@funes-vault/mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "funes-vault-mcp": "./dist/stdio.js",
+    "funes-vault-mcp-http": "./dist/http-server.js"
+  },
+  "scripts": {
+    "dev": "tsc -b --watch",
+    "build": "tsc -b",
+    "start": "node dist/stdio.js",
+    "start:http": "node dist/http-server.js",
+    "demo:request-memory": "node examples/demo-client.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@funes-vault/shared": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.6.5"
+  },
+  "license": "Apache-2.0",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": true,
+  "description": "Self-hosted personal memory vault for AI tools with policy-controlled disclosure, audit trails, MCP and OAuth.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bereciartua/funes-vault.git"
+  },
+  "homepage": "https://github.com/bereciartua/funes-vault#readme",
+  "bugs": {
+    "url": "https://github.com/bereciartua/funes-vault/issues"
+  },
+  "author": "Martin Bereciartua"
+}

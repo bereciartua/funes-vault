@@ -1,0 +1,39 @@
+.editor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.editor-heading p {
+  margin: 0;
+}
+
+.section-heading p {
+  margin: 0;
+}
+
+.detail-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .editor-heading {
+    align-items: stretch;
+  }
+
+  .detail-actions {
+    width: 100%;
+  }
+}

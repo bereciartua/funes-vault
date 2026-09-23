@@ -1,0 +1,205 @@
+.ui-button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  padding: 0 15px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  box-shadow: none;
+}
+
+.ui-button.ui-button--sm {
+  min-height: 36px;
+  padding: 0 var(--space-5);
+  font-size: 0.9rem;
+}
+
+.ui-button.ui-button--md {
+  min-height: 38px;
+}
+
+.ui-button.ui-button--primary {
+  border-color: var(--brand);
+  color: #fff;
+  background: var(--brand);
+}
+
+.ui-button.ui-button--secondary,
+.ui-button.ui-button--ghost {
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.ui-button.ui-button--danger {
+  min-height: auto;
+  border-color: transparent;
+  padding-right: var(--space-2);
+  padding-left: var(--space-2);
+  color: var(--text-faint);
+  background: transparent;
+  font-weight: 500;
+}
+
+.ui-button.ui-button--nav,
+.ui-button.ui-button--settings {
+  border-color: var(--border-strong);
+  color: var(--text);
+  background: var(--surface);
+}
+
+.ui-button.ui-button--nav {
+  min-height: 44px;
+  padding: var(--space-4) var(--space-6);
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.ui-button.ui-button--settings {
+  min-height: 40px;
+  padding: var(--space-4) var(--space-5);
+  color: var(--text-secondary);
+  font-size: var(--text-body-sm);
+  font-weight: 800;
+}
+
+.ui-button.ui-button--icon {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+}
+
+.ui-button.ui-button--icon svg {
+  display: block;
+  width: 22px;
+  min-width: 22px;
+  height: 22px;
+  min-height: 22px;
+  flex: 0 0 auto;
+}
+
+.ui-button.ui-button--nav.is-selected,
+.ui-button.ui-button--settings.is-selected,
+.ui-button.ui-button--nav[data-active],
+.ui-button.ui-button--settings[data-active],
+.ui-button.ui-button--nav[data-state="active"],
+.ui-button.ui-button--settings[data-state="active"],
+.ui-toggle-group-item[data-state="on"] {
+  border-color: var(--brand);
+  color: var(--brand-strong);
+  background: var(--brand-surface);
+  box-shadow: none;
+}
+
+.ui-button.ui-button--secondary:hover,
+.ui-button.ui-button--ghost:hover,
+.ui-button.ui-button--nav[data-state="inactive"]:hover,
+.ui-button.ui-button--settings[data-state="inactive"]:hover,
+.ui-toggle-group-item[data-state="off"]:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-muted);
+}
+
+.ui-button.ui-button--nav.is-selected:hover,
+.ui-button.ui-button--settings.is-selected:hover,
+.ui-button.ui-button--nav[data-active]:hover,
+.ui-button.ui-button--settings[data-active]:hover,
+.ui-button.ui-button--nav[data-state="active"]:hover,
+.ui-button.ui-button--settings[data-state="active"]:hover,
+.ui-toggle-group-item[data-state="on"]:hover {
+  border-color: var(--brand-strong);
+  color: var(--surface);
+  background: var(--brand-strong);
+}
+
+.ui-button.ui-button--primary:hover {
+  border-color: var(--brand-strong);
+  background: var(--brand-strong);
+}
+
+.ui-button.ui-button--danger:hover {
+  border-color: transparent;
+  color: var(--danger);
+  background: transparent;
+  text-decoration: underline;
+}
+
+.ui-button:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.ui-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.ui-alert-dialog-content .ui-button.ui-button--danger {
+  min-height: 38px;
+  border-color: var(--danger);
+  padding: 0 15px;
+  color: #fff;
+  background: var(--danger);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.ui-alert-dialog-content .ui-button.ui-button--danger:hover {
+  border-color: var(--danger-strong);
+  color: #fff;
+  background: var(--danger-strong);
+}
+
+.ui-tabs-trigger:focus-visible,
+.ui-toggle-group-item:focus-visible,
+.ui-select-trigger:focus-visible,
+.ui-checkbox-root:focus-visible,
+.ui-switch-root:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.pagination-page-button.ui-button.ui-button--icon {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+}
+
+.pagination-controls[data-variant="compact"]
+  .pagination-page-button.ui-button.ui-button--icon,
+.pagination-controls[data-variant="stream"]
+  .pagination-page-button.ui-button.ui-button--icon {
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  min-height: 34px;
+}
+
+.pagination-page-button.ui-button.ui-button--icon svg {
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  min-height: 20px;
+}
+
+.form-stack > .ui-button {
+  justify-self: start;
+}
+
+@media (max-width: 640px) {
+  .form-stack > .ui-button {
+    justify-self: stretch;
+  }
+
+  .detail-actions .ui-button {
+    flex: 1 1 auto;
+  }
+}

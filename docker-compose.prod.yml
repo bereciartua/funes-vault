@@ -1,0 +1,200 @@
+name: funes-vault-prod
+
+x-app-environment: &app-environment
+  DATABASE_URL: postgresql://${POSTGRES_USER:-funes_vault}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-funes_vault}?schema=public
+  REDIS_URL: redis://redis:6379
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?GOOGLE_CLIENT_ID is required}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?GOOGLE_CLIENT_SECRET is required}
+  GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:?GOOGLE_REDIRECT_URI is required}
+  APP_URL: ${APP_URL:?APP_URL is required, e.g. https://vault.example.com}
+  API_URL: ${API_URL:?API_URL is required, e.g. https://vault-api.example.com}
+  NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?NEXT_PUBLIC_API_URL is required, usually the same as API_URL}
+  # Runtime alias: NEXT_PUBLIC_* is inlined into prebuilt web bundles at
+  # image build time, so the web server reads this name per request instead.
+  PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENAI_CHAT_MODEL: ${OPENAI_CHAT_MODEL:-gpt-5.5}
+  MEMORY_EXTRACTION_SYSTEM: ${MEMORY_EXTRACTION_SYSTEM:-}
+  MEMORY_CONSOLIDATION_SYSTEM: ${MEMORY_CONSOLIDATION_SYSTEM:-}
+  MEMORY_EXTRACTION_LLM_MODEL: ${MEMORY_EXTRACTION_LLM_MODEL:-}
+  MEMORY_CONSOLIDATION_LLM_MODEL: ${MEMORY_CONSOLIDATION_LLM_MODEL:-}
+  MEMORY_NORMALIZATION_LLM_MODEL: ${MEMORY_NORMALIZATION_LLM_MODEL:-}
+  MEMORY_EXTRACTION_JEV_MODEL: ${MEMORY_EXTRACTION_JEV_MODEL:-jev-1.13.0}
+  MEMORY_CONSOLIDATION_JEV_MODEL: ${MEMORY_CONSOLIDATION_JEV_MODEL:-jev-1.13.0}
+  TYPESAFE_API_KEY: ${TYPESAFE_API_KEY:-}
+  MEMORY_EXTRACTION_TIMEOUT_MS: ${MEMORY_EXTRACTION_TIMEOUT_MS:-15000}
+  MEMORY_CONSOLIDATION_TIMEOUT_MS: ${MEMORY_CONSOLIDATION_TIMEOUT_MS:-60000}
+  MEMORY_EXTRACTION_WRITE_MODE: ${MEMORY_EXTRACTION_WRITE_MODE:-policy}
+  MEMORY_CONSOLIDATION_APPLY_MODE: ${MEMORY_CONSOLIDATION_APPLY_MODE:-user_setting}
+  MEMORY_CONSOLIDATION_MAX_SENSITIVITY: ${MEMORY_CONSOLIDATION_MAX_SENSITIVITY:-INTERNAL}
+  OAUTH_ISSUER_URL: ${OAUTH_ISSUER_URL:?OAUTH_ISSUER_URL is required}
+  OAUTH_MCP_RESOURCE_URL: ${OAUTH_ISSUER_URL}/mcp
+  OPENAI_REALTIME_MODEL: ${OPENAI_REALTIME_MODEL:-gpt-realtime-2}
+  OPENAI_REALTIME_VOICE: ${OPENAI_REALTIME_VOICE:-cedar}
+  OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+  EMBEDDINGS_MAX_SENSITIVITY: ${EMBEDDINGS_MAX_SENSITIVITY:-SECRET}
+  BULL_BOARD_ENABLED: ${BULL_BOARD_ENABLED:-false}
+  CONSOLIDATION_CRON: ${CONSOLIDATION_CRON:-0 3 * * *}
+  LOG_FORMAT: ${LOG_FORMAT:-json}
+  LOG_LEVELS: ${LOG_LEVELS:-log,error,warn}
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-funes_vault}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-funes_vault}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-funes_vault} -d ${POSTGRES_DB:-funes_vault}"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    image: ${FUNES_VAULT_IMAGE_REPO:-ghcr.io/bereciartua/funes-vault}-api:${FUNES_VAULT_IMAGE_TAG:-local}
+    restart: "no"
+    environment:
+      <<: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["node", "node_modules/@funes-vault/db/dist/migrate.js"]
+
+  api:
+    image: ${FUNES_VAULT_IMAGE_REPO:-ghcr.io/bereciartua/funes-vault}-api:${FUNES_VAULT_IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    restart: unless-stopped
+    environment:
+      <<: *app-environment
+      JOB_WORKER_ENABLED: "false"
+    ports:
+      - "${HTTP_BIND_ADDRESS:-127.0.0.1}:${API_HTTP_PORT:-4000}:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://127.0.0.1:4000/health/ready'').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"'
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    image: ${FUNES_VAULT_IMAGE_REPO:-ghcr.io/bereciartua/funes-vault}-api:${FUNES_VAULT_IMAGE_TAG:-local}
+    restart: unless-stopped
+    environment:
+      <<: *app-environment
+      JOB_WORKER_ENABLED: "true"
+      WORKER_HEARTBEAT_FILE: /tmp/funes-vault-worker-ready
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ["node", "dist/worker.js"]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "const fs=require(''node:fs'');const p=''/tmp/funes-vault-worker-ready'';if(!fs.existsSync(p))process.exit(1);process.exit(Date.now()-fs.statSync(p).mtimeMs<60000?0:1)"'
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  web:
+    image: ${FUNES_VAULT_IMAGE_REPO:-ghcr.io/bereciartua/funes-vault}-web:${FUNES_VAULT_IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web
+    restart: unless-stopped
+    environment:
+      <<: *app-environment
+    ports:
+      - "${HTTP_BIND_ADDRESS:-127.0.0.1}:${WEB_HTTP_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://127.0.0.1:3000/api/health'').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"'
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  mcp:
+    init: true
+    image: ${FUNES_VAULT_IMAGE_REPO:-ghcr.io/bereciartua/funes-vault}-mcp:${FUNES_VAULT_IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: mcp
+    restart: unless-stopped
+    environment:
+      FUNES_VAULT_API_URL: http://api:4000
+      FUNES_VAULT_APP_URL: ${APP_URL:?APP_URL is required}
+      FUNES_VAULT_MCP_TRUSTED_PROXIES: ${MCP_TRUSTED_PROXIES:-}
+      FUNES_VAULT_MCP_HTTP_HOST: 0.0.0.0
+      FUNES_VAULT_MCP_RESOURCE_METADATA_URL: ${OAUTH_ISSUER_URL:?OAUTH_ISSUER_URL is required}/.well-known/oauth-protected-resource/mcp
+      FUNES_VAULT_MCP_ALLOWED_ORIGINS: ${APP_URL}
+      FUNES_VAULT_MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:?MCP_ALLOWED_HOSTS is required}
+    ports:
+      - "${HTTP_BIND_ADDRESS:-127.0.0.1}:${MCP_HTTP_PORT:-4100}:4100"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4100/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+volumes:
+  postgres-data:
+  redis-data:

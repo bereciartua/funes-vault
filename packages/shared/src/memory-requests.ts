@@ -1,0 +1,118 @@
+import { z } from "zod";
+
+import { deniedMemorySchema } from "./common.js";
+import { paginationSchema } from "./common.js";
+import {
+  clientRetentionSchema,
+  memoryRequestStatusSchema,
+  memorySensitivitySchema
+} from "./enums.js";
+
+export const memoryRequestInputPreprocessor = (value: unknown) => {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return value;
+  }
+
+  const input = value as Record<string, unknown>;
+
+  return {
+    ...input,
+    requestedCategories:
+      input.requestedCategories ?? input.requested_categories,
+    thirdPartyProcessors:
+      input.thirdPartyProcessors ?? input.third_party_processors,
+    tokenBudget: input.tokenBudget ?? input.token_budget
+  };
+};
+
+export const createMemoryBundleRequestSchema = z.preprocess(
+  memoryRequestInputPreprocessor,
+  z.object({
+    purpose: z.string().trim().min(1).max(160),
+    task: z.string().trim().min(1).max(1000),
+    requestedCategories: z.array(z.string().trim().min(1)).max(24).default([]),
+    retention: clientRetentionSchema.default("UNKNOWN"),
+    thirdPartyProcessors: z
+      .array(z.string().trim().min(1).max(120))
+      .max(12)
+      .default([]),
+    tokenBudget: z.number().int().min(100).max(8000).default(1200)
+  })
+);
+
+export type CreateMemoryBundleRequest = z.infer<
+  typeof createMemoryBundleRequestSchema
+>;
+
+export const memoryBundleItemSchema = z.object({
+  memoryId: z.string().min(1),
+  text: z.string().min(1),
+  category: z.string().nullable(),
+  sensitivity: memorySensitivitySchema,
+  relevanceScore: z.number().min(0).optional(),
+  estimatedTokens: z.number().int().min(1)
+});
+
+export type MemoryBundleItem = z.infer<typeof memoryBundleItemSchema>;
+
+export const memoryRequestBundleResponseSchema = z.object({
+  requestId: z.string().min(1),
+  status: memoryRequestStatusSchema,
+  policyId: z.string().nullable(),
+  tokenBudget: z.number().int().min(1),
+  estimatedTokens: z.number().int().min(0),
+  items: z.array(memoryBundleItemSchema),
+  instructions: z.array(z.string().min(1)),
+  denied: z.array(deniedMemorySchema),
+  auditEventId: z.string().nullable()
+});
+
+export type MemoryRequestBundleResponse = z.infer<
+  typeof memoryRequestBundleResponseSchema
+>;
+
+export const memoryRequestReviewSummarySchema = z.object({
+  id: z.string(),
+  clientName: z.string(),
+  purpose: z.string(),
+  task: z.string(),
+  status: memoryRequestStatusSchema,
+  retention: clientRetentionSchema,
+  thirdPartyProcessors: z.array(z.string()),
+  createdAt: z.iso.datetime()
+});
+
+export const memoryRequestReviewsResponseSchema = z.object({
+  items: z.array(memoryRequestReviewSummarySchema),
+  pagination: paginationSchema
+});
+
+export const memoryRequestPreviewSchema = z.object({
+  request: memoryRequestReviewSummarySchema,
+  revision: z.string(),
+  items: z.array(memoryBundleItemSchema),
+  canApprove: z.boolean()
+});
+
+export type MemoryRequestPreview = z.infer<typeof memoryRequestPreviewSchema>;
+
+export const reviewDisclosureRequestSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("deny") }),
+  z.object({
+    action: z.literal("approve"),
+    revision: z.string().min(1),
+    memoryIds: z.array(z.string().min(1)).min(1).max(30)
+  })
+]);
+
+export type MemoryRequestReviewSummary = z.infer<
+  typeof memoryRequestReviewSummarySchema
+>;
+
+export type MemoryRequestReviewsResponse = z.infer<
+  typeof memoryRequestReviewsResponseSchema
+>;
+
+export type ReviewDisclosureRequest = z.infer<
+  typeof reviewDisclosureRequestSchema
+>;

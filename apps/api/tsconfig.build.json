@@ -1,0 +1,17 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "test",
+    "dist-e2e",
+    "src/test/**",
+    "src/memory-processing/smoke.ts",
+    "src/memory-processing/fixtures.ts",
+    "scripts"
+  ],
+  "compilerOptions": {
+    "rootDir": "src",
+    "noEmit": false
+  }
+}

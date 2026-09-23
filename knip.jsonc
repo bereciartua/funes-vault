@@ -1,0 +1,24 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": { "entry": ["scripts/smoke-redis-outage.mjs"] },
+    "apps/api": {
+      "entry": [
+        "src/main.ts",
+        "src/worker.ts",
+        "scripts/*.ts",
+        "test/web-server.ts"
+      ],
+      // Loaded by pino's worker transport at runtime.
+      "ignoreDependencies": ["pino-pretty"]
+    },
+    "apps/web": {
+      "entry": ["public/sw.js"]
+    },
+    "packages/db": {
+      "entry": ["scripts/*.ts", "src/migrate.ts"],
+      // Imports in the generated Prisma client, excluded from source analysis.
+      "ignoreDependencies": ["@prisma/client-runtime-utils"]
+    }
+  }
+}

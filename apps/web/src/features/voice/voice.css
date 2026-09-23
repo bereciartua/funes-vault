@@ -1,0 +1,132 @@
+.voice-panel {
+  display: grid;
+  gap: var(--space-5);
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-md);
+  padding: 14px;
+  background: var(--brand-surface);
+}
+
+.voice-panel-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.voice-panel-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.voice-panel-title .eyebrow {
+  margin: 0;
+}
+
+.voice-indicator {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 1px solid var(--brand-border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--brand-strong);
+  background: var(--surface);
+}
+
+.voice-indicator[data-live="true"] {
+  color: var(--surface);
+  background: var(--brand);
+  animation: voice-pulse 2s ease-in-out infinite;
+}
+
+.voice-indicator[data-speaking="true"] {
+  animation-duration: 0.9s;
+}
+
+.voice-status {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.voice-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.voice-live-hint {
+  justify-self: center;
+  margin: var(--space-2) 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.voice-live-text {
+  margin: 0;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.voice-live-message[data-final="false"] .voice-live-text {
+  opacity: 0.7;
+}
+
+.voice-tool-activity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+}
+
+.voice-suggestion-note {
+  margin: 0;
+  border: 1px solid var(--amber-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) 10px;
+  color: var(--amber-text);
+  background: var(--amber-surface);
+  font-size: var(--text-body-sm);
+  font-weight: 700;
+}
+
+.voice-ended-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.voice-ended-actions p {
+  margin: 0;
+}
+
+.voice-disclosure {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-indicator[data-live="true"] {
+    animation: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .voice-panel {
+    padding: var(--space-5);
+  }
+
+  .voice-ended-actions .ui-button {
+    flex: 1 1 auto;
+    min-height: 44px;
+  }
+}

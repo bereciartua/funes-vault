@@ -1,0 +1,39 @@
+(secure_defaults) {
+    encode gzip
+    header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+}
+
+{$APP_DOMAIN} {
+    import secure_defaults
+    reverse_proxy web:3000
+}
+
+{$API_DOMAIN} {
+    import secure_defaults
+    @app path /auth/* /oauth/consent* /v1/* /health
+    handle @app {
+        reverse_proxy api:4000 {
+            flush_interval -1
+        }
+    }
+    @metadata path /.well-known/*
+    handle @metadata {
+        reverse_proxy api:4000
+    }
+    respond 404
+}
+
+{$MCP_DOMAIN} {
+    import secure_defaults
+    @mcp path /mcp /mcp/*
+    handle @mcp {
+        reverse_proxy mcp:4100 {
+            flush_interval -1
+        }
+    }
+    @oauth path /.well-known/* /authorize /token /register /revoke /oauth/consent*
+    handle @oauth {
+        reverse_proxy api:4000
+    }
+    respond 404
+}

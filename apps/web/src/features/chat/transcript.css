@@ -1,0 +1,218 @@
+.chat-transcript {
+  flex: 1 1 auto;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+}
+
+.chat-transcript-content {
+  display: grid;
+  min-height: 100%;
+  align-content: start;
+  gap: var(--space-7);
+  padding: 18px var(--space-4);
+}
+
+.chat-transcript-content--new-thread {
+  align-content: center;
+}
+
+.chat-transcript article {
+  display: grid;
+  max-width: 78ch;
+  gap: var(--space-4);
+  border: 0;
+  padding: var(--space-2) 0;
+  background: transparent;
+}
+
+.chat-transcript article.user {
+  justify-self: end;
+  border-color: var(--brand-border);
+  background: var(--brand-surface);
+}
+
+.chat-transcript p {
+  margin: 0;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.starter-prompts {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.starter-prompts--centered {
+  justify-self: center;
+  width: min(100%, 560px);
+}
+
+.starter-prompts button {
+  min-height: 40px;
+  justify-content: start;
+  border-color: var(--brand-border);
+  padding: 9px 11px;
+  color: var(--brand-strong);
+  background: var(--brand-surface);
+  text-align: left;
+  font-weight: 800;
+}
+
+.memory-markdown {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.memory-markdown > * {
+  min-width: 0;
+}
+
+.memory-markdown p {
+  margin: 0;
+}
+
+.memory-markdown ul {
+  margin: 0;
+  display: grid;
+  gap: 5px;
+  padding-left: 1.3rem;
+  list-style-position: outside;
+  list-style-type: disc;
+}
+
+.memory-markdown ol {
+  margin: 0;
+  display: grid;
+  gap: 5px;
+  padding-left: 1.3rem;
+  list-style-position: outside;
+  list-style-type: decimal;
+}
+
+.memory-markdown li {
+  display: list-item;
+  padding-left: 0.1rem;
+  line-height: 1.55;
+}
+
+.memory-markdown li::marker {
+  color: var(--brand);
+  font-weight: 900;
+}
+
+.memory-markdown strong {
+  color: var(--text);
+  font-weight: 900;
+}
+
+.memory-markdown a {
+  color: var(--brand);
+  font-weight: 850;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.memory-markdown code {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1px 5px;
+  background: var(--surface-hover);
+  font-size: 0.9em;
+}
+
+.memory-markdown pre {
+  margin: 0;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  background: var(--text);
+  color: var(--surface-muted);
+}
+
+.memory-markdown pre code {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.memory-markdown blockquote {
+  margin: 0;
+  border-left: 3px solid var(--brand-border);
+  padding-left: 10px;
+  color: var(--text-muted);
+}
+
+.chat-date-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  color: var(--text-faint);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.chat-date-divider::before {
+  height: 1px;
+  flex: 1;
+  content: "";
+  background: var(--border-muted);
+}
+
+.chat-date-divider::after {
+  height: 1px;
+  flex: 1;
+  content: "";
+  background: var(--border-muted);
+}
+
+.chat-transcript .memory-message--user {
+  justify-self: end;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 10px 13px;
+  background: var(--surface);
+}
+
+.inline-citation {
+  display: inline-flex;
+  min-width: 24px;
+  min-height: 24px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--brand-border);
+  border-radius: var(--radius-pill);
+  padding: 0 var(--space-3);
+  color: var(--brand-strong);
+  background: var(--brand-surface);
+  font-size: 0.86em;
+  font-weight: 900;
+  line-height: 1;
+  vertical-align: baseline;
+}
+
+.inline-citation:hover {
+  border-color: var(--brand);
+  background: var(--brand-surface);
+}
+
+.inline-citation:focus-visible {
+  border-color: var(--brand);
+  background: var(--brand-surface);
+}
+
+@media (max-width: 640px) {
+  .chat-transcript article {
+    max-width: 100%;
+  }
+
+  .starter-prompts--centered .ui-button {
+    width: 100%;
+    white-space: normal;
+    text-align: left;
+  }
+}

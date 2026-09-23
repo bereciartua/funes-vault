@@ -1,0 +1,25 @@
+# Add to production Compose on a server with the three DNS names pointing to it.
+services:
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN is required}
+      API_DOMAIN: ${API_DOMAIN:?API_DOMAIN is required}
+      MCP_DOMAIN: ${MCP_DOMAIN:?MCP_DOMAIN is required}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+      mcp:
+        condition: service_healthy
+
+volumes:
+  caddy-data:
+  caddy-config:

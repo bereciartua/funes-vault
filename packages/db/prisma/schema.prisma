@@ -1,0 +1,860 @@
+generator client {
+  provider     = "prisma-client"
+  moduleFormat = "esm"
+  output       = "../src/generated/prisma"
+}
+
+generator erd {
+  provider                  = "prisma-erd-generator"
+  output                    = "../.generated/entity-relationship.md"
+  disableEmoji              = true
+  includeRelationFromFields = true
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  ADMIN
+  OWNER
+}
+
+enum MemoryKind {
+  FACT
+  PREFERENCE
+  INSTRUCTION
+  GOAL
+  PROJECT_CONTEXT
+  RELATIONSHIP
+  CONSTRAINT
+  EVENT
+  SUMMARY
+}
+
+enum MemorySensitivity {
+  PUBLIC
+  LOW
+  INTERNAL
+  SENSITIVE
+  RESTRICTED
+  SECRET
+}
+
+enum MemoryStatus {
+  SUGGESTED
+  ACTIVE
+  ARCHIVED
+  EXPIRED
+  DELETED
+}
+
+enum ReviewState {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum SourceType {
+  MANUAL
+  IMPORT
+  CHAT
+  CLIENT_SUGGESTION
+  CONSOLIDATION
+  API
+  DERIVED
+}
+
+enum ClientType {
+  LOCAL_AGENT
+  MCP_CLIENT
+  CLI
+  WEB_APP
+  BROWSER_EXTENSION
+  HOSTED_APP
+  OTHER
+}
+
+enum ClientTrustLevel {
+  UNKNOWN
+  APPROVED
+  BLOCKED
+}
+
+enum ClientRetention {
+  NO_STORAGE
+  SESSION
+  PERSISTENT
+  UNKNOWN
+}
+
+enum PolicyOperation {
+  READ
+  SUGGEST
+  WRITE
+  SUMMARIZE
+  EXPORT
+}
+
+enum MemoryRequestStatus {
+  PENDING
+  APPROVED
+  NEEDS_USER_APPROVAL
+  DENIED
+  FULFILLED
+  FAILED
+}
+
+enum MemorySuggestionStatus {
+  QUEUED_FOR_REVIEW
+  APPROVED
+  REJECTED
+  APPLIED
+  DISMISSED
+}
+
+enum AuditEventType {
+  MEMORY_PROCESSING_COMPLETED
+  PROCESSING_CONSENT_UPDATED
+  MEMORY_CREATED
+  MEMORY_UPDATED
+  MEMORY_ARCHIVED
+  MEMORY_DELETED
+  MEMORY_DISCLOSURE
+  MEMORY_REQUEST_APPROVED
+  MEMORY_REQUEST_DENIED
+  MEMORY_SUGGESTION_CREATED
+  MEMORY_SUGGESTION_APPROVED
+  MEMORY_SUGGESTION_REJECTED
+  CLIENT_CREATED
+  CLIENT_UPDATED
+  CLIENT_TOKEN_ROTATED
+  POLICY_CREATED
+  POLICY_UPDATED
+  POLICY_DELETED
+  OAUTH_GRANT_APPROVED
+  OAUTH_GRANT_DENIED
+  OAUTH_TOKEN_ISSUED
+  OAUTH_TOKEN_REVOKED
+  JOB_CREATED
+  JOB_COMPLETED
+  JOB_FAILED
+}
+
+enum AuditActorType {
+  USER
+  CLIENT
+  SYSTEM
+  JOB
+}
+
+enum MemoryProvenanceEntryType {
+  CREATED
+  IMPORTED
+  SUGGESTED
+  SOURCE_UPDATED
+  CONTENT_UPDATED
+  STATUS_CHANGED
+  ARCHIVED
+  RESTORED
+  DELETED
+  CONSOLIDATION_INSPECTED
+  CONSOLIDATION_SUGGESTED
+  CONSOLIDATION_APPLIED
+  DERIVED
+}
+
+enum ProvenanceSubjectType {
+  MEMORY
+  MEMORY_SUGGESTION
+  JOB_RUN
+  AUDIT_EVENT
+  MEMORY_REQUEST
+  CLIENT
+  POLICY
+  IMPORT
+  PROVIDER
+}
+
+enum ProvenanceSubjectRole {
+  TARGET
+  SOURCE
+  CANONICAL
+  SUPERSEDED_BY
+  DUPLICATE_OF
+  CONFLICTS_WITH
+  DERIVED_FROM
+  DERIVED_OUTPUT
+  SUGGESTION
+  JOB
+  AUDIT_EVENT
+  REQUEST
+  CLIENT
+  POLICY
+  IMPORT_SOURCE
+  MODEL_PROVIDER
+}
+
+enum AuditSubjectType {
+  MEMORY
+  MEMORY_SUGGESTION
+  JOB_RUN
+  MEMORY_REQUEST
+  CLIENT
+  POLICY
+  IMPORT
+  EXPORT
+}
+
+enum AuditSubjectRole {
+  TARGET
+  SOURCE
+  CANONICAL
+  DISCLOSED
+  DENIED
+  CREATED
+  UPDATED
+  ARCHIVED
+  DELETED
+  SUGGESTION
+  JOB
+  REQUEST
+  CLIENT
+  POLICY
+  IMPORTED
+  EXPORTED
+}
+
+enum JobType {
+  GENERATE_EMBEDDING
+  PROCESS_IMPORT
+  CONSOLIDATE_MEMORIES
+  DETECT_CONFLICTS
+  SEND_REVIEW_REMINDER
+}
+
+enum JobStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum ConsolidationMode {
+  REVIEW_ONLY
+  AUTO_APPLY
+}
+
+enum ChatMessageRole {
+  USER
+  ASSISTANT
+}
+
+enum OAuthRegistrationStatus {
+  PENDING
+  APPROVED
+  BLOCKED
+}
+
+enum OAuthTokenType {
+  ACCESS
+  REFRESH
+}
+
+/// Vault owner and authentication profile; child records are scoped by its id.
+model User {
+  id                   String            @id @default(cuid())
+  email                String            @unique
+  displayName          String?
+  role                 UserRole          @default(USER)
+  consolidationEnabled Boolean           @default(false)
+  consolidationMode    ConsolidationMode @default(REVIEW_ONLY)
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  extractionRuns           MemoryExtractionRun[]
+  processingConsents       ProcessingConsent[]
+  auditEvents              AuditEvent[]
+  chatMessages             ChatMessage[]
+  chatSessions             ChatSession[]
+  clients                  Client[]
+  embeddings               Embedding[]
+  jobRuns                  JobRun[]
+  memories                 Memory[]
+  memoryProvenanceEntries  MemoryProvenanceEntry[]
+  memoryProvenanceSubjects MemoryProvenanceSubject[]
+  memoryRequests           MemoryRequest[]
+  memorySuggestions        MemorySuggestion[]
+  auditEventSubjects       AuditEventSubject[]
+  oauthCodes               OAuthAuthorizationCode[]
+  oauthTokens              OAuthToken[]
+  googleIdentity           GoogleIdentity?
+  policies                 Policy[]
+  sessions                 Session[]
+  voiceSessions            VoiceSession[]
+}
+
+/// An owner-scoped conversation thread; messages cascade with the thread.
+model ChatSession {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String?
+  titleLocked Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  messages      ChatMessage[]
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  voiceSessions VoiceSession[]
+
+  @@index([userId, updatedAt])
+}
+
+/// An owner-scoped realtime session and its finalization/processing configuration.
+model VoiceSession {
+  id                    String    @id @default(cuid())
+  userId                String
+  chatSessionId         String
+  model                 String
+  startedAt             DateTime  @default(now())
+  endedAt               DateTime?
+  endReason             String?
+  extractionFingerprint String?
+
+  chatSession ChatSession @relation(fields: [chatSessionId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startedAt])
+}
+
+/// An owner-scoped accepted turn; submission and voice item keys enforce idempotency.
+model ChatMessage {
+  id                 String               @id @default(cuid())
+  sessionId          String
+  userId             String
+  role               ChatMessageRole
+  content            String
+  sourceTimezone     String?
+  submissionId       String?
+  voiceSessionId     String?
+  voiceItemId        String?
+  processing         Json                 @default("{}")
+  extractionRun      MemoryExtractionRun?
+  citations          Json                 @default("[]")
+  suggestedMemoryIds String[]             @default([])
+  provider           Json                 @default("{}")
+  createdAt          DateTime             @default(now())
+
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, submissionId])
+  @@unique([voiceSessionId, voiceItemId, role])
+  @@index([sessionId, createdAt])
+  @@index([userId, createdAt])
+}
+
+/// Google subject linked to one vault owner; never stores provider access tokens.
+model GoogleIdentity {
+  id      String @id @default(cuid())
+  subject String @unique
+  userId  String @unique
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+/// Short-lived PKCE flow. Nonce and verifier are plaintext until consumed or expired.
+model LoginAttempt {
+  stateHash    String   @id
+  browserHash  String
+  nonce        String
+  codeVerifier String
+  returnTo     String
+  sessionId    String?
+  expiresAt    DateTime
+
+  @@index([expiresAt])
+}
+
+/// Opaque owner session; stores only a token hash and an expiry.
+model Session {
+  deletionVerifiedAt DateTime?
+  id                 String    @id @default(cuid())
+  userId             String
+  tokenHash          String    @unique
+  expiresAt          DateTime
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Server-wide taxonomy shared by owners; category keys are stable API identifiers.
+model MemoryCategory {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  allowedPolicies Policy[] @relation("PolicyAllowedCategories")
+  deniedPolicies  Policy[] @relation("PolicyDeniedCategories")
+  memories        Memory[] @relation("MemoryCategories")
+}
+
+/// Owner-scoped durable memory; disclosure also requires policy and sensitivity checks.
+model Memory {
+  id                      String            @id @default(cuid())
+  userId                  String
+  kind                    MemoryKind
+  title                   String
+  body                    String
+  sensitivity             MemorySensitivity @default(LOW)
+  confidence              Float             @default(1)
+  status                  MemoryStatus      @default(ACTIVE)
+  reviewState             ReviewState       @default(APPROVED)
+  sourceType              SourceType        @default(MANUAL)
+  sourceClientId          String?
+  sourceUri               String?
+  sourceMetadata          Json              @default("{}")
+  lastConfirmedAt         DateTime?
+  expiresAt               DateTime?
+  consolidationRelevantAt DateTime          @default(now())
+  lastConsolidatedAt      DateTime?
+  semanticInspectedAt     DateTime?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  categories         MemoryCategory[]        @relation("MemoryCategories")
+  embeddings         Embedding[]
+  memoryRequestItems MemoryRequestItem[]
+  provenanceEntries  MemoryProvenanceEntry[]
+  sourceClient       Client?                 @relation("ClientSourceMemories", fields: [sourceClientId], references: [id], onDelete: SetNull)
+  user               User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, status, consolidationRelevantAt])
+  @@index([userId, status, expiresAt])
+  @@index([userId, sensitivity])
+  @@index([sourceClientId])
+}
+
+/// Owner-scoped integration identity; stores only the hash of its bearer token.
+model Client {
+  id                  String           @id @default(cuid())
+  userId              String
+  name                String
+  type                ClientType
+  trustLevel          ClientTrustLevel @default(UNKNOWN)
+  declaredRetention   ClientRetention  @default(UNKNOWN)
+  tokenHash           String?          @unique
+  oauthRegistrationId String?
+  lastUsedAt          DateTime?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+
+  auditEvents       AuditEvent[]
+  memoryRequests    MemoryRequest[]
+  memorySuggestions MemorySuggestion[]       @relation("ClientSourceSuggestions")
+  oauthCodes        OAuthAuthorizationCode[]
+  oauthRegistration OAuthClientRegistration? @relation(fields: [oauthRegistrationId], references: [id], onDelete: SetNull)
+  oauthTokens       OAuthToken[]
+  policies          Policy[]
+  sourceMemories    Memory[]                 @relation("ClientSourceMemories")
+  user              User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@unique([userId, oauthRegistrationId])
+  @@index([userId])
+  @@index([userId, trustLevel])
+}
+
+/// Public OAuth software registration; registrations never grant access by themselves.
+model OAuthClientRegistration {
+  id                      String                  @id @default(cuid())
+  clientId                String                  @unique
+  name                    String
+  redirectUris            String[]
+  tokenEndpointAuthMethod String                  @default("none")
+  grantTypes              String[]                @default(["authorization_code", "refresh_token"])
+  scope                   String?
+  clientUri               String?
+  logoUri                 String?
+  contacts                String[]                @default([])
+  status                  OAuthRegistrationStatus @default(PENDING)
+  metadata                Json                    @default("{}")
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
+
+  authorizationRequests OAuthAuthorizationRequest[]
+  authorizationCodes    OAuthAuthorizationCode[]
+  grantClients          Client[]
+  tokens                OAuthToken[]
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+/// Expiring authorization request bound to an owner after consent.
+model OAuthAuthorizationRequest {
+  id             String    @id @default(cuid())
+  registrationId String
+  redirectUri    String
+  codeChallenge  String
+  scopes         String[]
+  state          String?
+  resource       String?
+  csrfTokenHash  String
+  expiresAt      DateTime
+  decidedAt      DateTime?
+  createdAt      DateTime  @default(now())
+
+  registration OAuthClientRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+/// Single-use hashed authorization code with PKCE and redirect binding.
+model OAuthAuthorizationCode {
+  id             String    @id @default(cuid())
+  registrationId String
+  userId         String
+  clientId       String
+  codeHash       String    @unique
+  redirectUri    String
+  codeChallenge  String
+  scopes         String[]
+  resource       String?
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  client       Client                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  registration OAuthClientRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+}
+
+/// Hashed OAuth credentials bound to an owner and client; refresh reuse revokes the family.
+model OAuthToken {
+  id             String         @id @default(cuid())
+  registrationId String
+  userId         String
+  clientId       String
+  type           OAuthTokenType
+  tokenHash      String         @unique
+  scopes         String[]
+  resource       String?
+  sourceCodeId   String?
+  expiresAt      DateTime
+  revokedAt      DateTime?
+  createdAt      DateTime       @default(now())
+
+  client       Client                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  registration OAuthClientRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  user         User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, type])
+  @@index([sourceCodeId])
+  @@index([expiresAt])
+}
+
+/// Owner-scoped client grant for a purpose, operation set and disclosure ceiling.
+model Policy {
+  id                   String            @id @default(cuid())
+  userId               String
+  clientId             String
+  purpose              String
+  maxSensitivity       MemorySensitivity @default(INTERNAL)
+  operations           PolicyOperation[] @default([READ])
+  requiresConfirmation Boolean           @default(true)
+  expiresAt            DateTime?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  allowedCategories MemoryCategory[] @relation("PolicyAllowedCategories")
+  client            Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  deniedCategories  MemoryCategory[] @relation("PolicyDeniedCategories")
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, purpose])
+  @@index([userId])
+  @@index([purpose])
+}
+
+/// Owner-scoped disclosure request; approved snapshots expire and are consumed once.
+model MemoryRequest {
+  id                   String              @id @default(cuid())
+  userId               String
+  clientId             String
+  purpose              String
+  task                 String
+  status               MemoryRequestStatus @default(PENDING)
+  tokenBudget          Int                 @default(1200)
+  requestedCategories  String[]            @default([])
+  retention            ClientRetention     @default(UNKNOWN)
+  thirdPartyProcessors String[]            @default([])
+  reviewSnapshot       Json                @default("{}")
+  approvalExpiresAt    DateTime?
+  approvedAt           DateTime?
+  deniedAt             DateTime?
+  fulfilledAt          DateTime?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  auditEvents AuditEvent[]
+  client      Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  items       MemoryRequestItem[]
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([clientId])
+  @@index([createdAt])
+}
+
+/// Disclosure snapshot owned through its request; preserves exactly what was shared.
+model MemoryRequestItem {
+  id              String            @id @default(cuid())
+  memoryRequestId String
+  memoryId        String
+  text            String
+  categoryKey     String?
+  sensitivity     MemorySensitivity
+  relevanceScore  Float?
+  createdAt       DateTime          @default(now())
+
+  memory        Memory        @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+  memoryRequest MemoryRequest @relation(fields: [memoryRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([memoryRequestId, memoryId])
+  @@index([memoryId])
+}
+
+/// Owner-scoped reviewable proposal; acceptance creates or changes durable memory.
+model MemorySuggestion {
+  id                   String                 @id @default(cuid())
+  userId               String
+  sourceType           SourceType
+  sourceClientId       String?
+  title                String
+  body                 String
+  suggestedKind        MemoryKind
+  suggestedSensitivity MemorySensitivity      @default(LOW)
+  suggestedCategories  String[]               @default([])
+  evidence             String?
+  sourceMetadata       Json                   @default("{}")
+  confidence           Float                  @default(0.5)
+  status               MemorySuggestionStatus @default(QUEUED_FOR_REVIEW)
+  expiresAt            DateTime?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  sourceClient Client? @relation("ClientSourceSuggestions", fields: [sourceClientId], references: [id], onDelete: SetNull)
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([sourceClientId])
+}
+
+/// Owner-scoped provider vector. A SQL-managed HNSW index supports cosine retrieval.
+model Embedding {
+  id          String                      @id @default(cuid())
+  userId      String
+  memoryId    String
+  provider    String
+  model       String
+  contentHash String
+  /// HNSW index is maintained in migration SQL. Remove any generated DROP INDEX "Embedding_vector_hnsw_idx".
+  vector      Unsupported("vector(1536)")
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @updatedAt
+
+  memory Memory @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([memoryId, provider, model, contentHash])
+  @@index([userId])
+  @@index([provider, model])
+}
+
+/// Owner-scoped security and disclosure history; credential values must never be recorded.
+model AuditEvent {
+  id              String         @id @default(cuid())
+  userId          String
+  clientId        String?
+  memoryRequestId String?
+  type            AuditEventType
+  actorType       AuditActorType
+  actorId         String?
+  metadata        Json           @default("{}")
+  createdAt       DateTime       @default(now())
+
+  client        Client?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  memoryRequest MemoryRequest?      @relation(fields: [memoryRequestId], references: [id], onDelete: SetNull)
+  subjects      AuditEventSubject[]
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([clientId])
+  @@index([memoryRequestId])
+  @@index([type])
+}
+
+/// Owner-scoped history of how a memory was created, changed or consolidated.
+model MemoryProvenanceEntry {
+  id              String                    @id @default(cuid())
+  userId          String
+  memoryId        String
+  type            MemoryProvenanceEntryType
+  actorType       AuditActorType
+  actorId         String?
+  sourceType      SourceType?
+  sourceClientId  String?
+  sourceUri       String?
+  suggestionId    String?
+  jobRunId        String?
+  auditEventId    String?
+  memoryRequestId String?
+  reason          String?
+  evidence        String?
+  confidence      Float?
+  metadata        Json                      @default("{}")
+  createdAt       DateTime                  @default(now())
+
+  memory   Memory                    @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+  subjects MemoryProvenanceSubject[]
+  user     User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, memoryId, createdAt])
+  @@index([userId, type, createdAt])
+  @@index([suggestionId])
+  @@index([jobRunId])
+  @@index([auditEventId])
+}
+
+/// Owner-scoped typed relationship between a provenance entry and a domain subject.
+model MemoryProvenanceSubject {
+  id                String                @id @default(cuid())
+  userId            String
+  provenanceEntryId String
+  subjectType       ProvenanceSubjectType
+  subjectId         String
+  role              ProvenanceSubjectRole
+  labelSnapshot     String?
+  metadata          Json                  @default("{}")
+  createdAt         DateTime              @default(now())
+
+  provenanceEntry MemoryProvenanceEntry @relation(fields: [provenanceEntryId], references: [id], onDelete: Cascade)
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provenanceEntryId, subjectType, subjectId, role])
+  @@index([userId, subjectType, subjectId])
+  @@index([provenanceEntryId])
+}
+
+/// Owner-scoped typed subject of an audit event; label snapshots survive deletion.
+model AuditEventSubject {
+  id            String           @id @default(cuid())
+  userId        String
+  auditEventId  String
+  subjectType   AuditSubjectType
+  subjectId     String
+  role          AuditSubjectRole
+  labelSnapshot String?
+  metadata      Json             @default("{}")
+  createdAt     DateTime         @default(now())
+
+  auditEvent AuditEvent @relation(fields: [auditEventId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([auditEventId, subjectType, subjectId, role])
+  @@index([userId, subjectType, subjectId])
+  @@index([auditEventId])
+}
+
+/// Owner-scoped durable job status; queue payloads contain identifiers, not authority.
+model JobRun {
+  id          String    @id @default(cuid())
+  userId      String?
+  type        JobType
+  status      JobStatus @default(QUEUED)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(3)
+  metadata    Json      @default("{}")
+  error       String?
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type, status])
+  @@index([createdAt])
+}
+
+/// Owner-scoped extraction state machine; a lease serializes provider work per source.
+model MemoryExtractionRun {
+  id                String                       @id @default(cuid())
+  userId            String
+  sourceMessageId   String                       @unique
+  configuration     Json
+  fingerprint       String
+  status            MemoryExtractionRunStatus    @default(PENDING)
+  attempts          Int                          @default(0)
+  claimToken        String?
+  leaseUntil        DateTime?
+  result            Json                         @default("{}")
+  pendingCandidates Json                         @default("[]")
+  failureReason     String?
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+  finishedAt        DateTime?
+  user              User                         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source            ChatMessage                  @relation(fields: [sourceMessageId], references: [id], onDelete: Cascade)
+  applications      MemoryCandidateApplication[]
+
+  @@index([userId, status])
+}
+
+/// Idempotent candidate outcome. Ownership is derived through its extraction run; every lookup must constrain the run owner.
+model MemoryCandidateApplication {
+  id          String              @id @default(cuid())
+  runId       String
+  candidateId String
+  result      Json
+  createdAt   DateTime            @default(now())
+  run         MemoryExtractionRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, candidateId])
+}
+
+/// Owner-scoped, versioned permission for a processor and task; revocation is explicit.
+model ProcessingConsent {
+  id        String    @id @default(cuid())
+  userId    String
+  processor String
+  scope     String
+  version   Int
+  grantedAt DateTime  @default(now())
+  revokedAt DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, processor, scope])
+}
+
+enum MemoryExtractionRunStatus {
+  PENDING   @map("pending")
+  RUNNING   @map("running")
+  COMPLETED @map("completed")
+  PARTIAL   @map("partial")
+  SKIPPED   @map("skipped")
+  FAILED    @map("failed")
+}

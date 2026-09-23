@@ -1,0 +1,32 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "packages/db"
+    },
+    {
+      "path": "packages/shared"
+    },
+    {
+      "path": "packages/mcp"
+    },
+    {
+      "path": "apps/api"
+    },
+    {
+      "path": "apps/web"
+    },
+    {
+      "path": "packages/db/tsconfig.scripts.json"
+    },
+    {
+      "path": "packages/db/tsconfig.test.json"
+    },
+    {
+      "path": "packages/shared/tsconfig.test.json"
+    },
+    {
+      "path": "packages/mcp/tsconfig.test.json"
+    }
+  ]
+}

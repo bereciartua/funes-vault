@@ -1,0 +1,66 @@
+const stopWords = new Set([
+  "about",
+  "already",
+  "and",
+  "any",
+  "asked",
+  "asks",
+  "correction",
+  "could",
+  "existing",
+  "find",
+  "for",
+  "from",
+  "has",
+  "have",
+  "help",
+  "identify",
+  "instead",
+  "into",
+  "locate",
+  "means",
+  "memories",
+  "memory",
+  "mention",
+  "needed",
+  "needs",
+  "now",
+  "please",
+  "prefer",
+  "preference",
+  "prefers",
+  "related",
+  "remember",
+  "specific",
+  "specifically",
+  "that",
+  "the",
+  "their",
+  "there",
+  "thing",
+  "things",
+  "this",
+  "those",
+  "update",
+  "use",
+  "used",
+  "user",
+  "users",
+  "uses",
+  "was",
+  "what",
+  "when",
+  "where",
+  "with",
+  "would"
+]);
+
+/** Unicode words, in first-seen order, without conversational filler. */
+export function extractTerms(
+  text: string,
+  limit = Number.POSITIVE_INFINITY
+): string[] {
+  return [...new Set(text.toLowerCase().match(/[\p{L}\p{N}_-]{3,}/gu) ?? [])]
+    .filter((term) => !stopWords.has(term))
+    .slice(0, limit);
+}

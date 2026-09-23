@@ -1,0 +1,81 @@
+.overview-composer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.composer-icon-button.ui-button {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+}
+.composer-send-button.ui-button {
+  border-color: var(--brand);
+  color: white;
+  background: var(--brand);
+}
+.composer-send-button.ui-button:hover {
+  background: var(--brand-strong);
+}
+
+.chat-form {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 14px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px 14px 10px;
+  background: var(--surface);
+  box-shadow: 0 8px 26px rgb(0 0 0 / 4%);
+}
+.chat-form:focus-within {
+  border-color: var(--brand);
+}
+.chat-form label {
+  margin: 0;
+}
+.chat-form textarea {
+  min-height: 50px;
+  border: 0;
+  padding: 0;
+  outline: 0;
+  background: transparent;
+  box-shadow: none;
+  resize: none;
+}
+.chat-form .prompt-actions {
+  justify-content: flex-end;
+}
+
+.prompt-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .memory-workbench .chat-form {
+    position: sticky;
+    z-index: 5;
+    bottom: 0;
+    gap: 10px;
+    border-top: 1px solid var(--border-muted);
+    margin: 0 -14px -14px;
+    padding: 10px 14px calc(var(--space-5) + env(safe-area-inset-bottom));
+    background: var(--surface);
+  }
+
+  .memory-workbench .chat-form textarea {
+    min-height: 64px;
+  }
+
+  .prompt-actions .ui-button {
+    min-height: 44px;
+    flex: 1 1 auto;
+  }
+
+  .prompt-actions .composer-icon-button.ui-button {
+    width: 44px;
+    flex: 0 0 44px;
+  }
+}

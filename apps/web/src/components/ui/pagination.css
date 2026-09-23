@@ -1,0 +1,96 @@
+.pagination-controls {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  background: var(--surface);
+}
+
+.pagination-controls[data-variant="compact"],
+.pagination-controls[data-variant="stream"] {
+  gap: 7px;
+  border-color: transparent;
+  padding: 0;
+  background: transparent;
+}
+
+.pagination-summary {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.pagination-controls[data-variant="compact"] .pagination-summary,
+.pagination-controls[data-variant="stream"] .pagination-summary {
+  font-size: 0.78rem;
+}
+
+.pagination-actions,
+.pagination-page-actions {
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+
+.pagination-actions {
+  display: grid;
+  grid-template-columns: minmax(104px, 130px) minmax(0, 1fr);
+  align-items: end;
+  gap: var(--space-4);
+}
+
+.pagination-controls[data-page-size="false"] .pagination-actions {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.pagination-page-actions {
+  display: grid;
+  grid-template-columns: 38px minmax(0, auto) 38px;
+  max-width: 100%;
+  align-items: end;
+  justify-self: end;
+  gap: var(--space-4);
+}
+
+.pagination-controls[data-page-size="false"] .pagination-page-actions {
+  justify-self: stretch;
+}
+
+.pagination-controls[data-variant="compact"] .pagination-page-actions,
+.pagination-controls[data-variant="stream"] .pagination-page-actions {
+  grid-template-columns: 34px minmax(48px, 1fr) 34px;
+  gap: var(--space-3);
+}
+
+.pagination-limit {
+  display: grid;
+  width: 100%;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.pagination-limit .ui-select-trigger {
+  min-height: 38px;
+  color: var(--text);
+  font-size: 0.9rem;
+  text-transform: none;
+}
+
+.pagination-page {
+  display: inline-flex;
+  min-height: 38px;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  font-size: 0.84rem;
+  font-weight: 900;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}

@@ -1,0 +1,323 @@
+.field-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.settings-page {
+  display: grid;
+  align-content: start;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 36px;
+  width: min(1000px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: 18px 0 60px;
+}
+
+.settings-subnav {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-subnav > a {
+  display: grid;
+  min-height: 0;
+  justify-items: start;
+  gap: 3px;
+  border-color: transparent;
+  border-radius: 0;
+  padding: 10px var(--space-5);
+  color: var(--text);
+  background: transparent;
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-align: left;
+  text-decoration: none;
+}
+
+.settings-subnav-description {
+  color: var(--text-faint);
+  font-size: 0.74rem;
+  font-weight: 450;
+  line-height: 1.35;
+}
+
+.settings-content {
+  width: min(720px, 100%);
+  min-width: 0;
+}
+
+.settings-pane {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  min-width: 0;
+}
+
+.settings-pane-header h1 {
+  margin: var(--space-1) 0 var(--space-2);
+  font-size: 1.32rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.settings-pane-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.checkbox-line {
+  display: flex;
+  width: fit-content;
+  min-height: 34px;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--text);
+  font-size: var(--text-body);
+}
+
+.checkbox-line input {
+  width: auto;
+}
+
+.setting-help {
+  margin: var(--space-4) 0 0;
+  color: var(--text-faint);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.connect-guide:not([open]) > :not(summary) {
+  display: none;
+}
+
+.connect-guide-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: 14px;
+}
+
+.connect-guide-tab {
+  display: grid;
+  gap: var(--space-5);
+  max-width: 720px;
+}
+.connect-guide-tab[hidden] {
+  display: none;
+}
+
+.connect-guide-tab p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.connect-guide-steps {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding-left: var(--space-7);
+  line-height: 1.55;
+  list-style: decimal;
+}
+
+.connect-guide-steps li {
+  display: list-item;
+}
+
+.raw-metadata {
+  display: grid;
+  gap: 10px;
+}
+
+.raw-metadata:not([open]) > :not(summary) {
+  display: none;
+}
+
+.raw-metadata summary {
+  width: fit-content;
+  color: var(--text-muted);
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.status-stack {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-2);
+}
+
+.status-stack p {
+  margin: 0;
+}
+
+details.raw-metadata:not([open]) .json-block {
+  display: none;
+}
+.settings-section {
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+}
+
+.settings-section-heading {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+}
+
+.settings-section-heading .eyebrow {
+  margin: 0;
+}
+
+.settings-form {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-control-row {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-control-row + .settings-control-row {
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+
+.settings-control-row .setting-help {
+  margin: 0;
+}
+
+.settings-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.risk-sentence {
+  margin: 0;
+  color: var(--amber-text);
+  font-size: 0.78rem;
+  line-height: 1.5;
+}
+
+.connect-guide {
+  display: grid;
+  gap: 14px;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.connect-guide[open] {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--space-6);
+}
+
+.connect-guide summary {
+  width: fit-content;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.81rem;
+  font-weight: 500;
+}
+
+.json-block {
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  color: var(--text);
+  background: var(--surface-muted);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  margin: 0;
+  border: 1px solid var(--border);
+  max-width: 100%;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.install-app {
+  margin-top: var(--space-8);
+}
+
+.disclosure-review-preview {
+  margin-top: var(--space-8);
+}
+.disclosure-review-list {
+  display: grid;
+  gap: var(--space-4);
+  margin: var(--space-6) 0;
+}
+.disclosure-review-list button {
+  display: grid;
+  gap: var(--space-3);
+  border: 0;
+  border-bottom: 1px solid var(--border-muted);
+  border-radius: 0;
+  padding: var(--space-5);
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+}
+.disclosure-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin-top: var(--space-6);
+}
+.disclosure-review-preview .suggestion-row {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .settings-page {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    width: auto;
+    margin: 0;
+    padding: 14px var(--space-6) var(--space-8);
+  }
+
+  .settings-subnav {
+    display: flex;
+    overflow-x: auto;
+    padding: var(--space-1) var(--space-1) var(--space-3);
+    scrollbar-width: none;
+  }
+
+  .settings-subnav::-webkit-scrollbar {
+    display: none;
+  }
+  .settings-subnav > a {
+    min-width: max-content;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    padding: 7px var(--space-5);
+  }
+  .settings-subnav-description {
+    display: none;
+  }
+}
+
+.disclosure-review-list button[aria-pressed="true"] {
+  background: var(--surface);
+  box-shadow: inset 2px 0 0 var(--brand);
+}
+.disclosure-review-list button span {
+  color: var(--text-muted);
+  font-size: var(--text-body-sm);
+  font-weight: 400;
+}

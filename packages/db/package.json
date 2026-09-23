@@ -1,0 +1,51 @@
+{
+  "name": "@funes-vault/db",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsc -b --watch",
+    "build": "prisma generate --generator client && tsc -b",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.scripts.json",
+    "test": "vitest run",
+    "db:generate": "prisma generate --generator client",
+    "db:migrate": "prisma migrate deploy",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:reset": "prisma migrate reset",
+    "db:seed": "pnpm --filter @funes-vault/shared build && tsx prisma/seed.ts",
+    "test:coverage": "vitest run --coverage",
+    "docs:erd": "mkdir -p .generated && prisma generate --generator erd",
+    "db:migrate:runtime": "node dist/migrate.js"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "@prisma/client-runtime-utils": "^7.10.0",
+    "dotenv": "^17.4.2",
+    "pg": "^8.23.0",
+    "prisma": "^7.10.0"
+  },
+  "devDependencies": {
+    "@funes-vault/shared": "workspace:*",
+    "@types/pg": "^8.23.1",
+    "prisma-erd-generator": "^3.2.1",
+    "tsx": "^4.23.13"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "license": "Apache-2.0",
+  "files": [
+    "dist",
+    "prisma/schema.prisma",
+    "prisma/migrations",
+    "prisma.config.ts"
+  ],
+  "sideEffects": false
+}

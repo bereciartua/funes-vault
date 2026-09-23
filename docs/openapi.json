@@ -1,0 +1,6352 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "HealthController_getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Check API health",
+        "tags": ["health"]
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "HealthController_getLiveHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Check API process liveness",
+        "tags": ["health"]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "HealthController_getReadyHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthReadyResponseDto"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthReadyResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Check API readiness with database, Redis, and worker status",
+        "tags": ["health"]
+      }
+    },
+    "/v1/jobs/consolidation-settings": {
+      "get": {
+        "operationId": "JobsController_getConsolidationSettings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsolidationSettingsResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Get current-user consolidation settings",
+        "tags": ["jobs"]
+      },
+      "patch": {
+        "operationId": "JobsController_updateConsolidationSettings",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateConsolidationSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConsolidationSettingsResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Update current-user consolidation settings",
+        "tags": ["jobs"]
+      }
+    },
+    "/v1/jobs/consolidation-runs": {
+      "post": {
+        "operationId": "JobsController_startConsolidationRun",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobRunResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Start a manual consolidation run",
+        "tags": ["jobs"]
+      }
+    },
+    "/v1/jobs": {
+      "get": {
+        "operationId": "JobsController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListJobsResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameters."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "List current-user job runs",
+        "tags": ["jobs"]
+      }
+    },
+    "/v1/jobs/{id}": {
+      "get": {
+        "operationId": "JobsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobRunResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Job run not found."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Get a current-user job run",
+        "tags": ["jobs"]
+      }
+    },
+    "/v1/jobs/{id}/retry": {
+      "patch": {
+        "operationId": "JobsController_retry",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobRunResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Job run not found."
+          },
+          "409": {
+            "description": "Job state does not permit retry."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Retry a failed or cancelled job run",
+        "tags": ["jobs"]
+      }
+    },
+    "/auth/options": {
+      "get": {
+        "operationId": "AuthController_loginOptions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginOptionsDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get available sign-in options",
+        "tags": ["auth"]
+      }
+    },
+    "/auth/demo": {
+      "post": {
+        "operationId": "AuthController_demo",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Open the seeded demo vault (development only; otherwise 404)",
+        "tags": ["auth"]
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Sign out and clear the current session",
+        "tags": ["auth"]
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "operationId": "AuthController_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Get the current authenticated user",
+        "tags": ["auth"]
+      },
+      "patch": {
+        "operationId": "AuthController_updateMe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Update the current user's profile",
+        "tags": ["auth"]
+      },
+      "delete": {
+        "operationId": "AuthController_deleteMe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAccountRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "403": {
+            "description": "Verify the same Google identity in this session within five minutes before deletion."
+          },
+          "429": {
+            "description": "Rate limit exceeded."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Delete the current account and all of its vault data",
+        "tags": ["auth"]
+      }
+    },
+    "/auth/google": {
+      "get": {
+        "operationId": "GoogleLoginController_start",
+        "parameters": [
+          {
+            "name": "returnTo",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "/vault",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to Google with a browser-bound, expiring login attempt."
+          },
+          "400": {
+            "description": "Return destination is not an allowed app or consent path."
+          },
+          "429": {
+            "description": "Too many sign-in attempts."
+          },
+          "503": {
+            "description": "Google sign-in is not configured."
+          }
+        },
+        "summary": "Sign in or create an account with Google",
+        "tags": ["auth"]
+      }
+    },
+    "/auth/google/verify-deletion": {
+      "get": {
+        "operationId": "GoogleLoginController_verifyDeletion",
+        "parameters": [],
+        "responses": {
+          "302": {
+            "description": "Redirect to Google, then back to data settings for explicit deletion confirmation."
+          },
+          "401": {
+            "description": "Missing or expired Funes session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Verify the current Google identity before account deletion",
+        "tags": ["auth"]
+      }
+    },
+    "/auth/google/callback": {
+      "get": {
+        "operationId": "GoogleLoginController_callback",
+        "parameters": [],
+        "responses": {
+          "303": {
+            "description": "Redirect to the vault, MCP consent, or sign-in error."
+          }
+        },
+        "summary": "Complete Google sign-in and establish a Funes session",
+        "tags": ["auth"]
+      }
+    },
+    "/v1/chat/messages": {
+      "post": {
+        "operationId": "ChatController_sendMessage",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessageRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessageResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "503": {
+            "description": "The configured chat model provider is unavailable."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Ask memory chat about current-user memories",
+        "tags": ["memory chat"]
+      }
+    },
+    "/v1/chat/messages/stream": {
+      "post": {
+        "operationId": "ChatController_streamMessage",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "description": "Accepts the Funes chat message body and also tolerates AI SDK UI message request bodies.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessageRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Server-sent AI SDK UI message stream containing text chunks and sanitized Funes data parts.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string",
+                  "example": "data: {\"type\":\"start\",\"messageId\":\"assistant_abc\"}\n\n"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "503": {
+            "description": "The configured chat model provider is unavailable."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Stream memory chat with typed workbench events",
+        "tags": ["memory chat"]
+      }
+    },
+    "/v1/chat/session": {
+      "get": {
+        "operationId": "ChatController_currentSession",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSessionResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Load the latest persisted memory chat session if one exists",
+        "tags": ["memory chat"]
+      }
+    },
+    "/v1/chat/threads": {
+      "get": {
+        "operationId": "ChatController_listThreads",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListChatThreadsResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameters."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "List previous current-user memory chat threads",
+        "tags": ["memory chat"]
+      },
+      "post": {
+        "operationId": "ChatController_startThread",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSessionResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Start a fresh memory chat thread",
+        "tags": ["memory chat"]
+      }
+    },
+    "/v1/chat/threads/{sessionId}": {
+      "get": {
+        "operationId": "ChatController_getThread",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatThreadResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Thread not found."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Load a specific current-user memory chat thread",
+        "tags": ["memory chat"]
+      },
+      "patch": {
+        "operationId": "ChatController_renameThread",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameChatThreadRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatThreadSummaryDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Thread not found."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Rename a current-user memory chat thread",
+        "tags": ["memory chat"]
+      }
+    },
+    "/v1/chat/guided-questions": {
+      "get": {
+        "operationId": "ChatController_guidedQuestions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidedQuestionsResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "List guided onboarding questions",
+        "tags": ["memory chat"]
+      }
+    },
+    "/v1/chat/onboarding-suggestions": {
+      "post": {
+        "operationId": "ChatController_createOnboardingSuggestions",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOnboardingSuggestionsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingSuggestionsResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Convert guided onboarding answers into reviewable suggestions",
+        "tags": ["memory chat"]
+      }
+    },
+    "/v1/memory-processing/capabilities": {
+      "get": {
+        "operationId": "MemoryProcessingController_capabilities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Sanitized effective configuration, fingerprint and versioned consent scopes."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Read effective memory processors and current user's processing permissions",
+        "tags": ["memory processing"]
+      }
+    },
+    "/v1/memory-processing/consent": {
+      "post": {
+        "operationId": "MemoryProcessingController_consent",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["scope", "granted", "version"],
+                "properties": {
+                  "scope": {
+                    "enum": ["extraction", "consolidation"]
+                  },
+                  "granted": {
+                    "type": "boolean"
+                  },
+                  "version": {
+                    "type": "integer",
+                    "enum": [1]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Grant or revoke TypeSafe processing for one task",
+        "tags": ["memory processing"]
+      }
+    },
+    "/v1/memory-processing/sources/{sourceId}": {
+      "get": {
+        "operationId": "MemoryProcessingController_result",
+        "parameters": [
+          {
+            "name": "sourceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Read durable extraction results for an owned source turn",
+        "tags": ["memory processing"]
+      }
+    },
+    "/v1/memory-processing/sources/{sourceId}/reprocess": {
+      "post": {
+        "operationId": "MemoryProcessingController_reprocess",
+        "parameters": [
+          {
+            "name": "sourceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Explicitly reprocess a failed or skipped source with the current configuration; separately audited",
+        "tags": ["memory processing"]
+      }
+    },
+    "/v1/memory-processing/sources/{sourceId}/retry": {
+      "post": {
+        "operationId": "MemoryProcessingController_retry",
+        "parameters": [
+          {
+            "name": "sourceId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Retry incomplete extraction using its original configuration",
+        "tags": ["memory processing"]
+      }
+    },
+    "/v1/captures": {
+      "post": {
+        "description": "Capture-only variant of memory suggestions: raw text in, a QUEUED_FOR_REVIEW suggestion out. Never creates a memory directly. Accepts the web session cookie (PWA capture queue) or a registered client bearer token (OS shortcuts). Idempotent by captureId.",
+        "operationId": "CapturesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCaptureDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body or secret-like content."
+          },
+          "401": {
+            "description": "Missing or invalid session cookie or client token."
+          }
+        },
+        "security": [
+          {
+            "client_bearer": []
+          },
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Quick-capture a text note as a reviewable memory suggestion",
+        "tags": ["captures"]
+      }
+    },
+    "/v1/memory-suggestions": {
+      "post": {
+        "operationId": "MemorySuggestionsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMemorySuggestionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemorySuggestionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid client token."
+          }
+        },
+        "security": [
+          {
+            "client_bearer": []
+          }
+        ],
+        "summary": "Create a reviewable memory suggestion",
+        "tags": ["memory suggestions"]
+      },
+      "get": {
+        "operationId": "UserMemorySuggestionsController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMemorySuggestionsResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "List reviewable memory suggestions",
+        "tags": ["memory suggestions"]
+      }
+    },
+    "/v1/memory-suggestions/review": {
+      "patch": {
+        "operationId": "UserMemorySuggestionsController_review",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkReviewMemorySuggestionsRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkReviewMemorySuggestionsResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Bulk-review queued memory suggestions",
+        "tags": ["memory suggestions"]
+      }
+    },
+    "/v1/memory-suggestions/{id}/apply": {
+      "patch": {
+        "operationId": "UserMemorySuggestionsController_apply",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemorySuggestionReviewResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Memory suggestion not found."
+          },
+          "409": {
+            "description": "Suggestion is already reviewed or its source memories changed."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Approve a suggestion and create an active memory",
+        "tags": ["memory suggestions"]
+      }
+    },
+    "/v1/memory-suggestions/{id}/reject": {
+      "patch": {
+        "operationId": "UserMemorySuggestionsController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemorySuggestionReviewResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Memory suggestion not found."
+          },
+          "409": {
+            "description": "Suggestion is already reviewed or its source memories changed."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Reject a queued memory suggestion",
+        "tags": ["memory suggestions"]
+      }
+    },
+    "/v1/clients/options": {
+      "get": {
+        "operationId": "ClientsController_listOptions",
+        "parameters": [
+          {
+            "name": "query",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListClientOptionsResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameters."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "List minimal client options for forms",
+        "tags": ["clients"]
+      }
+    },
+    "/v1/clients": {
+      "get": {
+        "operationId": "ClientsController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListClientsResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameters."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "List clients for the current user",
+        "tags": ["clients"]
+      },
+      "post": {
+        "operationId": "ClientsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateClientRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "409": {
+            "description": "Client name already exists."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Create a client and show its token once",
+        "tags": ["clients"]
+      }
+    },
+    "/v1/clients/{id}": {
+      "patch": {
+        "operationId": "ClientsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateClientRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Client not found."
+          },
+          "409": {
+            "description": "Client name already exists."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Update a client or rotate its token",
+        "tags": ["clients"]
+      },
+      "delete": {
+        "operationId": "ClientsController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Client not found."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Delete a current-user client",
+        "tags": ["clients"]
+      }
+    },
+    "/v1/policies": {
+      "get": {
+        "operationId": "PoliciesController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "clientId",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPoliciesResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameters."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "List policies for the current user",
+        "tags": ["policies"]
+      },
+      "post": {
+        "operationId": "PoliciesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePolicyRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "409": {
+            "description": "A policy already exists for this client and purpose."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Create a client access policy",
+        "tags": ["policies"]
+      }
+    },
+    "/v1/policies/{id}": {
+      "patch": {
+        "operationId": "PoliciesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePolicyRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Policy not found."
+          },
+          "409": {
+            "description": "A policy already exists for this client and purpose."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Update a client access policy",
+        "tags": ["policies"]
+      },
+      "delete": {
+        "operationId": "PoliciesController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Policy not found."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Delete a client access policy",
+        "tags": ["policies"]
+      }
+    },
+    "/v1/memory-requests/{id}/result": {
+      "get": {
+        "operationId": "MemoryRequestsController_result",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryBundleResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "client_bearer": []
+          }
+        ],
+        "summary": "Retrieve a request status and consume its one-time approved bundle",
+        "tags": ["memory requests"]
+      }
+    },
+    "/v1/memory-requests": {
+      "post": {
+        "operationId": "MemoryRequestsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMemoryBundleRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryBundleResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid client token."
+          }
+        },
+        "security": [
+          {
+            "client_bearer": []
+          }
+        ],
+        "summary": "Request a policy-filtered memory bundle",
+        "tags": ["memory requests"]
+      }
+    },
+    "/v1/memory-request-reviews": {
+      "get": {
+        "operationId": "DisclosureReviewController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisclosureReviewListDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "List current-user requests awaiting disclosure approval",
+        "tags": ["memory requests"]
+      }
+    },
+    "/v1/memory-request-reviews/{id}": {
+      "get": {
+        "operationId": "DisclosureReviewController_preview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DisclosurePreviewDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Preview exactly which memory text a request may disclose",
+        "tags": ["memory requests"]
+      },
+      "patch": {
+        "operationId": "DisclosureReviewController_decide",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDisclosureDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Approve selected memories once or deny a request",
+        "tags": ["memory requests"]
+      }
+    },
+    "/v1/categories": {
+      "get": {
+        "operationId": "CategoriesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListCategoriesResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "List memory categories",
+        "tags": ["categories"]
+      }
+    },
+    "/v1/memory-categories": {
+      "get": {
+        "operationId": "ClientCategoriesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListCategoriesResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid client token."
+          }
+        },
+        "security": [
+          {
+            "client_bearer": []
+          }
+        ],
+        "summary": "List memory categories for client integrations",
+        "tags": ["categories"]
+      }
+    },
+    "/v1/memories": {
+      "get": {
+        "operationId": "MemoriesController_list",
+        "parameters": [
+          {
+            "name": "direction",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "reviewState",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "sensitivity",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "categoryKeys",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {}
+            }
+          },
+          {
+            "name": "query",
+            "required": false,
+            "in": "query",
+            "description": "Hybrid search across title, body, and semantic similarity when embeddings are available.",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListMemoriesResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameters."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "List memories for the current user",
+        "tags": ["memories"]
+      },
+      "post": {
+        "operationId": "MemoriesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMemoryRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Create a memory for the current user",
+        "tags": ["memories"]
+      }
+    },
+    "/v1/memories/{id}": {
+      "get": {
+        "operationId": "MemoriesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Memory not found."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Get a single current-user memory",
+        "tags": ["memories"]
+      },
+      "patch": {
+        "operationId": "MemoriesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemoryRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Memory not found."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Update, archive, or restore a memory",
+        "tags": ["memories"]
+      },
+      "delete": {
+        "operationId": "MemoriesController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Memory not found."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Soft-delete a memory",
+        "tags": ["memories"]
+      }
+    },
+    "/v1/memories/{id}/provenance": {
+      "get": {
+        "operationId": "MemoriesController_getProvenance",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemoryProvenanceResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Memory not found."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Get append-only provenance for a memory",
+        "tags": ["memories"]
+      }
+    },
+    "/v1/chat/voice-sessions": {
+      "post": {
+        "description": "Mints a short-lived OpenAI Realtime client secret server-side and returns the session configuration. The provider API key never reaches the browser. Voice tool calls run against the dedicated first-party voice client, whose policy caps disclosure sensitivity.",
+        "operationId": "VoiceSessionsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVoiceSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceSessionResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Thread not found."
+          },
+          "429": {
+            "description": "Daily voice session cap reached."
+          },
+          "503": {
+            "description": "Voice provider unavailable or not configured."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Start a realtime voice session",
+        "tags": ["voice sessions"]
+      }
+    },
+    "/v1/chat/voice-sessions/{voiceSessionId}/tool-calls": {
+      "post": {
+        "description": "Bridges Realtime data-channel function calls onto the shared memory steward tools. Returns the tool output for the model plus transcript UI events.",
+        "operationId": "VoiceSessionsController_executeToolCall",
+        "parameters": [
+          {
+            "name": "voiceSessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceToolCallDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceToolCallResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body or unknown tool."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Voice session not found."
+          },
+          "409": {
+            "description": "Voice session has ended."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Execute a memory tool call from a live voice session",
+        "tags": ["voice sessions"]
+      }
+    },
+    "/v1/chat/voice-sessions/{voiceSessionId}/turns": {
+      "post": {
+        "description": "Voice turns land in the same chat thread records as typed messages, marked with the voice provider disclosure, so the conversation can continue as text.",
+        "operationId": "VoiceSessionsController_persistTurn",
+        "parameters": [
+          {
+            "name": "voiceSessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceTurnDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceTurnResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Voice session not found."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Persist a voice transcript turn into the chat thread",
+        "tags": ["voice sessions"]
+      }
+    },
+    "/v1/chat/voice-sessions/{voiceSessionId}/end": {
+      "patch": {
+        "operationId": "VoiceSessionsController_end",
+        "parameters": [
+          {
+            "name": "voiceSessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EndVoiceSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceSessionEndedResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Voice session not found."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "End a voice session with a reason",
+        "tags": ["voice sessions"]
+      }
+    },
+    "/v1/overview": {
+      "get": {
+        "operationId": "OverviewController_getOverview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OverviewResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Get vault overview aggregates",
+        "tags": ["overview"]
+      }
+    },
+    "/v1/audit-events": {
+      "get": {
+        "operationId": "AuditController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "clientId",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "type",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListAuditEventsResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "List audit events for the current user",
+        "tags": ["audit-events"]
+      }
+    },
+    "/v1/audit-events/{id}": {
+      "get": {
+        "operationId": "AuditController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditEventResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Audit event not found."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Get a single current-user audit event",
+        "tags": ["audit-events"]
+      }
+    },
+    "/v1/data/export": {
+      "get": {
+        "operationId": "DataControlController_export",
+        "parameters": [
+          {
+            "name": "includeAuditEvents",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "createdBefore",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "createdAfter",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "sensitivity",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "categoryKeys",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "array",
+              "items": {}
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VaultExportResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid export filters."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Export the current user's vault as JSON",
+        "tags": ["data-control"]
+      }
+    },
+    "/v1/data/import/preview": {
+      "post": {
+        "operationId": "DataControlController_previewImport",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportVaultPreviewRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportVaultPreviewResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid import file."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Validate and preview a vault import",
+        "tags": ["data-control"]
+      }
+    },
+    "/v1/data/import": {
+      "post": {
+        "operationId": "DataControlController_import",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportVaultRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportVaultResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid import file."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Import a vault export as suggestions or memories",
+        "tags": ["data-control"]
+      }
+    }
+  },
+  "info": {
+    "title": "Funes Vault API",
+    "description": "Privacy-first personal memory API for users, LLM clients, and MCP integrations.",
+    "version": "1.0.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "funes_vault_session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "funes_vault_session",
+        "description": "HTTP-only session cookie established by Google sign-in."
+      },
+      "client_bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "opaque",
+        "type": "http",
+        "description": "Client bearer token returned at client creation or rotation."
+      }
+    },
+    "schemas": {
+      "HealthResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "service": {
+            "type": "string",
+            "example": "funes-vault-api"
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          }
+        },
+        "required": ["status", "service", "timestamp"]
+      },
+      "HealthReadyResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "service": {
+            "type": "string",
+            "example": "funes-vault-api"
+          },
+          "timestamp": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          },
+          "checks": {
+            "type": "object",
+            "example": {
+              "api": {
+                "status": "ok"
+              },
+              "database": {
+                "status": "ok"
+              },
+              "redis": {
+                "status": "ok"
+              },
+              "worker": {
+                "status": "ok",
+                "embedding": {
+                  "queueConfigured": true,
+                  "workerEnabled": true,
+                  "workerRunning": true
+                },
+                "consolidation": {
+                  "queueConfigured": true,
+                  "workerEnabled": true,
+                  "workerRunning": true
+                }
+              }
+            }
+          }
+        },
+        "required": ["status", "service", "timestamp", "checks"]
+      },
+      "ConsolidationSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "example": false
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["REVIEW_ONLY", "AUTO_APPLY"],
+            "example": "REVIEW_ONLY"
+          }
+        },
+        "required": ["enabled", "mode"]
+      },
+      "ConsolidationSettingsResponseDto": {
+        "type": "object",
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/ConsolidationSettingsDto"
+          }
+        },
+        "required": ["settings"]
+      },
+      "UpdateConsolidationSettingsDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "example": true
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["REVIEW_ONLY", "AUTO_APPLY"],
+            "example": "AUTO_APPLY"
+          }
+        }
+      },
+      "ConsolidationActionSummaryDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "example": "archive_memory"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "expired",
+              "exact_duplicate",
+              "semantic_duplicate",
+              "conflict",
+              "superseded"
+            ],
+            "example": "exact_duplicate"
+          },
+          "evidence": {
+            "type": "string",
+            "example": "Exact duplicate of memory cmqvt0..."
+          },
+          "confidence": {
+            "type": "number",
+            "example": 0.95,
+            "minimum": 0,
+            "maximum": 1
+          },
+          "targetMemoryId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "targetLabel": {
+            "type": "string",
+            "example": "Prefers concise implementation help"
+          },
+          "canonicalMemoryId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u4",
+            "nullable": true
+          },
+          "canonicalLabel": {
+            "type": "object",
+            "example": "Prefers concise implementation help",
+            "nullable": true
+          },
+          "suggestionId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u5",
+            "nullable": true
+          },
+          "auditEventId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u6",
+            "nullable": true
+          },
+          "applied": {
+            "type": "boolean",
+            "example": false
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["REVIEW_ONLY", "AUTO_APPLY"],
+            "example": "REVIEW_ONLY"
+          }
+        },
+        "required": [
+          "action",
+          "reason",
+          "evidence",
+          "confidence",
+          "targetMemoryId",
+          "targetLabel",
+          "canonicalMemoryId",
+          "canonicalLabel",
+          "suggestionId",
+          "auditEventId",
+          "applied",
+          "mode"
+        ]
+      },
+      "JobConsolidationDto": {
+        "type": "object",
+        "properties": {
+          "trigger": {
+            "type": "string",
+            "example": "manual"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["REVIEW_ONLY", "AUTO_APPLY"],
+            "example": "REVIEW_ONLY"
+          },
+          "inspectedMemoryCount": {
+            "type": "number",
+            "example": 12
+          },
+          "recentMemoryCount": {
+            "type": "number",
+            "example": 8
+          },
+          "expiredMemoryCount": {
+            "type": "number",
+            "example": 2
+          },
+          "candidateCount": {
+            "type": "number",
+            "example": 3
+          },
+          "suggestionsCreated": {
+            "type": "number",
+            "example": 2
+          },
+          "actionsAutoApplied": {
+            "type": "number",
+            "example": 0
+          },
+          "noActionPairs": {
+            "type": "number",
+            "example": 9
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ConsolidationActionSummaryDto"
+            }
+          }
+        },
+        "required": [
+          "trigger",
+          "mode",
+          "inspectedMemoryCount",
+          "recentMemoryCount",
+          "expiredMemoryCount",
+          "candidateCount",
+          "suggestionsCreated",
+          "actionsAutoApplied",
+          "noActionPairs",
+          "actions"
+        ]
+      },
+      "JobRunDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "GENERATE_EMBEDDING",
+              "PROCESS_IMPORT",
+              "CONSOLIDATE_MEMORIES",
+              "DETECT_CONFLICTS",
+              "SEND_REVIEW_REMINDER"
+            ],
+            "example": "CONSOLIDATE_MEMORIES"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["QUEUED", "RUNNING", "SUCCEEDED", "FAILED", "CANCELLED"],
+            "example": "QUEUED"
+          },
+          "attempts": {
+            "type": "number",
+            "example": 0
+          },
+          "maxAttempts": {
+            "type": "number",
+            "example": 3
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "consolidation": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/JobConsolidationDto"
+              }
+            ]
+          },
+          "error": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "startedAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "finishedAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "status",
+          "attempts",
+          "maxAttempts",
+          "metadata",
+          "consolidation",
+          "error",
+          "startedAt",
+          "finishedAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "JobRunResponseDto": {
+        "type": "object",
+        "properties": {
+          "job": {
+            "$ref": "#/components/schemas/JobRunDto"
+          }
+        },
+        "required": ["job"]
+      },
+      "PaginationDto": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number",
+            "example": 1
+          },
+          "limit": {
+            "type": "number",
+            "example": 25
+          },
+          "total": {
+            "type": "number",
+            "example": 3
+          },
+          "totalPages": {
+            "type": "number",
+            "example": 1
+          }
+        },
+        "required": ["page", "limit", "total", "totalPages"]
+      },
+      "ListJobsResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/JobRunDto"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationDto"
+          }
+        },
+        "required": ["items", "pagination"]
+      },
+      "LoginOptionsDto": {
+        "type": "object",
+        "properties": {
+          "demoLoginEnabled": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": ["demoLoginEnabled"]
+      },
+      "AuthUserDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "email": {
+            "type": "string",
+            "example": "demo@funes-vault.local"
+          },
+          "displayName": {
+            "type": "object",
+            "example": "Demo User",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "enum": ["USER", "ADMIN", "OWNER"],
+            "example": "USER"
+          }
+        },
+        "required": ["id", "email", "displayName", "role"]
+      },
+      "AuthResponseDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/AuthUserDto"
+          }
+        },
+        "required": ["user"]
+      },
+      "LogoutResponseDto": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "example": true
+          }
+        },
+        "required": ["ok"]
+      },
+      "UpdateProfileRequestDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "object",
+            "example": "Demo User",
+            "nullable": true
+          }
+        }
+      },
+      "DeleteAccountRequestDto": {
+        "type": "object",
+        "properties": {
+          "confirmation": {
+            "type": "string",
+            "enum": ["DELETE"]
+          }
+        },
+        "required": ["confirmation"]
+      },
+      "ChatMessageRequestDto": {
+        "type": "object",
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "description": "IANA timezone for interpreting dates in this source turn."
+          },
+          "submissionId": {
+            "type": "string",
+            "description": "Stable client-generated turn ID, unique per user. Retries reuse the accepted source and thread. Different text with the same ID returns 409."
+          },
+          "sessionId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "startNewThread": {
+            "type": "boolean",
+            "default": false,
+            "description": "Create a fresh persisted thread as part of accepting this message. Must not be combined with sessionId."
+          },
+          "message": {
+            "type": "string",
+            "example": "What do you know about how I like to work?"
+          }
+        },
+        "required": ["message"]
+      },
+      "ChatCitationDto": {
+        "type": "object",
+        "properties": {
+          "memoryId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "title": {
+            "type": "string",
+            "example": "Prefers concise technical help"
+          },
+          "categoryKeys": {
+            "example": ["communication_style"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "LOW"
+          },
+          "relevanceScore": {
+            "type": "number",
+            "example": 0.85
+          }
+        },
+        "required": [
+          "memoryId",
+          "title",
+          "categoryKeys",
+          "sensitivity",
+          "relevanceScore"
+        ]
+      },
+      "ChatProviderDisclosureDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "example": "openai"
+          },
+          "model": {
+            "type": "string",
+            "example": "gpt-5.5"
+          },
+          "usesThirdParty": {
+            "type": "boolean",
+            "example": true
+          },
+          "disclosure": {
+            "type": "string",
+            "example": "When configured, chat sends the current message and retrieved memory snippets to OpenAI."
+          }
+        },
+        "required": ["provider", "model", "usesThirdParty", "disclosure"]
+      },
+      "ChatEntryDto": {
+        "type": "object",
+        "properties": {
+          "processing": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Durable memory processing status, run/source IDs, processors, and saved/queued/pending outcomes."
+          },
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["user", "assistant"],
+            "example": "assistant"
+          },
+          "content": {
+            "type": "string",
+            "example": "Your vault says you prefer concise technical help with concrete next steps. [1]"
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatCitationDto"
+            }
+          },
+          "suggestedMemoryIds": {
+            "example": ["cmqvt0v580000xeg7jgy7v1u3"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ChatProviderDisclosureDto"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-06-27T14:30:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "content",
+          "citations",
+          "suggestedMemoryIds",
+          "createdAt"
+        ]
+      },
+      "ChatMessageResponseDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "message": {
+            "$ref": "#/components/schemas/ChatEntryDto"
+          },
+          "answer": {
+            "type": "string",
+            "example": "Your vault says you prefer concise technical help with concrete next steps. [1]"
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatCitationDto"
+            }
+          },
+          "suggestedMemoryIds": {
+            "example": ["cmqvt0v580000xeg7jgy7v1u3"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "provider": {
+            "$ref": "#/components/schemas/ChatProviderDisclosureDto"
+          }
+        },
+        "required": [
+          "sessionId",
+          "message",
+          "answer",
+          "citations",
+          "suggestedMemoryIds",
+          "provider"
+        ]
+      },
+      "ChatSessionResponseDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u3",
+            "nullable": true
+          },
+          "title": {
+            "type": "object",
+            "example": "Coding assistant collaboration",
+            "nullable": true
+          },
+          "titleLocked": {
+            "type": "boolean",
+            "example": false
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatEntryDto"
+            }
+          }
+        },
+        "required": ["sessionId", "title", "titleLocked", "messages"]
+      },
+      "ChatThreadSummaryDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "title": {
+            "type": "object",
+            "example": "Coding assistant collaboration",
+            "nullable": true
+          },
+          "titleLocked": {
+            "type": "boolean",
+            "example": false
+          },
+          "messageCount": {
+            "type": "number",
+            "example": 8
+          },
+          "lastMessagePreview": {
+            "type": "object",
+            "example": "We captured your preference for concise implementation help.",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-06-29T14:30:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-06-29T14:52:00.000Z"
+          }
+        },
+        "required": [
+          "sessionId",
+          "title",
+          "titleLocked",
+          "messageCount",
+          "lastMessagePreview",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ListChatThreadsResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatThreadSummaryDto"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationDto"
+          }
+        },
+        "required": ["items", "pagination"]
+      },
+      "ChatThreadResponseDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "title": {
+            "type": "object",
+            "example": "Coding assistant collaboration",
+            "nullable": true
+          },
+          "titleLocked": {
+            "type": "boolean",
+            "example": false
+          },
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatEntryDto"
+            }
+          }
+        },
+        "required": ["sessionId", "title", "titleLocked", "messages"]
+      },
+      "RenameChatThreadRequestDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Planning conversations",
+            "maxLength": 80
+          }
+        },
+        "required": ["title"]
+      },
+      "GuidedQuestionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "collaboration_style"
+          },
+          "category": {
+            "type": "string",
+            "example": "Collaboration style"
+          },
+          "prompt": {
+            "type": "string",
+            "example": "How do you like AI assistants to collaborate with you?"
+          },
+          "categoryKeys": {
+            "example": ["communication_style"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "suggestedKind": {
+            "type": "string",
+            "enum": [
+              "FACT",
+              "PREFERENCE",
+              "INSTRUCTION",
+              "GOAL",
+              "PROJECT_CONTEXT",
+              "RELATIONSHIP",
+              "CONSTRAINT",
+              "EVENT",
+              "SUMMARY"
+            ],
+            "example": "PREFERENCE"
+          },
+          "suggestedSensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "LOW"
+          }
+        },
+        "required": [
+          "id",
+          "category",
+          "prompt",
+          "categoryKeys",
+          "suggestedKind",
+          "suggestedSensitivity"
+        ]
+      },
+      "GuidedQuestionsResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GuidedQuestionDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "OnboardingAnswerDto": {
+        "type": "object",
+        "properties": {
+          "questionId": {
+            "type": "string",
+            "example": "collaboration_style"
+          },
+          "answer": {
+            "type": "string",
+            "example": "I prefer direct implementation when intent is clear."
+          }
+        },
+        "required": ["questionId", "answer"]
+      },
+      "CreateOnboardingSuggestionsDto": {
+        "type": "object",
+        "properties": {
+          "answers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OnboardingAnswerDto"
+            }
+          }
+        },
+        "required": ["answers"]
+      },
+      "OnboardingSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "title": {
+            "type": "string",
+            "example": "Collaboration preference"
+          },
+          "body": {
+            "type": "string",
+            "example": "The user prefers direct implementation."
+          }
+        },
+        "required": ["id", "title", "body"]
+      },
+      "OnboardingSuggestionsResponseDto": {
+        "type": "object",
+        "properties": {
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OnboardingSuggestionDto"
+            }
+          }
+        },
+        "required": ["suggestions"]
+      },
+      "CreateCaptureDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "example": "Remember to ask the dentist about the retainer next visit.",
+            "maxLength": 10000
+          },
+          "captureId": {
+            "type": "string",
+            "description": "Client-generated idempotency key. Re-sending the same captureId returns the existing suggestion instead of creating a duplicate, so offline queues can retry safely.",
+            "example": "b3aa1c9e-7d10-4f0a-9a3f-2d1f0c6b8e42",
+            "pattern": "^[A-Za-z0-9_-]{8,64}$"
+          },
+          "capturedAt": {
+            "type": "object",
+            "description": "When the capture was originally taken, for captures queued offline and synced later.",
+            "example": "2026-07-03T08:12:00.000Z",
+            "nullable": true
+          }
+        },
+        "required": ["text"]
+      },
+      "CaptureResponseDto": {
+        "type": "object",
+        "properties": {
+          "suggestionId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u3",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED_FOR_REVIEW",
+              "APPROVED",
+              "REJECTED",
+              "APPLIED",
+              "DISMISSED",
+              "DENIED"
+            ],
+            "example": "QUEUED_FOR_REVIEW"
+          },
+          "auditEventId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u3",
+            "nullable": true
+          },
+          "deduplicated": {
+            "type": "boolean",
+            "description": "True when the captureId matched an existing capture and no new suggestion was created.",
+            "example": false
+          }
+        },
+        "required": ["suggestionId", "status", "auditEventId", "deduplicated"]
+      },
+      "CreateMemorySuggestionDto": {
+        "type": "object",
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "example": "software_development"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "FACT",
+              "PREFERENCE",
+              "INSTRUCTION",
+              "GOAL",
+              "PROJECT_CONTEXT",
+              "RELATIONSHIP",
+              "CONSTRAINT",
+              "EVENT",
+              "SUMMARY"
+            ],
+            "example": "PREFERENCE"
+          },
+          "title": {
+            "type": "string",
+            "example": "Prefers local-first tools"
+          },
+          "body": {
+            "type": "string",
+            "example": "The user prefers local-first tools for privacy-sensitive workflows."
+          },
+          "categoryKeys": {
+            "example": ["privacy_preferences"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "LOW"
+          },
+          "evidence": {
+            "type": "object",
+            "example": "Observed in the active coding session.",
+            "nullable": true
+          },
+          "confidence": {
+            "type": "number",
+            "example": 0.8,
+            "minimum": 0,
+            "maximum": 1
+          },
+          "expiresAt": {
+            "type": "object",
+            "example": "2026-07-11T23:59:59.000Z",
+            "nullable": true
+          },
+          "sourceMetadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": ["purpose", "kind", "title", "body"]
+      },
+      "DeniedSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "memoryId": {
+            "type": "string",
+            "example": "proposed_memory"
+          },
+          "reason": {
+            "type": "string",
+            "example": "category_not_allowed"
+          }
+        },
+        "required": ["memoryId", "reason"]
+      },
+      "MemorySuggestionResponseDto": {
+        "type": "object",
+        "properties": {
+          "suggestionId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u3",
+            "nullable": true
+          },
+          "memoryId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u3",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED_FOR_REVIEW",
+              "APPROVED",
+              "REJECTED",
+              "APPLIED",
+              "DISMISSED",
+              "DENIED"
+            ],
+            "example": "QUEUED_FOR_REVIEW"
+          },
+          "policyId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u3",
+            "nullable": true
+          },
+          "auditEventId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u3",
+            "nullable": true
+          },
+          "decision": {
+            "type": "string",
+            "enum": ["ALLOW", "NEEDS_CONFIRMATION", "DENY"],
+            "example": "ALLOW"
+          },
+          "denied": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeniedSuggestionDto"
+            }
+          }
+        },
+        "required": [
+          "suggestionId",
+          "memoryId",
+          "status",
+          "policyId",
+          "auditEventId",
+          "decision",
+          "denied"
+        ]
+      },
+      "ProvenanceSubjectDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "MEMORY",
+              "MEMORY_SUGGESTION",
+              "JOB_RUN",
+              "AUDIT_EVENT",
+              "MEMORY_REQUEST",
+              "CLIENT",
+              "POLICY",
+              "IMPORT",
+              "PROVIDER"
+            ],
+            "example": "MEMORY"
+          },
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "TARGET",
+              "SOURCE",
+              "CANONICAL",
+              "SUPERSEDED_BY",
+              "DUPLICATE_OF",
+              "CONFLICTS_WITH",
+              "DERIVED_FROM",
+              "DERIVED_OUTPUT",
+              "SUGGESTION",
+              "JOB",
+              "AUDIT_EVENT",
+              "REQUEST",
+              "CLIENT",
+              "POLICY",
+              "IMPORT_SOURCE",
+              "MODEL_PROVIDER"
+            ],
+            "example": "TARGET"
+          },
+          "label": {
+            "type": "object",
+            "example": "Prefers focused coding help",
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "memoryStatus": {
+            "type": "string",
+            "enum": ["SUGGESTED", "ACTIVE", "ARCHIVED", "EXPIRED", "DELETED"],
+            "example": "ACTIVE",
+            "nullable": true
+          },
+          "memorySensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "LOW",
+            "nullable": true
+          }
+        },
+        "required": [
+          "type",
+          "id",
+          "role",
+          "label",
+          "metadata",
+          "memoryStatus",
+          "memorySensitivity"
+        ]
+      },
+      "ReviewableMemorySuggestionSourceDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "MANUAL",
+              "IMPORT",
+              "CHAT",
+              "CLIENT_SUGGESTION",
+              "CONSOLIDATION",
+              "API",
+              "DERIVED"
+            ],
+            "example": "CHAT"
+          },
+          "clientId": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProvenanceSubjectDto"
+            }
+          }
+        },
+        "required": ["type", "clientId", "metadata", "subjects"]
+      },
+      "ReviewableMemorySuggestionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "title": {
+            "type": "string",
+            "example": "Prefers focused coding help"
+          },
+          "body": {
+            "type": "string",
+            "example": "The user prefers focused coding help with concrete file changes."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "FACT",
+              "PREFERENCE",
+              "INSTRUCTION",
+              "GOAL",
+              "PROJECT_CONTEXT",
+              "RELATIONSHIP",
+              "CONSTRAINT",
+              "EVENT",
+              "SUMMARY"
+            ],
+            "example": "PREFERENCE"
+          },
+          "sensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "LOW"
+          },
+          "categoryKeys": {
+            "example": ["software_development"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "evidence": {
+            "type": "object",
+            "example": "Guided onboarding answer.",
+            "nullable": true
+          },
+          "confidence": {
+            "type": "number",
+            "example": 0.68,
+            "minimum": 0,
+            "maximum": 1
+          },
+          "expiresAt": {
+            "type": "object",
+            "example": "2026-07-11T23:59:59.000Z",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED_FOR_REVIEW",
+              "APPROVED",
+              "REJECTED",
+              "APPLIED",
+              "DISMISSED"
+            ],
+            "example": "QUEUED_FOR_REVIEW"
+          },
+          "source": {
+            "$ref": "#/components/schemas/ReviewableMemorySuggestionSourceDto"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-06-27T12:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-06-27T12:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "body",
+          "kind",
+          "sensitivity",
+          "categoryKeys",
+          "evidence",
+          "confidence",
+          "expiresAt",
+          "status",
+          "source",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ListMemorySuggestionsResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReviewableMemorySuggestionDto"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationDto"
+          }
+        },
+        "required": ["items", "pagination"]
+      },
+      "BulkReviewMemorySuggestionsRequestDto": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "minItems": 1,
+            "maxItems": 100,
+            "example": ["cmqvt0v580000xeg7jgy7v1u3"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "action": {
+            "type": "string",
+            "enum": ["apply", "reject"],
+            "example": "apply"
+          }
+        },
+        "required": ["ids", "action"]
+      },
+      "CreatedMemoryFromSuggestionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "title": {
+            "type": "string",
+            "example": "Prefers focused coding help"
+          }
+        },
+        "required": ["id", "title"]
+      },
+      "BulkReviewMemorySuggestionResultDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["applied", "rejected", "failed"],
+            "example": "applied"
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/ReviewableMemorySuggestionDto"
+          },
+          "memory": {
+            "$ref": "#/components/schemas/CreatedMemoryFromSuggestionDto"
+          },
+          "error": {
+            "type": "string",
+            "example": "Memory suggestion is not reviewable"
+          }
+        },
+        "required": ["id", "status"]
+      },
+      "BulkReviewMemorySuggestionsResponseDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["apply", "reject"],
+            "example": "apply"
+          },
+          "requested": {
+            "type": "number",
+            "example": 12
+          },
+          "succeeded": {
+            "type": "number",
+            "example": 11
+          },
+          "failed": {
+            "type": "number",
+            "example": 1
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkReviewMemorySuggestionResultDto"
+            }
+          }
+        },
+        "required": ["action", "requested", "succeeded", "failed", "results"]
+      },
+      "MemorySuggestionReviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "suggestion": {
+            "$ref": "#/components/schemas/ReviewableMemorySuggestionDto"
+          },
+          "memory": {
+            "$ref": "#/components/schemas/CreatedMemoryFromSuggestionDto"
+          }
+        },
+        "required": ["suggestion"]
+      },
+      "ClientOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "name": {
+            "type": "string",
+            "example": "Local Coding Agent"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "LOCAL_AGENT",
+              "MCP_CLIENT",
+              "CLI",
+              "WEB_APP",
+              "BROWSER_EXTENSION",
+              "HOSTED_APP",
+              "OTHER"
+            ],
+            "example": "MCP_CLIENT"
+          },
+          "trustLevel": {
+            "type": "string",
+            "enum": ["UNKNOWN", "APPROVED", "BLOCKED"],
+            "example": "APPROVED"
+          }
+        },
+        "required": ["id", "name", "type", "trustLevel"]
+      },
+      "ListClientOptionsResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClientOptionDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "ClientPolicySummaryDto": {
+        "type": "object",
+        "properties": {
+          "maxSensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ]
+          },
+          "allowedCategoryKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "requiresConfirmation": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "maxSensitivity",
+          "allowedCategoryKeys",
+          "requiresConfirmation"
+        ]
+      },
+      "ClientDto": {
+        "type": "object",
+        "properties": {
+          "policySummary": {
+            "nullable": true,
+            "description": "Most recently updated unexpired policy, included in client lists.",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ClientPolicySummaryDto"
+              }
+            ]
+          },
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "name": {
+            "type": "string",
+            "example": "Local Coding Agent"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "LOCAL_AGENT",
+              "MCP_CLIENT",
+              "CLI",
+              "WEB_APP",
+              "BROWSER_EXTENSION",
+              "HOSTED_APP",
+              "OTHER"
+            ],
+            "example": "MCP_CLIENT"
+          },
+          "trustLevel": {
+            "type": "string",
+            "enum": ["UNKNOWN", "APPROVED", "BLOCKED"],
+            "example": "APPROVED"
+          },
+          "declaredRetention": {
+            "type": "string",
+            "enum": ["NO_STORAGE", "SESSION", "PERSISTENT", "UNKNOWN"],
+            "example": "NO_STORAGE"
+          },
+          "hasToken": {
+            "type": "boolean",
+            "example": true
+          },
+          "policyCount": {
+            "type": "number",
+            "example": 1
+          },
+          "oauthConnector": {
+            "type": "boolean",
+            "example": false,
+            "description": "True when this client is an OAuth connector grant."
+          },
+          "lastUsedAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "trustLevel",
+          "declaredRetention",
+          "hasToken",
+          "policyCount",
+          "oauthConnector",
+          "lastUsedAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ListClientsResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClientDto"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationDto"
+          }
+        },
+        "required": ["items", "pagination"]
+      },
+      "CreateClientRequestDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Local Coding Agent"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "LOCAL_AGENT",
+              "MCP_CLIENT",
+              "CLI",
+              "WEB_APP",
+              "BROWSER_EXTENSION",
+              "HOSTED_APP",
+              "OTHER"
+            ],
+            "example": "MCP_CLIENT"
+          },
+          "trustLevel": {
+            "type": "string",
+            "enum": ["UNKNOWN", "APPROVED", "BLOCKED"],
+            "example": "UNKNOWN"
+          },
+          "declaredRetention": {
+            "type": "string",
+            "enum": ["NO_STORAGE", "SESSION", "PERSISTENT", "UNKNOWN"],
+            "example": "NO_STORAGE"
+          }
+        },
+        "required": ["name"]
+      },
+      "ClientResponseDto": {
+        "type": "object",
+        "properties": {
+          "client": {
+            "$ref": "#/components/schemas/ClientDto"
+          },
+          "token": {
+            "type": "string",
+            "example": "fvlt_lIoA4pnbbq5STGNOqkX0XhFrxyl1wP1mzv43v6I89BA"
+          }
+        },
+        "required": ["client"]
+      },
+      "UpdateClientRequestDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "Local Coding Agent"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "LOCAL_AGENT",
+              "MCP_CLIENT",
+              "CLI",
+              "WEB_APP",
+              "BROWSER_EXTENSION",
+              "HOSTED_APP",
+              "OTHER"
+            ],
+            "example": "MCP_CLIENT"
+          },
+          "trustLevel": {
+            "type": "string",
+            "enum": ["UNKNOWN", "APPROVED", "BLOCKED"],
+            "example": "APPROVED"
+          },
+          "declaredRetention": {
+            "type": "string",
+            "enum": ["NO_STORAGE", "SESSION", "PERSISTENT", "UNKNOWN"],
+            "example": "NO_STORAGE"
+          },
+          "rotateToken": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "PolicyDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "clientId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "clientName": {
+            "type": "object",
+            "example": "Local Coding Agent",
+            "nullable": true
+          },
+          "purpose": {
+            "type": "string",
+            "example": "software_development"
+          },
+          "allowedCategoryKeys": {
+            "example": ["communication_style", "software_development"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deniedCategoryKeys": {
+            "example": ["health", "finance"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxSensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "INTERNAL"
+          },
+          "operations": {
+            "type": "array",
+            "example": ["READ"],
+            "items": {
+              "type": "string",
+              "enum": ["READ", "SUGGEST", "WRITE", "SUMMARIZE", "EXPORT"]
+            }
+          },
+          "requiresConfirmation": {
+            "type": "boolean",
+            "example": true
+          },
+          "expiresAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "clientId",
+          "clientName",
+          "purpose",
+          "allowedCategoryKeys",
+          "deniedCategoryKeys",
+          "maxSensitivity",
+          "operations",
+          "requiresConfirmation",
+          "expiresAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ListPoliciesResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolicyDto"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationDto"
+          }
+        },
+        "required": ["items", "pagination"]
+      },
+      "CreatePolicyRequestDto": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "purpose": {
+            "type": "string",
+            "example": "software_development"
+          },
+          "allowedCategoryKeys": {
+            "example": ["communication_style", "software_development"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deniedCategoryKeys": {
+            "example": ["health", "finance"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxSensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "INTERNAL"
+          },
+          "operations": {
+            "type": "array",
+            "example": ["READ", "SUGGEST", "WRITE"],
+            "items": {
+              "type": "string",
+              "enum": ["READ", "SUGGEST", "WRITE", "SUMMARIZE", "EXPORT"]
+            }
+          },
+          "requiresConfirmation": {
+            "type": "boolean",
+            "example": true
+          },
+          "expiresAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          }
+        },
+        "required": ["clientId", "purpose"]
+      },
+      "PolicyResponseDto": {
+        "type": "object",
+        "properties": {
+          "policy": {
+            "$ref": "#/components/schemas/PolicyDto"
+          }
+        },
+        "required": ["policy"]
+      },
+      "UpdatePolicyRequestDto": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "purpose": {
+            "type": "string",
+            "example": "software_development"
+          },
+          "allowedCategoryKeys": {
+            "example": ["communication_style", "software_development"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deniedCategoryKeys": {
+            "example": ["health", "finance"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxSensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "INTERNAL"
+          },
+          "operations": {
+            "type": "array",
+            "example": ["READ"],
+            "items": {
+              "type": "string",
+              "enum": ["READ", "SUGGEST", "WRITE", "SUMMARIZE", "EXPORT"]
+            }
+          },
+          "requiresConfirmation": {
+            "type": "boolean",
+            "example": false
+          },
+          "expiresAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          }
+        }
+      },
+      "MemoryBundleItemDto": {
+        "type": "object",
+        "properties": {
+          "memoryId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "text": {
+            "type": "string",
+            "example": "Prefers concise technical answers: The user prefers concise answers."
+          },
+          "category": {
+            "type": "object",
+            "example": "communication_style",
+            "nullable": true
+          },
+          "sensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "LOW"
+          },
+          "relevanceScore": {
+            "type": "number",
+            "example": 0.842
+          },
+          "estimatedTokens": {
+            "type": "number",
+            "example": 24
+          }
+        },
+        "required": [
+          "memoryId",
+          "text",
+          "category",
+          "sensitivity",
+          "estimatedTokens"
+        ]
+      },
+      "DeniedMemoryDto": {
+        "type": "object",
+        "properties": {
+          "memoryId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "reason": {
+            "type": "string",
+            "example": "above_sensitivity_ceiling"
+          }
+        },
+        "required": ["memoryId", "reason"]
+      },
+      "MemoryBundleResponseDto": {
+        "type": "object",
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "NEEDS_USER_APPROVAL",
+              "DENIED",
+              "FULFILLED",
+              "FAILED"
+            ],
+            "example": "FULFILLED"
+          },
+          "policyId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u3",
+            "nullable": true
+          },
+          "tokenBudget": {
+            "type": "number",
+            "example": 1200
+          },
+          "estimatedTokens": {
+            "type": "number",
+            "example": 96
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemoryBundleItemDto"
+            }
+          },
+          "instructions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "denied": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DeniedMemoryDto"
+            }
+          },
+          "auditEventId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u3",
+            "nullable": true
+          }
+        },
+        "required": [
+          "requestId",
+          "status",
+          "policyId",
+          "tokenBudget",
+          "estimatedTokens",
+          "items",
+          "instructions",
+          "denied",
+          "auditEventId"
+        ]
+      },
+      "CreateMemoryBundleRequestDto": {
+        "type": "object",
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "example": "software_development"
+          },
+          "task": {
+            "type": "string",
+            "example": "Help the user modify a local repository"
+          },
+          "requestedCategories": {
+            "example": ["communication_style", "software_development"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "retention": {
+            "type": "string",
+            "enum": ["NO_STORAGE", "SESSION", "PERSISTENT", "UNKNOWN"],
+            "example": "NO_STORAGE"
+          },
+          "thirdPartyProcessors": {
+            "example": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tokenBudget": {
+            "type": "number",
+            "example": 1200,
+            "minimum": 100,
+            "maximum": 8000
+          }
+        },
+        "required": ["purpose", "task"]
+      },
+      "DisclosureSummaryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "clientName": {
+            "type": "string"
+          },
+          "purpose": {
+            "type": "string"
+          },
+          "task": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "APPROVED",
+              "NEEDS_USER_APPROVAL",
+              "DENIED",
+              "FULFILLED",
+              "FAILED"
+            ]
+          },
+          "retention": {
+            "type": "string",
+            "enum": ["NO_STORAGE", "SESSION", "PERSISTENT", "UNKNOWN"]
+          },
+          "thirdPartyProcessors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "clientName",
+          "purpose",
+          "task",
+          "status",
+          "retention",
+          "thirdPartyProcessors",
+          "createdAt"
+        ]
+      },
+      "DisclosureReviewListDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DisclosureSummaryDto"
+            }
+          },
+          "pagination": {
+            "type": "object"
+          }
+        },
+        "required": ["items", "pagination"]
+      },
+      "DisclosurePreviewDto": {
+        "type": "object",
+        "properties": {
+          "request": {
+            "$ref": "#/components/schemas/DisclosureSummaryDto"
+          },
+          "revision": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemoryBundleItemDto"
+            }
+          },
+          "canApprove": {
+            "type": "boolean"
+          }
+        },
+        "required": ["request", "revision", "items", "canApprove"]
+      },
+      "ReviewDisclosureDto": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["approve", "deny"]
+          },
+          "revision": {
+            "type": "string",
+            "description": "Required for approval; use the preview revision."
+          },
+          "memoryIds": {
+            "description": "Required for approval; select one or more previewed memory IDs.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["action"]
+      },
+      "MemoryCategoryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "key": {
+            "type": "string",
+            "example": "software_development"
+          },
+          "name": {
+            "type": "string",
+            "example": "Software Development"
+          },
+          "description": {
+            "type": "object",
+            "example": "Coding tools, languages, workflows, and preferences.",
+            "nullable": true
+          }
+        },
+        "required": ["id", "key", "name", "description"]
+      },
+      "ListCategoriesResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemoryCategoryDto"
+            }
+          }
+        },
+        "required": ["items"]
+      },
+      "MemorySourceDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "MANUAL",
+              "IMPORT",
+              "CHAT",
+              "CLIENT_SUGGESTION",
+              "CONSOLIDATION",
+              "API",
+              "DERIVED"
+            ],
+            "example": "MANUAL"
+          },
+          "clientId": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "uri": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": ["type", "clientId", "uri", "metadata"]
+      },
+      "MemoryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "FACT",
+              "PREFERENCE",
+              "INSTRUCTION",
+              "GOAL",
+              "PROJECT_CONTEXT",
+              "RELATIONSHIP",
+              "CONSTRAINT",
+              "EVENT",
+              "SUMMARY"
+            ],
+            "example": "PREFERENCE"
+          },
+          "title": {
+            "type": "string",
+            "example": "Prefers concise technical answers"
+          },
+          "body": {
+            "type": "string",
+            "example": "The user prefers concise, direct technical answers."
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemoryCategoryDto"
+            }
+          },
+          "categoryKeys": {
+            "example": ["communication_style"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "LOW"
+          },
+          "confidence": {
+            "type": "number",
+            "example": 0.86,
+            "minimum": 0,
+            "maximum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["SUGGESTED", "ACTIVE", "ARCHIVED", "EXPIRED", "DELETED"],
+            "example": "ACTIVE"
+          },
+          "reviewState": {
+            "type": "string",
+            "enum": ["PENDING", "APPROVED", "REJECTED"],
+            "example": "APPROVED"
+          },
+          "source": {
+            "$ref": "#/components/schemas/MemorySourceDto"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          },
+          "expiresAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "lastConfirmedAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "title",
+          "body",
+          "categories",
+          "categoryKeys",
+          "sensitivity",
+          "confidence",
+          "status",
+          "reviewState",
+          "source",
+          "createdAt",
+          "updatedAt",
+          "expiresAt",
+          "lastConfirmedAt"
+        ]
+      },
+      "ListMemoriesResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemoryDto"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationDto"
+          }
+        },
+        "required": ["items", "pagination"]
+      },
+      "CreateMemoryRequestDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "FACT",
+              "PREFERENCE",
+              "INSTRUCTION",
+              "GOAL",
+              "PROJECT_CONTEXT",
+              "RELATIONSHIP",
+              "CONSTRAINT",
+              "EVENT",
+              "SUMMARY"
+            ],
+            "example": "PREFERENCE"
+          },
+          "title": {
+            "type": "string",
+            "example": "Prefers concise technical answers"
+          },
+          "body": {
+            "type": "string",
+            "example": "The user prefers concise, direct technical answers."
+          },
+          "categoryKeys": {
+            "example": ["communication_style", "software_development"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "LOW"
+          },
+          "confidence": {
+            "type": "number",
+            "example": 1,
+            "minimum": 0,
+            "maximum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["SUGGESTED", "ACTIVE", "ARCHIVED", "EXPIRED", "DELETED"],
+            "example": "ACTIVE"
+          },
+          "reviewState": {
+            "type": "string",
+            "enum": ["PENDING", "APPROVED", "REJECTED"],
+            "example": "APPROVED"
+          },
+          "expiresAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "sourceType": {
+            "type": "string",
+            "enum": [
+              "MANUAL",
+              "IMPORT",
+              "CHAT",
+              "CLIENT_SUGGESTION",
+              "CONSOLIDATION",
+              "API",
+              "DERIVED"
+            ],
+            "example": "MANUAL"
+          },
+          "sourceUri": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "sourceMetadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": ["kind", "title", "body"]
+      },
+      "MemoryResponseDto": {
+        "type": "object",
+        "properties": {
+          "memory": {
+            "$ref": "#/components/schemas/MemoryDto"
+          }
+        },
+        "required": ["memory"]
+      },
+      "MemoryProvenanceEntryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "CREATED",
+              "IMPORTED",
+              "SUGGESTED",
+              "SOURCE_UPDATED",
+              "CONTENT_UPDATED",
+              "STATUS_CHANGED",
+              "ARCHIVED",
+              "RESTORED",
+              "DELETED",
+              "CONSOLIDATION_INSPECTED",
+              "CONSOLIDATION_SUGGESTED",
+              "CONSOLIDATION_APPLIED",
+              "DERIVED"
+            ],
+            "example": "CREATED"
+          },
+          "actorType": {
+            "type": "string",
+            "enum": ["USER", "CLIENT", "SYSTEM", "JOB"],
+            "example": "USER"
+          },
+          "actorId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u3",
+            "nullable": true
+          },
+          "sourceType": {
+            "type": "string",
+            "enum": [
+              "MANUAL",
+              "IMPORT",
+              "CHAT",
+              "CLIENT_SUGGESTION",
+              "CONSOLIDATION",
+              "API",
+              "DERIVED"
+            ],
+            "example": "MANUAL",
+            "nullable": true
+          },
+          "sourceClientId": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "sourceUri": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "suggestionId": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "jobRunId": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "auditEventId": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "memoryRequestId": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "reason": {
+            "type": "object",
+            "example": "manual",
+            "nullable": true
+          },
+          "evidence": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "confidence": {
+            "type": "object",
+            "example": 0.92,
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProvenanceSubjectDto"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "actorType",
+          "actorId",
+          "sourceType",
+          "sourceClientId",
+          "sourceUri",
+          "suggestionId",
+          "jobRunId",
+          "auditEventId",
+          "memoryRequestId",
+          "reason",
+          "evidence",
+          "confidence",
+          "metadata",
+          "subjects",
+          "createdAt"
+        ]
+      },
+      "MemoryProvenanceResponseDto": {
+        "type": "object",
+        "properties": {
+          "memoryId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemoryProvenanceEntryDto"
+            }
+          }
+        },
+        "required": ["memoryId", "entries"]
+      },
+      "UpdateMemoryRequestDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "FACT",
+              "PREFERENCE",
+              "INSTRUCTION",
+              "GOAL",
+              "PROJECT_CONTEXT",
+              "RELATIONSHIP",
+              "CONSTRAINT",
+              "EVENT",
+              "SUMMARY"
+            ],
+            "example": "PREFERENCE"
+          },
+          "title": {
+            "type": "string",
+            "example": "Prefers concise implementation help"
+          },
+          "body": {
+            "type": "string",
+            "example": "The user prefers concise implementation when intent is clear."
+          },
+          "categoryKeys": {
+            "example": ["communication_style", "software_development"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "INTERNAL"
+          },
+          "confidence": {
+            "type": "number",
+            "example": 0.9,
+            "minimum": 0,
+            "maximum": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": ["SUGGESTED", "ACTIVE", "ARCHIVED", "EXPIRED", "DELETED"],
+            "example": "ARCHIVED"
+          },
+          "reviewState": {
+            "type": "string",
+            "enum": ["PENDING", "APPROVED", "REJECTED"],
+            "example": "APPROVED"
+          },
+          "expiresAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "sourceType": {
+            "type": "string",
+            "enum": [
+              "MANUAL",
+              "IMPORT",
+              "CHAT",
+              "CLIENT_SUGGESTION",
+              "CONSOLIDATION",
+              "API",
+              "DERIVED"
+            ],
+            "example": "MANUAL"
+          },
+          "sourceUri": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "sourceMetadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "CreateVoiceSessionDto": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "Existing chat thread to continue by voice. Omit to start a new thread.",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "startNewThread": {
+            "type": "boolean",
+            "description": "Force a fresh thread even when sessionId is provided.",
+            "example": false
+          }
+        }
+      },
+      "VoiceClientSecretDto": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "string",
+            "description": "Ephemeral Realtime client secret. Short-lived; the provider API key never reaches the browser.",
+            "example": "ek_abc123"
+          },
+          "expiresAt": {
+            "type": "string",
+            "example": "2026-07-04T12:02:00.000Z"
+          }
+        },
+        "required": ["value", "expiresAt"]
+      },
+      "VoiceSessionLimitsDto": {
+        "type": "object",
+        "properties": {
+          "maxDurationSeconds": {
+            "type": "number",
+            "example": 600
+          },
+          "idleTimeoutSeconds": {
+            "type": "number",
+            "example": 90
+          },
+          "dailySessionCap": {
+            "type": "number",
+            "example": 20
+          },
+          "dailySessionsUsed": {
+            "type": "number",
+            "example": 3
+          }
+        },
+        "required": [
+          "maxDurationSeconds",
+          "idleTimeoutSeconds",
+          "dailySessionCap",
+          "dailySessionsUsed"
+        ]
+      },
+      "VoiceProviderDisclosureDto": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "example": "openai"
+          },
+          "model": {
+            "type": "string",
+            "example": "gpt-realtime-2"
+          },
+          "usesThirdParty": {
+            "type": "boolean",
+            "example": true
+          },
+          "channel": {
+            "type": "string",
+            "enum": ["text", "voice"],
+            "example": "voice"
+          },
+          "disclosure": {
+            "type": "string",
+            "example": "Voice sessions stream your microphone audio and any retrieved memory text to the OpenAI Realtime API and receive synthesized speech back."
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "usesThirdParty",
+          "channel",
+          "disclosure"
+        ]
+      },
+      "VoiceSessionResponseDto": {
+        "type": "object",
+        "properties": {
+          "voiceSessionId": {
+            "type": "string",
+            "example": "cmr5vs0000001l7g7abcd1234"
+          },
+          "sessionId": {
+            "type": "string",
+            "description": "Chat thread the voice transcripts persist into.",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "title": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "model": {
+            "type": "string",
+            "example": "gpt-realtime-2"
+          },
+          "voice": {
+            "type": "string",
+            "example": "cedar"
+          },
+          "clientSecret": {
+            "$ref": "#/components/schemas/VoiceClientSecretDto"
+          },
+          "limits": {
+            "$ref": "#/components/schemas/VoiceSessionLimitsDto"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/VoiceProviderDisclosureDto"
+          }
+        },
+        "required": [
+          "voiceSessionId",
+          "sessionId",
+          "title",
+          "model",
+          "voice",
+          "clientSecret",
+          "limits",
+          "provider"
+        ]
+      },
+      "VoiceToolCallDto": {
+        "type": "object",
+        "properties": {
+          "sourceItemId": {
+            "type": "string",
+            "description": "Finalized user Realtime item ID that owns the extraction result. Missing or not-yet-persisted sources return pending for capture tools."
+          },
+          "toolName": {
+            "type": "string",
+            "example": "request_memory"
+          },
+          "toolCallId": {
+            "type": "string",
+            "description": "Realtime function call id, echoed into tool traces.",
+            "example": "call_abc123"
+          },
+          "arguments": {
+            "type": "object",
+            "additionalProperties": true,
+            "example": {
+              "task": "communication preferences",
+              "requestedCategories": [],
+              "tokenBudget": 800
+            }
+          }
+        },
+        "required": ["toolName", "toolCallId"]
+      },
+      "StewardToolEventDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "memory-citation",
+              "policy-decision",
+              "memory-suggestion",
+              "audit-event",
+              "tool-trace"
+            ],
+            "example": "tool-trace"
+          },
+          "data": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": ["type", "data"]
+      },
+      "VoiceToolCallResponseDto": {
+        "type": "object",
+        "properties": {
+          "output": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Tool output to return to the Realtime model."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StewardToolEventDto"
+            }
+          }
+        },
+        "required": ["output", "events"]
+      },
+      "VoiceTurnDto": {
+        "type": "object",
+        "properties": {
+          "timezone": {
+            "type": "string",
+            "description": "IANA timezone for interpreting dates in this source turn."
+          },
+          "itemId": {
+            "type": "string",
+            "description": "Stable Realtime item ID. Duplicate delivery reuses the message; changed content is rejected."
+          },
+          "role": {
+            "type": "string",
+            "enum": ["user", "assistant"],
+            "example": "assistant"
+          },
+          "content": {
+            "type": "string",
+            "example": "Your vault says you prefer concise answers, so I kept it short."
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            },
+            "description": "Citations gathered from request_memory calls in this turn."
+          },
+          "suggestedMemoryIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["role", "content"]
+      },
+      "VoiceTurnResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "title": {
+            "type": "object",
+            "example": "Voice check-in",
+            "nullable": true
+          }
+        },
+        "required": ["message", "title"]
+      },
+      "EndVoiceSessionDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "user_ended",
+              "max_duration",
+              "idle_timeout",
+              "connection_lost",
+              "error"
+            ],
+            "example": "user_ended"
+          }
+        }
+      },
+      "VoiceSessionEndedResponseDto": {
+        "type": "object",
+        "properties": {
+          "voiceSessionId": {
+            "type": "string",
+            "example": "cmr5vs0000001l7g7abcd1234"
+          },
+          "endedAt": {
+            "type": "string",
+            "example": "2026-07-04T12:10:00.000Z"
+          },
+          "endReason": {
+            "type": "string",
+            "enum": [
+              "user_ended",
+              "max_duration",
+              "idle_timeout",
+              "connection_lost",
+              "error"
+            ],
+            "example": "user_ended"
+          }
+        },
+        "required": ["voiceSessionId", "endedAt", "endReason"]
+      },
+      "MemorySensitivityCountDto": {
+        "type": "object",
+        "properties": {
+          "sensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "LOW"
+          },
+          "count": {
+            "type": "number",
+            "example": 42
+          }
+        },
+        "required": ["sensitivity", "count"]
+      },
+      "ClientTrustCountDto": {
+        "type": "object",
+        "properties": {
+          "trustLevel": {
+            "type": "string",
+            "enum": ["UNKNOWN", "APPROVED", "BLOCKED"],
+            "example": "APPROVED"
+          },
+          "count": {
+            "type": "number",
+            "example": 3
+          }
+        },
+        "required": ["trustLevel", "count"]
+      },
+      "CaptureSeriesPointDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2026-07-08"
+          },
+          "count": {
+            "type": "number",
+            "example": 7,
+            "minimum": 0
+          }
+        },
+        "required": ["date", "count"]
+      },
+      "AuditEventSubjectDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "MEMORY",
+              "MEMORY_SUGGESTION",
+              "JOB_RUN",
+              "MEMORY_REQUEST",
+              "CLIENT",
+              "POLICY",
+              "IMPORT",
+              "EXPORT"
+            ],
+            "example": "MEMORY"
+          },
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "TARGET",
+              "SOURCE",
+              "CANONICAL",
+              "DISCLOSED",
+              "DENIED",
+              "CREATED",
+              "UPDATED",
+              "ARCHIVED",
+              "DELETED",
+              "SUGGESTION",
+              "JOB",
+              "REQUEST",
+              "CLIENT",
+              "POLICY",
+              "IMPORTED",
+              "EXPORTED"
+            ],
+            "example": "CREATED"
+          },
+          "label": {
+            "type": "object",
+            "example": "Prefers concise technical answers",
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "required": ["type", "id", "role", "label", "metadata"]
+      },
+      "AuditEventDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "MEMORY_PROCESSING_COMPLETED",
+              "PROCESSING_CONSENT_UPDATED",
+              "MEMORY_CREATED",
+              "MEMORY_UPDATED",
+              "MEMORY_ARCHIVED",
+              "MEMORY_DELETED",
+              "MEMORY_DISCLOSURE",
+              "MEMORY_REQUEST_APPROVED",
+              "MEMORY_REQUEST_DENIED",
+              "MEMORY_SUGGESTION_CREATED",
+              "MEMORY_SUGGESTION_APPROVED",
+              "MEMORY_SUGGESTION_REJECTED",
+              "CLIENT_CREATED",
+              "CLIENT_UPDATED",
+              "CLIENT_TOKEN_ROTATED",
+              "POLICY_CREATED",
+              "POLICY_UPDATED",
+              "POLICY_DELETED",
+              "OAUTH_GRANT_APPROVED",
+              "OAUTH_GRANT_DENIED",
+              "OAUTH_TOKEN_ISSUED",
+              "OAUTH_TOKEN_REVOKED",
+              "JOB_CREATED",
+              "JOB_COMPLETED",
+              "JOB_FAILED"
+            ],
+            "example": "CLIENT_CREATED"
+          },
+          "actorType": {
+            "type": "string",
+            "enum": ["USER", "CLIENT", "SYSTEM", "JOB"],
+            "example": "USER"
+          },
+          "actorId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u3",
+            "nullable": true
+          },
+          "clientId": {
+            "type": "object",
+            "example": "cmqvt0v580000xeg7jgy7v1u3",
+            "nullable": true
+          },
+          "clientName": {
+            "type": "object",
+            "example": "Local Coding Agent",
+            "nullable": true
+          },
+          "memoryRequestId": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEventSubjectDto"
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "actorType",
+          "actorId",
+          "clientId",
+          "clientName",
+          "memoryRequestId",
+          "metadata",
+          "subjects",
+          "createdAt"
+        ]
+      },
+      "OverviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "memoryTotal": {
+            "type": "number",
+            "example": 128
+          },
+          "memorySensitivityCounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemorySensitivityCountDto"
+            }
+          },
+          "recentHighSensitivityMemory": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MemoryDto"
+              }
+            ]
+          },
+          "clientTotal": {
+            "type": "number",
+            "example": 6
+          },
+          "clientTrustCounts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClientTrustCountDto"
+            }
+          },
+          "policyTotal": {
+            "type": "number",
+            "example": 8
+          },
+          "categoryTotal": {
+            "type": "number",
+            "example": 12
+          },
+          "broadestPolicy": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/PolicyDto"
+              }
+            ]
+          },
+          "suggestionTotal": {
+            "type": "number",
+            "example": 4
+          },
+          "oldestPendingSuggestionAt": {
+            "type": "string",
+            "example": "2026-07-01T10:30:00.000Z",
+            "format": "date-time",
+            "nullable": true
+          },
+          "captureSeries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CaptureSeriesPointDto"
+            }
+          },
+          "lastCapturedAt": {
+            "type": "string",
+            "example": "2026-07-08T14:12:00.000Z",
+            "format": "date-time",
+            "nullable": true
+          },
+          "auditTotal": {
+            "type": "number",
+            "example": 42
+          },
+          "recentAuditEvents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEventDto"
+            }
+          }
+        },
+        "required": [
+          "memoryTotal",
+          "memorySensitivityCounts",
+          "recentHighSensitivityMemory",
+          "clientTotal",
+          "clientTrustCounts",
+          "policyTotal",
+          "categoryTotal",
+          "broadestPolicy",
+          "suggestionTotal",
+          "oldestPendingSuggestionAt",
+          "captureSeries",
+          "lastCapturedAt",
+          "auditTotal",
+          "recentAuditEvents"
+        ]
+      },
+      "ListAuditEventsResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEventDto"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationDto"
+          }
+        },
+        "required": ["items", "pagination"]
+      },
+      "AuditEventResponseDto": {
+        "type": "object",
+        "properties": {
+          "auditEvent": {
+            "$ref": "#/components/schemas/AuditEventDto"
+          }
+        },
+        "required": ["auditEvent"]
+      },
+      "VaultExportSourceDto": {
+        "type": "object",
+        "properties": {
+          "app": {
+            "type": "string",
+            "example": "funes-vault"
+          },
+          "userId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "email": {
+            "type": "object",
+            "example": "demo@funes-vault.local",
+            "nullable": true
+          },
+          "displayName": {
+            "type": "object",
+            "example": "Demo User",
+            "nullable": true
+          }
+        },
+        "required": ["app", "userId", "email", "displayName"]
+      },
+      "VaultExportFiltersDto": {
+        "type": "object",
+        "properties": {
+          "categoryKeys": {
+            "example": ["software_development"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sensitivity": {
+            "type": "object",
+            "example": "LOW",
+            "nullable": true
+          },
+          "createdAfter": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "createdBefore": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "includeAuditEvents": {
+            "type": "boolean",
+            "example": false
+          }
+        },
+        "required": [
+          "categoryKeys",
+          "sensitivity",
+          "createdAfter",
+          "createdBefore",
+          "includeAuditEvents"
+        ]
+      },
+      "VaultExportMetadataDto": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "example": "funes-vault.export.v1"
+          },
+          "exportedAt": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          },
+          "source": {
+            "$ref": "#/components/schemas/VaultExportSourceDto"
+          },
+          "filters": {
+            "$ref": "#/components/schemas/VaultExportFiltersDto"
+          }
+        },
+        "required": ["schemaVersion", "exportedAt", "source", "filters"]
+      },
+      "VaultExportDto": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/VaultExportMetadataDto"
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemoryCategoryDto"
+            }
+          },
+          "memories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemoryDto"
+            }
+          },
+          "clients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ClientDto"
+            }
+          },
+          "policies": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolicyDto"
+            }
+          },
+          "auditEvents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditEventDto"
+            }
+          }
+        },
+        "required": [
+          "metadata",
+          "categories",
+          "memories",
+          "clients",
+          "policies"
+        ]
+      },
+      "VaultExportResponseDto": {
+        "type": "object",
+        "properties": {
+          "export": {
+            "$ref": "#/components/schemas/VaultExportDto"
+          }
+        },
+        "required": ["export"]
+      },
+      "ImportVaultPreviewRequestDto": {
+        "type": "object",
+        "properties": {
+          "export": {
+            "$ref": "#/components/schemas/VaultExportDto"
+          }
+        },
+        "required": ["export"]
+      },
+      "PossibleDuplicateMemoryDto": {
+        "type": "object",
+        "properties": {
+          "importedId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "existingId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u4"
+          },
+          "title": {
+            "type": "string",
+            "example": "Prefers concise technical answers"
+          }
+        },
+        "required": ["importedId", "existingId", "title"]
+      },
+      "ImportVaultPreviewDto": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "string",
+            "example": "funes-vault.export.v1"
+          },
+          "exportedAt": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          },
+          "memories": {
+            "type": "number",
+            "example": 12
+          },
+          "categories": {
+            "type": "number",
+            "example": 8
+          },
+          "clients": {
+            "type": "number",
+            "example": 2
+          },
+          "policies": {
+            "type": "number",
+            "example": 3
+          },
+          "auditEvents": {
+            "type": "number",
+            "example": 4
+          },
+          "possibleDuplicateMemories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PossibleDuplicateMemoryDto"
+            }
+          },
+          "categoryKeys": {
+            "example": ["software_development"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "exportedAt",
+          "memories",
+          "categories",
+          "clients",
+          "policies",
+          "auditEvents",
+          "possibleDuplicateMemories",
+          "categoryKeys"
+        ]
+      },
+      "ImportVaultPreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "preview": {
+            "$ref": "#/components/schemas/ImportVaultPreviewDto"
+          }
+        },
+        "required": ["preview"]
+      },
+      "ImportVaultRequestDto": {
+        "type": "object",
+        "properties": {
+          "export": {
+            "$ref": "#/components/schemas/VaultExportDto"
+          },
+          "mode": {
+            "type": "string",
+            "enum": ["SUGGESTIONS", "ACTIVE_MEMORIES"],
+            "example": "SUGGESTIONS"
+          }
+        },
+        "required": ["export"]
+      },
+      "ImportVaultSummaryDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": ["SUGGESTIONS", "ACTIVE_MEMORIES"],
+            "example": "SUGGESTIONS"
+          },
+          "memoriesCreated": {
+            "type": "number",
+            "example": 0
+          },
+          "suggestionsCreated": {
+            "type": "number",
+            "example": 12
+          },
+          "clientsCreated": {
+            "type": "number",
+            "example": 2
+          },
+          "policiesCreated": {
+            "type": "number",
+            "example": 3
+          },
+          "categoriesUpserted": {
+            "type": "number",
+            "example": 8
+          },
+          "jobRunId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          }
+        },
+        "required": [
+          "mode",
+          "memoriesCreated",
+          "suggestionsCreated",
+          "clientsCreated",
+          "policiesCreated",
+          "categoriesUpserted",
+          "jobRunId"
+        ]
+      },
+      "ImportVaultResponseDto": {
+        "type": "object",
+        "properties": {
+          "imported": {
+            "$ref": "#/components/schemas/ImportVaultSummaryDto"
+          }
+        },
+        "required": ["imported"]
+      }
+    }
+  }
+}

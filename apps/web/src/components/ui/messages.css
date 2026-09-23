@@ -1,0 +1,57 @@
+.suggestion-row {
+  display: grid;
+  /* Content absorbs any extra height from taller cards in the same grid
+     row, keeping the action buttons at their natural size at the bottom. */
+  grid-template-rows: 1fr auto;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 18px;
+  background: color-mix(in srgb, var(--surface) 65%, transparent);
+}
+
+.suggestion-row[data-selected="true"] {
+  border-color: var(--border-strong);
+  background: var(--surface);
+  box-shadow: inset 2px 0 0 var(--brand);
+}
+
+.suggestion-row p {
+  margin: var(--space-3) 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.suggestion-row small {
+  color: var(--text-faint);
+  font-weight: 700;
+}
+
+.memory-message p {
+  margin: 0;
+}
+
+.memory-message {
+  display: grid;
+  max-width: 78ch;
+  min-width: 0;
+  gap: var(--space-4);
+}
+
+.memory-message-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  color: var(--text-faint);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.memory-message-meta strong {
+  color: var(--text-faint);
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+}

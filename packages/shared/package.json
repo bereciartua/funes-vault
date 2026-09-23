@@ -1,0 +1,103 @@
+{
+  "name": "@funes-vault/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./auth": {
+      "types": "./dist/auth.d.ts",
+      "default": "./dist/auth.js"
+    },
+    "./enums": {
+      "types": "./dist/enums.d.ts",
+      "default": "./dist/enums.js"
+    },
+    "./common": {
+      "types": "./dist/common.d.ts",
+      "default": "./dist/common.js"
+    },
+    "./memories": {
+      "types": "./dist/memories.d.ts",
+      "default": "./dist/memories.js"
+    },
+    "./clients": {
+      "types": "./dist/clients.d.ts",
+      "default": "./dist/clients.js"
+    },
+    "./policies": {
+      "types": "./dist/policies.d.ts",
+      "default": "./dist/policies.js"
+    },
+    "./memory-requests": {
+      "types": "./dist/memory-requests.d.ts",
+      "default": "./dist/memory-requests.js"
+    },
+    "./memory-suggestions": {
+      "types": "./dist/memory-suggestions.d.ts",
+      "default": "./dist/memory-suggestions.js"
+    },
+    "./jobs": {
+      "types": "./dist/jobs.d.ts",
+      "default": "./dist/jobs.js"
+    },
+    "./chat": {
+      "types": "./dist/chat.d.ts",
+      "default": "./dist/chat.js"
+    },
+    "./voice": {
+      "types": "./dist/voice.d.ts",
+      "default": "./dist/voice.js"
+    },
+    "./onboarding": {
+      "types": "./dist/onboarding.d.ts",
+      "default": "./dist/onboarding.js"
+    },
+    "./audit": {
+      "types": "./dist/audit.d.ts",
+      "default": "./dist/audit.js"
+    },
+    "./overview": {
+      "types": "./dist/overview.d.ts",
+      "default": "./dist/overview.js"
+    },
+    "./data-control": {
+      "types": "./dist/data-control.d.ts",
+      "default": "./dist/data-control.js"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "default": "./dist/mcp.js"
+    },
+    "./tokens": {
+      "types": "./dist/tokens.d.ts",
+      "default": "./dist/tokens.js"
+    },
+    "./domain": {
+      "types": "./dist/domain.d.ts",
+      "default": "./dist/domain.js"
+    },
+    "./memory-processing": {
+      "types": "./dist/memory-processing.d.ts",
+      "default": "./dist/memory-processing.js"
+    }
+  },
+  "scripts": {
+    "dev": "tsc -b --watch",
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  },
+  "license": "Apache-2.0",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false
+}

@@ -1,0 +1,212 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+  schedule:
+    - cron: "0 9 * * 1"
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: pnpm --filter @funes-vault/db exec prisma validate
+      - run: pnpm --filter @funes-vault/db exec prisma format --check
+      - run: pnpm db:check-migrations
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm lint:css
+      - run: pnpm lint:unused
+      - run: pnpm docs:erd
+      - run: git diff --exit-code -- docs/database-schema.md
+      - run: pnpm docs:openapi
+      - run: git diff --exit-code -- docs/openapi.json
+      - run: pnpm format:check
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: pnpm db:generate && pnpm --filter "./packages/*" build
+      - run: pnpm --filter "./packages/*" test
+      - run: pnpm --filter @funes-vault/web test:coverage
+      - name: Summarize Web coverage
+        run: node scripts/report-coverage.mjs apps/web/coverage/coverage-summary.json Web
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: web-coverage
+          path: apps/web/coverage
+          retention-days: 14
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: apps/web/coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+  privacy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: funes_vault
+          POSTGRES_PASSWORD: funes_vault
+          POSTGRES_DB: funes_vault_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U funes_vault"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://funes_vault:funes_vault@localhost:5432/funes_vault_test
+      TEST_DATABASE_URL: postgresql://funes_vault:funes_vault@localhost:5432/funes_vault_test
+      REDIS_URL: redis://localhost:6379
+      E2E_REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: pnpm db:generate && pnpm --filter "./packages/*" build
+      - run: pnpm db:migrate
+      # API unit tests and privacy integration tests run here once. Other jobs exclude them.
+      - run: pnpm --filter @funes-vault/api test:coverage
+      - name: Summarize API coverage
+        run: node scripts/report-coverage.mjs apps/api/coverage/coverage-summary.json API
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: api-coverage
+          path: apps/api/coverage
+          retention-days: 14
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          files: apps/api/coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+  api-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: funes_vault
+          POSTGRES_PASSWORD: funes_vault
+          POSTGRES_DB: funes_vault_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U funes_vault"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://funes_vault:funes_vault@localhost:5432/funes_vault_test
+      TEST_DATABASE_URL: postgresql://funes_vault:funes_vault@localhost:5432/funes_vault_test
+      REDIS_URL: redis://localhost:6379
+      E2E_REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: pnpm db:generate && pnpm --filter "./packages/*" build
+      - run: pnpm db:migrate
+      - name: Verify migration drift
+        env:
+          PGPASSWORD: funes_vault
+          SHADOW_DATABASE_URL: postgresql://funes_vault:funes_vault@localhost:5432/funes_shadow_test
+        run: |
+          createdb -h localhost -U funes_vault funes_shadow_test
+          pnpm db:check-migrations --drift
+      - run: pnpm --filter @funes-vault/api exec vitest run --project e2e -t "^(?!.*privacy:)"
+  web-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: funes_vault
+          POSTGRES_PASSWORD: funes_vault
+          POSTGRES_DB: funes_vault_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U funes_vault"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://funes_vault:funes_vault@localhost:5432/funes_vault_test
+      TEST_DATABASE_URL: postgresql://funes_vault:funes_vault@localhost:5432/funes_vault_test
+      REDIS_URL: redis://localhost:6379
+      E2E_REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: pnpm db:generate && pnpm --filter "./packages/*" build
+      - id: playwright
+        run: echo "version=$(pnpm exec playwright --version | cut -d' ' -f2)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e:setup
+      - run: pnpm --filter @funes-vault/web build
+      - run: pnpm test:e2e:web
+      - run: pnpm test:e2e:demo
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: failure()
+        with:
+          name: playwright-failure-artifacts
+          path: |
+            test-results
+            playwright-report
+          retention-days: 14
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: pnpm build
+      - run: docker build --target api -t funes-api:ci .
+      - run: docker build --target web --build-arg FUNES_BUILD_SHA=${{ github.sha }} -t funes-web:ci .
+      - run: docker build --target mcp -t funes-mcp:ci .
+      - name: Run production migration and service readiness
+        run: scripts/smoke-production.sh
+      - name: Verify non-root runtime
+        run: |
+          for image in api web mcp; do
+            test "$(docker run --rm --entrypoint id funes-$image:ci -u)" != 0
+            output=/app/dist
+            if [ "$image" = web ]; then output=/app/apps/web/.next; fi
+            test -z "$(docker run --rm --entrypoint find funes-$image:ci "$output" -type f -name '*.spec.js')"
+            test -z "$(docker run --rm --entrypoint find funes-$image:ci "$output" -type f -name '*.test.js')"
+          done
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: ${{ github.event_name != 'schedule' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/setup
+      - run: pnpm audit:dependencies

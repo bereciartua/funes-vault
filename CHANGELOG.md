@@ -1,0 +1,32 @@
+# Changelog
+
+All notable changes are documented here, following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and Semantic Versioning.
+
+## [Unreleased]
+
+## [1.0.0] - 2026-09-23
+
+### Added
+
+- Self-hosted personal memory vault with Google sign-in, categorized memories, sensitivity, provenance, review and account controls.
+- Purpose-scoped client policies, exact selected disclosure previews, single-use approval and auditable retrieval.
+- MCP stdio/HTTP tools and OAuth authorization-code flow with PKCE, refresh rotation, replay detection and revocation.
+- Text chat, Realtime voice, citations, processing permissions, durable extraction outcomes and review-first consolidation.
+- Responsive PWA with owner-scoped offline text capture, suggestions inbox, jobs, linked audit provenance and export/import preview.
+- Secure browser sessions, nonce-based script CSP, explicit processing consent, secret-like content rejection and transactional disclosure auditing.
+- Production images for API/worker, web and MCP, generated API/schema documentation, and privacy integration and browser checks.
+
+### Migration notes
+
+This is the first public release. The single baseline replaces development migration history; existing development databases require export/backup and recreation using the [migration procedure](docs/deployment-and-operations.md).
+
+- Production website authentication requires Google configuration; seeded demo login is development-only.
+- Consolidation similarity and keyword retrieval share Unicode tokenization. Accented and non-Latin words participate in matching; filler alone does not establish similarity. The lexical candidate threshold is 0.34.
+- Offline captures are scoped to a vault URL and owner. After signing in once, the device remembers the owner ID so text capture can reopen offline. Sign-out or session expiration removes that hint. Sync requires a valid session for that same owner; legacy unscoped queues are not automatically imported.
+- Consolidation replaces the development `POST /v1/data/expiration-runs` route and handles expiration in review or automatic mode. Retrieval excludes elapsed expiration dates.
+- The web PWA replaces development browser-extension and native-mobile build targets.
+
+See the [testing guide](docs/testing-and-release.md) for verification commands and the [operations guide](docs/deployment-and-operations.md) for deployment prerequisites. Publication and production rollout remain operator actions.
+
+[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/bereciartua/funes-vault/releases/tag/v1.0.0

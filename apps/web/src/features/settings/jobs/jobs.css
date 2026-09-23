@@ -1,0 +1,62 @@
+.job-detail {
+  display: grid;
+  gap: 10px;
+}
+
+.job-detail > p {
+  margin: 0;
+}
+
+.job-error {
+  max-height: 190px;
+  overflow: auto;
+  margin: 0;
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  color: var(--danger);
+  background: var(--danger-surface);
+  font-size: 0.76rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.job-action-row p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.job-action-row small {
+  color: var(--text-faint);
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.job-action-list {
+  display: grid;
+  gap: 10px;
+}
+
+.job-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, auto);
+  gap: var(--space-5);
+  align-items: start;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  background: var(--surface);
+}
+
+.job-action-row > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.job-action-row strong {
+  overflow-wrap: anywhere;
+}

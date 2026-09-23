@@ -1,0 +1,8 @@
+.next
+coverage
+dist
+node_modules
+packages/db/src/generated
+pnpm-lock.yaml
+
+**/dist-e2e/**

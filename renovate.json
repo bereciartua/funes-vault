@@ -1,0 +1,21 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "rangeStrategy": "bump",
+  "schedule": ["before 8am on monday"],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "non-major dependencies"
+    },
+    {
+      "matchPackageNames": ["/^@nestjs//"],
+      "groupName": "nestjs"
+    },
+    {
+      "matchPackageNames": ["/^@prisma//", "prisma", "pg", "@types/pg"],
+      "groupName": "prisma"
+    }
+  ],
+  "prConcurrentLimit": 5
+}
