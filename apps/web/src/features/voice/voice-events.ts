@@ -5,7 +5,7 @@
 
 export type VoiceRealtimeAction =
   | { kind: "session-ready" }
-  | { kind: "user-speech-started" }
+  | { kind: "user-speech-started"; itemId?: string }
   | { kind: "user-speech-stopped" }
   | { kind: "user-transcript-delta"; itemId: string; delta: string }
   | { kind: "user-transcript-done"; itemId: string; text: string }
@@ -46,7 +46,10 @@ export function parseVoiceRealtimeEvent(
     case "session.updated":
       return { kind: "session-ready" };
     case "input_audio_buffer.speech_started":
-      return { kind: "user-speech-started" };
+      return {
+        kind: "user-speech-started",
+        ...(asString(event.item_id) ? { itemId: asString(event.item_id) } : {})
+      };
     case "input_audio_buffer.speech_stopped":
       return { kind: "user-speech-stopped" };
     case "conversation.item.input_audio_transcription.delta":
