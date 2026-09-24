@@ -27,10 +27,18 @@ are optional for ordinary vault work; live chat, embeddings and voice require th
 
 ## Branches and pull requests
 
-The public repository uses `main` as its only long-lived branch. Work in `feat/`,
-`fix/`, `docs/` or `chore/` branches and open a focused pull request. Use a conventional
-commit subject such as `fix(auth): reject expired sessions`. Pull requests are
-squash-merged.
+The repository follows a git-flow style model with two long-lived branches.
+`develop` is the default branch and the integration line: work in `feat/`, `fix/`,
+`docs/` or `chore/` branches off `develop` and open a focused pull request against
+it. Use a conventional commit subject such as `fix(auth): reject expired sessions`.
+Feature pull requests are squash-merged.
+
+`main` is the production line and only ever advances by a pull request from
+`develop` (or a `hotfix/` branch), merged with a merge commit, and each merge is
+tagged `vX.Y.Z` after the changelog entry is finalized. The `v*` tag is what
+publishes the container images. Hotfixes are merged back into `develop`. Both
+branches require the CI checks to pass and a pull request; neither accepts
+force pushes.
 
 Separate behavior changes from broad moves when possible. Include the problem,
 the resulting behavior, and relevant validation in the PR description. Do not
