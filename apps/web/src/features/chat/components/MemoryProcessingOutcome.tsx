@@ -12,6 +12,7 @@ import { FeedbackMessages } from "../../../components/ui/feedback-messages";
 import { queryKeys } from "../../../lib/api/query-keys";
 import { useApiMutation } from "../../../lib/api/use-api";
 import { processorLabel } from "../../../lib/domain/processing";
+import { canRetryProcessing, processingReason } from "./processing-reason";
 export function MemoryProcessingOutcome({
   initial
 }: {
@@ -55,6 +56,7 @@ export function MemoryProcessingOutcome({
   ).length;
   const processors =
     result.processors?.map(processorLabel).join(" + ") ?? "Memory processing";
+  const explanation = processingReason(result.reason);
   function retry() {
     if (result?.sourceMessageId) {
       mutation.mutate(result.sourceMessageId);
@@ -66,21 +68,18 @@ export function MemoryProcessingOutcome({
       {result.status === "partial" ? (
         <p>Some content could not be processed.</p>
       ) : null}
-      {result.reason === "secret_like_content" ? (
-        <p>
-          Memory processing was skipped because this text appears to contain a
-          secret.
-        </p>
-      ) : null}
+      {explanation ? <p>{explanation}</p> : null}
       <p>
         {processors}:{" "}
-        {result.status === "failed"
-          ? "processing failed; no new memories saved"
-          : result.status === "skipped"
-            ? "processing skipped"
-            : result.status === "pending" || result.status === "running"
-              ? "processing"
-              : `${saved} saved, ${queued} queued${denied.length ? `, ${denied.length} denied` : ""}${pending ? `, ${pending} awaiting clarification` : ""}`}
+        {result.reason === "transcript_persistence_failed"
+          ? "save status unconfirmed"
+          : result.status === "failed"
+            ? "processing failed; no new memories saved"
+            : result.status === "skipped"
+              ? "processing skipped; no new memories saved"
+              : result.status === "pending" || result.status === "running"
+                ? "processing"
+                : `${saved} saved, ${queued} queued${denied.length ? `, ${denied.length} denied` : ""}${pending ? `, ${pending} awaiting clarification` : ""}`}
       </p>
       {denialReasons.map((reason) => (
         <p key={reason ?? "unspecified"}>
@@ -97,7 +96,8 @@ export function MemoryProcessingOutcome({
           Enable memory processing in settings
         </Link>
       ) : null}
-      {typeof result.sourceMessageId === "string" &&
+      {canRetryProcessing(result.reason) &&
+      typeof result.sourceMessageId === "string" &&
       ["failed", "skipped"].includes(String(result.status)) ? (
         <Button disabled={busy} onClick={() => void retry()}>
           {busy ? "Retrying…" : "Retry memory processing"}

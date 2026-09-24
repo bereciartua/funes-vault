@@ -205,6 +205,47 @@ describe("privacy: memory processing persistence (e2e)", () => {
     );
     expect(await prisma.memory.count()).toBe(1);
   });
+  it("retries a failed voice source received in time after the finalization window closes", async () => {
+    const user = await createUserWithSession(prisma, "voice-retry@example.com");
+    const thread = await prisma.chatSession.create({
+      data: { userId: user.userId }
+    });
+    const voice = await prisma.voiceSession.create({
+      data: { userId: user.userId, chatSessionId: thread.id, model: "fake" }
+    });
+    llm.mockRejectedValueOnce(new Error("Temporary provider failure"));
+    const first = await app.get(ChatService).persistVoiceTurn({
+      userId: user.userId,
+      sessionId: thread.id,
+      voiceSessionId: voice.id,
+      itemId: "retry-item",
+      role: "user",
+      content: "Remember I prefer concise answers.",
+      citations: [],
+      suggestedMemoryIds: [],
+      provider: {
+        provider: "openai",
+        model: "fake",
+        usesThirdParty: true,
+        disclosure: "test"
+      }
+    });
+    expect(first.message.processing?.status).toBe("failed");
+    // Move the accepted transcript/session into the past without waiting or faking DB timers.
+    await prisma.chatMessage.update({
+      where: { id: first.message.id },
+      data: { createdAt: new Date(Date.now() - 180_000) }
+    });
+    await prisma.voiceSession.update({
+      where: { id: voice.id },
+      data: { endedAt: new Date(Date.now() - 120_000) }
+    });
+    const retried = await extraction.retry(user.userId, first.message.id);
+    expect(retried.status).toBe("completed");
+    expect(llm).toHaveBeenCalledTimes(2);
+    await extraction.retry(user.userId, first.message.id);
+    expect(llm).toHaveBeenCalledTimes(2);
+  });
   it("persists duplicate voice items once and rejects changed finalized text", async () => {
     const user = await createUserWithSession(prisma, "voice@example.com");
     const thread = await prisma.chatSession.create({
@@ -244,7 +285,7 @@ describe("privacy: memory processing persistence (e2e)", () => {
     const late = await chat.persistVoiceTurn({ ...input, itemId: "late-item" });
     expect(late.message.processing).toMatchObject({
       status: "skipped",
-      reason: "voice_finalization_window_closed"
+      reason: "voice_transcript_arrived_too_late"
     });
     expect(llm).toHaveBeenCalledTimes(1);
   });

@@ -12,6 +12,7 @@ import {
   parseVoiceRealtimeEvent
 } from "./voice-events";
 import type { VoiceSessionCallbacks } from "./voice-session";
+import { createVoiceSourceBarrier } from "./voice-source-barrier";
 /** Source-bound turn persistence and tool calls; media lifecycle stays in the controller. */
 export function createVoiceMessageBridge({
   apiUrl,
@@ -33,12 +34,16 @@ export function createVoiceMessageBridge({
   let pendingCitations: ChatCitation[] = [];
   let pendingSuggestionIds: string[] = [];
   let latestSourceItemId: string | undefined;
+  let latestSpeechItemId: string | undefined;
+  const sources = createVoiceSourceBarrier();
+  let generation = 0;
   async function persistTurn(turn: {
     itemId: string;
     role: "user" | "assistant";
     content: string;
   }) {
     const config = getConfig();
+    const currentGeneration = generation;
     if (!config) {
       return;
     }
@@ -80,6 +85,9 @@ export function createVoiceMessageBridge({
         }
       });
 
+      if (currentGeneration !== generation) {
+        return;
+      }
       if (turn.role === "user" && persisted.message.processing) {
         callbacks.dispatch({
           kind: "memory-processing",
@@ -114,6 +122,16 @@ export function createVoiceMessageBridge({
       }
       persistedTurns += 1;
     } catch {
+      if (currentGeneration !== generation) {
+        return;
+      }
+      if (turn.role === "user") {
+        callbacks.dispatch({
+          kind: "memory-processing",
+          itemId: turn.itemId,
+          result: { status: "failed", reason: "transcript_persistence_failed" }
+        });
+      }
       callbacks.dispatch({
         kind: "tool-trace",
         trace: {
@@ -126,6 +144,10 @@ export function createVoiceMessageBridge({
           metadata: {}
         }
       });
+    } finally {
+      if (currentGeneration === generation && turn.role === "user") {
+        sources.finish(turn.itemId);
+      }
     }
   }
 
@@ -136,6 +158,19 @@ export function createVoiceMessageBridge({
   ) {
     const config = getConfig();
     if (!config) {
+      return;
+    }
+
+    // Bind before waiting so a newer utterance cannot steal this tool call.
+    const sourceItemId = latestSourceItemId;
+    const currentGeneration = generation;
+    if (
+      sourceItemId &&
+      ["memory_capture_result", "complete_memory_capture"].includes(name)
+    ) {
+      await sources.wait(sourceItemId);
+    }
+    if (currentGeneration !== generation || getConfig() !== config) {
       return;
     }
 
@@ -151,13 +186,16 @@ export function createVoiceMessageBridge({
         schema: voiceToolCallResponseSchema,
         method: "POST",
         body: {
-          sourceItemId: latestSourceItemId,
+          sourceItemId,
           toolName: name,
           toolCallId: callId,
           arguments: args
         }
       });
 
+      if (currentGeneration !== generation) {
+        return;
+      }
       output = parsed.output ?? {};
 
       for (const event of parsed.events) {
@@ -204,6 +242,9 @@ export function createVoiceMessageBridge({
       // Leave the retryable error output for the model.
     }
 
+    if (currentGeneration !== generation) {
+      return;
+    }
     sendDataChannelEvent({
       type: "conversation.item.create",
       item: {
@@ -253,12 +294,19 @@ export function createVoiceMessageBridge({
     }
 
     if (action.kind === "user-speech-started") {
-      latestSourceItemId = undefined;
+      latestSpeechItemId = action.itemId;
+      latestSourceItemId = action.itemId;
+      if (action.itemId) {
+        sources.start(action.itemId);
+      }
     }
     callbacks.dispatch(action);
 
     if (action.kind === "user-transcript-done") {
-      latestSourceItemId = action.itemId;
+      if (!latestSpeechItemId || latestSpeechItemId === action.itemId) {
+        latestSourceItemId = action.itemId;
+      }
+      sources.start(action.itemId);
       void persistTurn({
         role: "user",
         itemId: action.itemId,
@@ -278,11 +326,14 @@ export function createVoiceMessageBridge({
     handleDataChannelMessage,
     persistedTurns: () => persistedTurns,
     reset: () => {
+      generation += 1;
+      sources.reset();
       persistedTurns = 0;
       callNamesById.clear();
       pendingCitations = [];
       pendingSuggestionIds = [];
       latestSourceItemId = undefined;
+      latestSpeechItemId = undefined;
     }
   };
 }

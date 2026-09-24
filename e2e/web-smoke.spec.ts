@@ -211,3 +211,55 @@ test.describe("memory processing permissions", () => {
     await expect(allow).toBeVisible();
   });
 });
+
+test("explains skipped voice capture and retries the saved source", async ({
+  page
+}) => {
+  await signIn(page);
+  let retried = false;
+  const completed = {
+    status: "completed",
+    sourceMessageId: "voice-source",
+    outcomes: [{ status: "QUEUED_FOR_REVIEW" }]
+  };
+  await page.route(`${apiBaseUrl}/v1/chat/threads/voice-recovery`, (route) =>
+    route.fulfill({
+      json: {
+        sessionId: "voice-recovery",
+        title: "Voice recovery",
+        titleLocked: false,
+        messages: [
+          {
+            id: "voice-source",
+            role: "user",
+            content: "I prefer quiet rooms.",
+            createdAt: "2026-09-22T12:00:00Z",
+            processing: retried
+              ? completed
+              : {
+                  status: "skipped",
+                  reason: "voice_finalization_window_closed",
+                  sourceMessageId: "voice-source",
+                  outcomes: []
+                }
+          }
+        ]
+      }
+    })
+  );
+  await page.route(
+    `${apiBaseUrl}/v1/memory-processing/sources/voice-source/retry`,
+    async (route) => {
+      expect(route.request().method()).toBe("POST");
+      retried = true;
+      await route.fulfill({ json: completed });
+    }
+  );
+  await page.goto("/chat/voice-recovery");
+  await expect(page.getByText(/Retry this saved turn/)).toBeVisible();
+  await page.getByRole("button", { name: "Retry memory processing" }).click();
+  await expect(page.getByText(/0 saved, 1 queued/)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Retry memory processing" })
+  ).toHaveCount(0);
+});
