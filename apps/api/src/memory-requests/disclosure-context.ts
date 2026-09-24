@@ -1,7 +1,11 @@
 import type { MemoryRequest, Prisma } from "@funes-vault/db";
 import { NotFoundException } from "@nestjs/common";
 
-import type { PolicyEvaluationService } from "../policies/policy-evaluation.service.js";
+import {
+  evaluateCandidateMemories,
+  type PolicyEvaluationService
+} from "../policies/policy-evaluation.service.js";
+import { retrievalInclude } from "./retrieval.service.js";
 
 /** Live owner-scoped permissions and candidates for a bound disclosure. */
 export async function disclosureContext(
@@ -23,17 +27,18 @@ export async function disclosureContext(
       ? []
       : await tx.memory.findMany({
           where: { id: { in: ids }, userId: request.userId },
-          include: { categories: true }
+          include: retrievalInclude
         });
-  const evaluation = await evaluator.evaluateForClient(
-    request.userId,
-    {
-      clientId: request.clientId,
-      operation: "READ",
-      candidateMemories: memories
-    },
-    tx
-  );
+  const evaluation =
+    gate.decision === "DENY" || !gate.policy
+      ? gate
+      : {
+          ...gate,
+          ...evaluateCandidateMemories({
+            policy: gate.policy,
+            candidateMemories: memories
+          })
+        };
   const bound =
     request.policyId !== null && request.policyId === evaluation.policyId;
   const allowed = new Set(bound ? evaluation.allowedMemoryIds : []);

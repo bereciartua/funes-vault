@@ -1,4 +1,9 @@
 "use client";
+import {
+  memoryRequestReasonLabel,
+  memoryRequestReasonSchema
+} from "@funes-vault/shared";
+
 import { FeedbackMessages } from "../../../components/ui/feedback-messages";
 import { formatDateTime } from "../../../lib/dates";
 import { auditEventSummary } from "../../../lib/domain/audit-summary";
@@ -15,6 +20,7 @@ export function AuditEventDetail({ eventId }: { eventId: string }) {
   const event = query.data.auditEvent;
   const hasMetadata = Object.keys(event.metadata).length > 0;
   const summary = auditEventSummary(event);
+  const statedPurpose = event.metadata.statedPurpose ?? event.metadata.purpose;
 
   return (
     <div className="audit-inline-detail">
@@ -37,14 +43,18 @@ export function AuditEventDetail({ eventId }: { eventId: string }) {
           <SubjectLinks leadingDash={false} subjects={event.subjects} />
         </p>
       ) : null}
-      {"statedPurpose" in event.metadata || event.memoryRequestId ? (
+      {hasMetadata ? (
         <dl>
-          <dt>Stated purpose</dt>
-          <dd>
-            {typeof event.metadata.statedPurpose === "string"
-              ? event.metadata.statedPurpose
-              : "Not provided"}
-          </dd>
+          {"statedPurpose" in event.metadata || "purpose" in event.metadata ? (
+            <div>
+              <dt>Stated purpose</dt>
+              <dd>
+                {typeof statedPurpose === "string"
+                  ? statedPurpose
+                  : "Not provided"}
+              </dd>
+            </div>
+          ) : null}
           {(
             [
               ["App permissions", "policyId"],
@@ -55,17 +65,28 @@ export function AuditEventDetail({ eventId }: { eventId: string }) {
               ["Reason", "reason"],
               ["Confirmation required", "requiresConfirmation"]
             ] as const
-          ).map(([name, key]) => (
-            <div key={key}>
-              <dt>{name}</dt>
-              <dd>
-                {event.metadata[key] === null ||
-                event.metadata[key] === undefined
-                  ? "Not provided"
-                  : String(event.metadata[key])}
-              </dd>
-            </div>
-          ))}
+          )
+            .filter(([, key]) => key in event.metadata)
+            .map(([name, key]) => (
+              <div key={key}>
+                <dt>{name}</dt>
+                <dd>
+                  {key === "reason" &&
+                  memoryRequestReasonSchema
+                    .nullable()
+                    .safeParse(event.metadata[key]).success
+                    ? memoryRequestReasonLabel(
+                        memoryRequestReasonSchema
+                          .nullable()
+                          .parse(event.metadata[key])
+                      )
+                    : event.metadata[key] === null ||
+                        event.metadata[key] === undefined
+                      ? "Not provided"
+                      : String(event.metadata[key])}
+                </dd>
+              </div>
+            ))}
         </dl>
       ) : null}
       {hasMetadata ? (

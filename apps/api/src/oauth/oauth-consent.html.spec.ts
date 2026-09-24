@@ -15,6 +15,8 @@ describe("privacy: consent HTML", () => {
         registrationStatus: "APPROVED",
         operations: ["READ", "SUGGEST"],
         createsPermissions: true,
+        recreating: false,
+        addedOperations: ["READ", "SUGGEST"],
         allowedCategories: [],
         deniedCategories: [],
         requiresConfirmation: false,

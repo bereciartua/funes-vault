@@ -159,6 +159,16 @@ class ReviewableMemorySuggestionSourceDto {
 }
 
 class ReviewableMemorySuggestionDto {
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: "Caller-declared audit reason; does not grant permissions."
+  })
+  statedPurpose!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  policyId!: string | null;
+
   @ApiProperty({ example: "cmqvt0v580000xeg7jgy7v1u3" })
   id!: string;
 

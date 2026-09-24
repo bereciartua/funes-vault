@@ -20,6 +20,6 @@ Realtime voice sessions run their memory tools through a dedicated first-party c
 
 The voice client and policy appear in Apps & access on first voice use; users can tighten or loosen the voice ceiling without redeploying; `request_memory` in voice sessions is filtered to the policy's sensitivity cap; memory writes from voice always land in the suggestions inbox.
 
-## Amendment: App permissions
+## Amendment — App permissions
 
-[ADR 0044](0044-app-permissions-and-stated-purpose.md) removes purpose from authorization. Any purpose named above is optional audit context only. Each app has one permission set; normal first-party use never recreates removed permissions. OAuth scopes remain a separate route ceiling, with WRITE governed only by app permissions.
+The voice client’s default permissions omit WRITE and set the configured sensitivity ceiling. Purpose is audit context only; owners may grant WRITE explicitly. Ordinary first-party use never recreates permissions removed by the owner. See [ADR 0044](0044-app-permissions-and-stated-purpose.md).

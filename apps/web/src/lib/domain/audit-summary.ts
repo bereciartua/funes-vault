@@ -115,7 +115,9 @@ function auditEventDescription(
   }
 
   if (event.type === "MEMORY_DISCLOSURE") {
-    const purpose = metadataString(event.metadata, "statedPurpose");
+    const purpose =
+      metadataString(event.metadata, "statedPurpose") ??
+      metadataString(event.metadata, "purpose");
     const purposeText = purpose ? ` with stated purpose “${purpose}”` : "";
 
     return `${actor} received ${affected}${purposeText}.`;

@@ -150,41 +150,7 @@ describe("privacy: PoliciesService", () => {
       service.createPolicy(
         "user_1",
         createPolicyRequestSchema.parse({
-          clientId: "client_1",
-          purpose: "software_development"
-        })
-      )
-    ).rejects.toThrow("This app already has permissions");
-  });
-
-  it("maps uniqueness violations to permission conflicts", async () => {
-    const prismaClient = {
-      policy: {
-        findFirst: vi
-          .fn()
-          .mockResolvedValue({ id: "policy_1", clientId: "client_1" })
-      },
-      $transaction: vi
-        .fn()
-        .mockRejectedValue(
-          Object.assign(new Error("unique constraint"), { code: "P2002" })
-        )
-    };
-    const service = await createService(
-      PoliciesService,
-      [
-        { provide: PrismaService, useValue: { client: prismaClient } },
-        { provide: AuditTrailService, useValue: {} }
-      ],
-      [CategoriesService]
-    );
-
-    await expect(
-      service.updatePolicy(
-        "user_1",
-        "policy_1",
-        updatePolicyRequestSchema.parse({
-          operations: ["READ"]
+          clientId: "client_1"
         })
       )
     ).rejects.toThrow("This app already has permissions");

@@ -233,3 +233,53 @@ it("uses the request timezone for the steward date, defaulting to UTC", () => {
     vi.useRealTimers();
   }
 });
+
+it.each(["no_client_policy", "operation_not_allowed", "no_matching_memories"])(
+  "explains %s in the tool result, trace and policy event",
+  async (reason) => {
+    const { events, context } = createContext();
+    context.chatMemoryTools.requestMemory.mockResolvedValue({
+      requestId: "request",
+      status: "DENIED",
+      reason,
+      policyId: null,
+      tokenBudget: 800,
+      estimatedTokens: 0,
+      items: [],
+      citations: [],
+      denied: [],
+      auditEventId: "audit"
+    });
+    const response = await findStewardTool("request_memory")!.execute(
+      context as unknown as Parameters<
+        NonNullable<ReturnType<typeof findStewardTool>>["execute"]
+      >[0],
+      { task: "color", tokenBudget: 800, requestedCategories: [] },
+      "call"
+    );
+    expect(response).toMatchObject({
+      reason,
+      explanation: expect.any(String)
+    });
+    if (reason === "no_client_policy") {
+      expect(response).toHaveProperty(
+        "managePermissionsUrl",
+        "/settings/clients"
+      );
+    }
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "policy-decision",
+        data: expect.objectContaining({ reasons: [reason] })
+      })
+    );
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: "tool-trace",
+        data: expect.objectContaining({
+          summary: expect.not.stringContaining(reason)
+        })
+      })
+    );
+  }
+);

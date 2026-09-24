@@ -90,6 +90,11 @@ export class PoliciesController {
   })
   @ApiCreatedResponse({ type: PolicyResponseDto })
   @ApiConflictResponse({ description: "This app already has permissions" })
+  @ApiBadRequestResponse({
+    description: "This app has no first-party defaults"
+  })
+  @ApiNotFoundResponse({ description: "App not found" })
+  @ApiUnauthorizedResponse({ description: "Missing or invalid session." })
   restore(@CurrentUser() user: AuthUser, @Param("clientId") clientId: string) {
     return this.policiesService.restoreDefaults(user.id, clientId);
   }
@@ -99,9 +104,6 @@ export class PoliciesController {
   @ApiBody({ type: UpdatePolicyRequestDto })
   @ApiOkResponse({ type: PolicyResponseDto })
   @ApiBadRequestResponse({ description: "Invalid request body." })
-  @ApiConflictResponse({
-    description: "This app already has permissions"
-  })
   @ApiUnauthorizedResponse({ description: "Missing or invalid session." })
   @ApiNotFoundResponse({ description: "Policy not found." })
   update(

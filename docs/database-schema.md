@@ -96,7 +96,7 @@ Hashed access or refresh credential bound to an owner and client grant. Expiry, 
 
 User-owned App permissions for a client. A unique `clientId` allows at most one policy per app. The composite client/owner foreign key enforces ownership. Operations, sensitivity, categories, expiry and confirmation govern access; `updatedAt` is the authorization version. Purpose is never an authority input.
 
-The first policy evaluator denies missing or blocked clients, ignores expired policies, applies sensitivity ceilings, and lets denied categories override allowed categories. An empty allowed-category list means the policy covers every category (matching the Apps & access UI); a non-empty list grants only the listed categories.
+The first policy evaluator denies missing or blocked clients, denies expired permissions with `policy_expired`, applies sensitivity ceilings, and lets denied categories override allowed categories. An empty allowed-category list means the policy covers every category (matching the Apps & access UI); a non-empty list grants only the listed categories.
 
 ### `MemoryRequest`
 
@@ -109,6 +109,8 @@ Join table for memories included in a request bundle. Stores the disclosed text,
 Current memory bundle creation writes request items only after policy evaluation returns `ALLOW`; requests that require user confirmation do not create disclosed items.
 
 ### `MemorySuggestion`
+
+Caller metadata is nested under `caller` and never drives dispatch. Archive dispatch requires a CONSOLIDATION source.
 
 Reviewable proposed memory from chat, clients, imports, or consolidation jobs. Suggestions are not active memories until approved. Suggestions can include an optional `expiresAt` timestamp; when the user approves the suggestion, that expiration is copied to the created memory.
 

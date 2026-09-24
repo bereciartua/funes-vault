@@ -1,6 +1,6 @@
-import { AuditEventType } from "@funes-vault/db";
-import { MemoryRequestStatus } from "@funes-vault/db";
+import { AuditEventType, MemoryRequestStatus } from "@funes-vault/db";
 import type { FunesDataParts } from "@funes-vault/shared";
+import { memoryRequestReasonLabel } from "@funes-vault/shared";
 import { zodSchema } from "ai";
 import { z } from "zod";
 
@@ -19,15 +19,11 @@ import { StewardToolDefinition } from "./steward-tool.types.js";
 function policyDecisionForMemoryRequestStatus(
   status: string
 ): FunesDataParts["policy-decision"]["decision"] {
-  if (status === MemoryRequestStatus.FULFILLED) {
-    return "ALLOW";
-  }
-
-  if (status === MemoryRequestStatus.NEEDS_USER_APPROVAL) {
-    return "REQUIRE_CONFIRMATION";
-  }
-
-  return "DENY";
+  return status === MemoryRequestStatus.FULFILLED
+    ? "ALLOW"
+    : status === MemoryRequestStatus.NEEDS_USER_APPROVAL
+      ? "REQUIRE_CONFIRMATION"
+      : "DENY";
 }
 
 export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
@@ -95,7 +91,9 @@ export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
           reasons:
             bundle.denied.length > 0
               ? bundle.denied.map((denied) => denied.reason)
-              : []
+              : bundle.reason
+                ? [bundle.reason]
+                : []
         }
       });
 
@@ -159,11 +157,7 @@ export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
           status: decision === "DENY" ? "denied" : "completed",
           summary:
             decision === "DENY"
-              ? bundle.reason === "no_matching_memories"
-                ? "No matching memories were found."
-                : bundle.reason === "no_client_policy"
-                  ? "This app has no permissions. Set them up in [Apps & access](/settings/clients)."
-                  : `Memory retrieval denied: ${bundle.reason ?? "no_allowed_memories"}.`
+              ? memoryRequestReasonLabel(bundle.reason)
               : `${items.length} memory references returned.`,
           metadata: {
             requestId: bundle.requestId,
@@ -178,7 +172,16 @@ export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
         }
       });
 
-      return { items, reason: bundle.reason };
+      return {
+        items,
+        reason: bundle.reason,
+        explanation: bundle.reason
+          ? memoryRequestReasonLabel(bundle.reason)
+          : null,
+        ...(bundle.reason === "no_client_policy"
+          ? { managePermissionsUrl: "/settings/clients" }
+          : {})
+      };
     }
   },
   {

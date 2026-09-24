@@ -20,6 +20,6 @@ OAuth 2.1 authorization for MCP connectors is implemented inside the NestJS API,
 
 The API gains public-facing OAuth routes, which the connector proxy must scope precisely (only `/authorize`, `/token`, `/register`, `/revoke`, `/.well-known/*`, and the sidecar's `/mcp`); the API depends on `@modelcontextprotocol/sdk` for the auth router; confidential clients are not supported (acceptable — MCP connectors are public clients by spec); token verification stays API-side so the sidecar needs no crypto and static app tokens keep working unchanged; the consent screen renders from the API on the connector origin so it works independently of the main web app.
 
-## Amendment: App permissions
+## Amendment — App permissions
 
-[ADR 0044](0044-app-permissions-and-stated-purpose.md) removes purpose from authorization. Any purpose named above is optional audit context only. Each app has one permission set; normal first-party use never recreates removed permissions. OAuth scopes remain a separate route ceiling, with WRITE governed only by app permissions.
+Consent refuses blocked clients, displays new or re-added operations, and preserves owner-set limits. Deleted permissions can be recreated only by explicit consent. Refresh never changes permissions; WRITE remains an owner-granted policy operation without a new OAuth scope. See [ADR 0044](0044-app-permissions-and-stated-purpose.md).

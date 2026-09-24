@@ -44,6 +44,7 @@ describe("privacy: MemorySuggestionsService.createCapture", () => {
       suggestionId: "suggestion_1",
       status: MemorySuggestionStatus.QUEUED_FOR_REVIEW,
       auditEventId: "audit_1",
+      reason: null,
       deduplicated: false
     });
     expect(policyEvaluationService.evaluateForClient).not.toHaveBeenCalled();
@@ -59,7 +60,7 @@ describe("privacy: MemorySuggestionsService.createCapture", () => {
         sourceMetadata: expect.objectContaining({
           channel: "quick_capture",
           captureId: "capture-0001",
-          capturedAt: "2026-07-03T08:12:00.000Z"
+          caller: { capturedAt: "2026-07-03T08:12:00.000Z" }
         })
       })
     });
@@ -95,6 +96,7 @@ describe("privacy: MemorySuggestionsService.createCapture", () => {
       suggestionId: "suggestion_1",
       status: MemorySuggestionStatus.QUEUED_FOR_REVIEW,
       auditEventId: null,
+      reason: null,
       deduplicated: true
     });
     expect(prismaClient.memorySuggestion.findFirst).toHaveBeenCalledWith({
@@ -162,6 +164,7 @@ describe("privacy: MemorySuggestionsService.createCapture", () => {
       suggestionId: null,
       status: "DENIED",
       auditEventId: "audit_1",
+      reason: "no_client_policy",
       deduplicated: false
     });
     expect(prismaClient.memorySuggestion.create).not.toHaveBeenCalled();

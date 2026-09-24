@@ -13,7 +13,7 @@ import {
 describe("mcp package", () => {
   it("defines the initial request_memory input shape", () => {
     const parsed = requestMemoryToolInputSchema.parse({
-      purpose: "software_development",
+      purpose: "Help review the user’s code",
       task: "Help with a repository"
     });
 
@@ -22,7 +22,7 @@ describe("mcp package", () => {
 
   it("accepts canonical suggest_memory input", () => {
     const parsed = suggestMemoryToolInputSchema.parse({
-      purpose: "software_development",
+      purpose: "Help review the user’s code",
       kind: "PREFERENCE",
       title: "Prefers local-first tools",
       body: "The user prefers local-first tools.",
@@ -48,7 +48,24 @@ describe("mcp package", () => {
         estimatedTokens: 0,
         items: [],
         instructions: [],
-        denied: [],
+        denied: [
+          { memoryId: "candidate", reason: "no_active_policy" as never }
+        ],
+        auditEventId: "audit"
+      };
+    };
+    const suggestionCalls: unknown[] = [];
+    api.suggestMemory = async (input) => {
+      suggestionCalls.push(input);
+
+      return {
+        suggestionId: null,
+        memoryId: null,
+        status: "DENIED",
+        policyId: null,
+        reason: "operation_not_allowed",
+        decision: "DENY",
+        denied: [{ memoryId: "proposed", reason: "denied_category" }],
         auditEventId: "audit"
       };
     };
@@ -56,6 +73,9 @@ describe("mcp package", () => {
     const client = await connectInMemory(server);
     try {
       const { tools } = await client.listTools();
+      expect(
+        Object.fromEntries(tools.map((tool) => [tool.name, tool.inputSchema]))
+      ).toMatchSnapshot();
       for (const tool of tools) {
         expect(tool.inputSchema.type).toBe("object");
         if (["request_memory", "suggest_memory"].includes(tool.name)) {
@@ -80,12 +100,47 @@ describe("mcp package", () => {
           purpose: "Answer the color question"
         }
       });
+      await client.callTool({
+        name: "suggest_memory",
+        arguments: {
+          title: "Color",
+          body: "Blue",
+          purpose: "Remember a preference"
+        }
+      });
+      expect(suggestionCalls).toHaveLength(1);
       expect(calls).toHaveLength(1);
       expect(calls[0]).toMatchObject({ purpose: "Answer the color question" });
     } finally {
       await client.close();
       await server.close();
     }
+  });
+  it("rejects noncanonical MCP aliases and enum casing instead of dropping fields", () => {
+    for (const key of [
+      "token_budget",
+      "requested_categories",
+      "third_party_processors"
+    ]) {
+      expect(
+        requestMemoryToolInputSchema.safeParse({ task: "Color", [key]: [] })
+          .success
+      ).toBe(false);
+    }
+    expect(
+      suggestMemoryToolInputSchema.safeParse({
+        title: "Color",
+        body: "Blue",
+        categories: []
+      }).success
+    ).toBe(false);
+    expect(
+      suggestMemoryToolInputSchema.safeParse({
+        title: "Color",
+        body: "Blue",
+        kind: "preference"
+      }).success
+    ).toBe(false);
   });
   it("includes the first version MCP tools", () => {
     expect(initialMcpToolNames).toContain("request_memory");
@@ -129,7 +184,7 @@ describe("mcp package", () => {
       });
 
       const response = await client.requestMemory({
-        purpose: "software_development",
+        purpose: "Help review the user’s code",
         task: "Help with a repository",
         requestedCategories: [],
         retention: "NO_STORAGE",

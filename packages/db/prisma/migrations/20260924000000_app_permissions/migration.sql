@@ -1,11 +1,11 @@
 -- Breaking permission model: keep the newest policy deterministically.
 CREATE TYPE "MemoryRequestReason" AS ENUM ('unknown_or_blocked_client', 'no_client_policy', 'policy_expired', 'operation_not_allowed', 'no_matching_memories', 'no_allowed_memories', 'confirmation_required', 'policy_changed', 'inactive_memory', 'unapproved_memory', 'expired_memory', 'above_sensitivity_ceiling', 'denied_category', 'category_not_allowed');
 ALTER TYPE "AuditEventType" ADD VALUE 'MEMORY_SUGGESTION_DENIED';
+-- Invalid cross-owner grants cannot survive the new ownership constraint.
+DELETE FROM "Policy" p USING "Client" c WHERE p."clientId" = c.id AND p."userId" <> c."userId";
 DELETE FROM "Policy" WHERE id IN (
  SELECT id FROM (SELECT id, row_number() OVER (PARTITION BY "clientId" ORDER BY "updatedAt" DESC, id DESC) AS rank FROM "Policy") ranked WHERE rank > 1
 );
--- Invalid cross-owner grants cannot survive the new ownership constraint.
-DELETE FROM "Policy" p USING "Client" c WHERE p."clientId" = c.id AND p."userId" <> c."userId";
 DROP INDEX "Policy_clientId_purpose_key";
 DROP INDEX "Policy_purpose_idx";
 ALTER TABLE "Policy" DROP COLUMN purpose;
@@ -20,4 +20,7 @@ ALTER TABLE "MemoryRequest" ADD CONSTRAINT "MemoryRequest_policyId_fkey" FOREIGN
 ALTER TABLE "MemorySuggestion" ADD COLUMN "statedPurpose" TEXT, ADD COLUMN "policyId" TEXT;
 ALTER TABLE "MemorySuggestion" ADD CONSTRAINT "MemorySuggestion_policyId_fkey" FOREIGN KEY ("policyId") REFERENCES "Policy"(id) ON DELETE SET NULL ON UPDATE CASCADE;
 -- Existing untrusted metadata must not become dispatch authority after upgrade.
-UPDATE "MemorySuggestion" SET "sourceMetadata" = jsonb_build_object('caller', "sourceMetadata") WHERE "sourceType" <> 'CONSOLIDATION';
+UPDATE "MemorySuggestion" SET "sourceMetadata" = jsonb_build_object('caller', "sourceMetadata") WHERE "sourceType" = 'CLIENT_SUGGESTION';
+
+CREATE INDEX "MemoryRequest_policyId_idx" ON "MemoryRequest"("policyId");
+CREATE INDEX "MemorySuggestion_policyId_idx" ON "MemorySuggestion"("policyId");

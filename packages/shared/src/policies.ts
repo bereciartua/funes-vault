@@ -24,15 +24,17 @@ export const policySchema = z.object({
 
 export type Policy = z.infer<typeof policySchema>;
 
-export const createPolicyRequestSchema = z.object({
-  clientId: z.string().trim().min(1),
-  allowedCategoryKeys: z.array(z.string().trim().min(1)).max(24).default([]),
-  deniedCategoryKeys: z.array(z.string().trim().min(1)).max(24).default([]),
-  maxSensitivity: memorySensitivitySchema.default("INTERNAL"),
-  operations: z.array(policyOperationSchema).min(1).default(["READ"]),
-  requiresConfirmation: z.boolean().default(true),
-  expiresAt: nullableDatetimeSchema
-});
+export const createPolicyRequestSchema = z
+  .object({
+    clientId: z.string().trim().min(1),
+    allowedCategoryKeys: z.array(z.string().trim().min(1)).max(24).default([]),
+    deniedCategoryKeys: z.array(z.string().trim().min(1)).max(24).default([]),
+    maxSensitivity: memorySensitivitySchema.default("INTERNAL"),
+    operations: z.array(policyOperationSchema).min(1).default(["READ"]),
+    requiresConfirmation: z.boolean().default(true),
+    expiresAt: nullableDatetimeSchema
+  })
+  .strict();
 
 export type CreatePolicyRequest = z.infer<typeof createPolicyRequestSchema>;
 

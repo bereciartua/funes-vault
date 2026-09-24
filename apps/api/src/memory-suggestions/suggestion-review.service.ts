@@ -1,3 +1,4 @@
+import { SourceType } from "@funes-vault/db";
 import {
   AuditActorType,
   AuditEventType,
@@ -101,7 +102,7 @@ export class SuggestionReviewService {
   async applyLoadedUserSuggestion(userId: string, existing: MemorySuggestion) {
     const sourceMetadata = getObjectMetadata(existing.sourceMetadata);
     if (
-      existing.sourceType === "CONSOLIDATION" &&
+      existing.sourceType === SourceType.CONSOLIDATION &&
       sourceMetadata.action === "archive_memory"
     ) {
       return this.archive.applyArchiveSuggestion(

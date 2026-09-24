@@ -31,7 +31,7 @@ export function AppsAccessPanel({
   return (
     <SettingsPane
       title="Apps & access"
-      description={`${pluralize(clientPagination.total, "connected app")} can request only the memory its policy allows.`}
+      description={`${pluralize(clientPagination.total, "connected app")} can request only the memory its app permissions allow.`}
     >
       {message || error ? (
         <div className="status-stack" aria-live="polite">

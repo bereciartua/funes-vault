@@ -73,6 +73,14 @@ export function MemoryMessage({
         ) : null
       )}
       <MemoryProcessingOutcome initial={message.metadata?.processing} />
+      {toolTraces.some(
+        (trace) => trace.metadata?.reason === "no_client_policy"
+      ) ? (
+        <p>
+          This app has no permissions.{" "}
+          <a href="/settings/clients">Manage App permissions</a>
+        </p>
+      ) : null}
       {citations.length > 0 ? (
         <details className="message-evidence">
           <summary>

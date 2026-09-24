@@ -35,11 +35,12 @@ async function setup() {
     suggestionId: "suggestion",
     memoryId: null
   });
+  const evaluateForClient = vi.fn().mockResolvedValue({ decision: "ALLOW" });
   const service = await createService(CandidateApplier, [
     {
       provide: PolicyEvaluationService,
       useValue: {
-        evaluateForClient: vi.fn().mockResolvedValue({ decision: "ALLOW" })
+        evaluateForClient
       }
     },
     { provide: SuggestionIntakeService, useValue: { createSuggestion } },
@@ -52,15 +53,16 @@ async function setup() {
 
   return {
     prisma,
+    evaluateForClient,
     createSuggestion,
-    apply: (value: Candidate) =>
+    apply: (value: Candidate, channel: "chat" | "voice" = "chat") =>
       service.applyCandidate(
         prisma,
         "owner",
         "run",
         "source",
         "client",
-        "chat",
+        channel,
         value,
         configuration
       )
@@ -98,4 +100,43 @@ describe("candidate suggestion boundary", () => {
       expect(prisma.memoryCandidateApplication.create).not.toHaveBeenCalled();
     }
   );
+  it("checks normalized categories before deduplication", async () => {
+    const { apply, evaluateForClient, prisma, createSuggestion } =
+      await setup();
+    prisma.memory.findFirst.mockResolvedValue({ id: "existing" });
+    const outcome = await apply(candidate);
+    expect(
+      evaluateForClient.mock.calls[0]?.[1].candidateMemories[0].categories
+    ).toEqual([{ key: "preferences" }]);
+    expect(outcome.status).toBe("deduplicated");
+    expect(createSuggestion).not.toHaveBeenCalled();
+  });
+  it("records removed permission denial without looking up duplicate memories", async () => {
+    const { apply, evaluateForClient, prisma, createSuggestion } =
+      await setup();
+    evaluateForClient.mockResolvedValue({
+      decision: "DENY",
+      reason: "no_client_policy"
+    });
+    createSuggestion.mockResolvedValue({
+      status: "DENIED",
+      reason: "no_client_policy",
+      suggestionId: null,
+      memoryId: null
+    });
+    expect(await apply(candidate)).toMatchObject({
+      status: "DENIED",
+      reason: "no_client_policy"
+    });
+    expect(prisma.memory.findFirst).not.toHaveBeenCalled();
+    expect(prisma.memorySuggestion.findFirst).not.toHaveBeenCalled();
+    expect(prisma.memoryCandidateApplication.create).toHaveBeenCalled();
+  });
+  it("lets the voice app’s permissions determine WRITE in policy mode", async () => {
+    const { apply, createSuggestion } = await setup();
+    await apply(candidate, "voice");
+    expect(createSuggestion).toHaveBeenCalledWith(
+      expect.objectContaining({ reviewOnly: false })
+    );
+  });
 });

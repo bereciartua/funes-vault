@@ -1,6 +1,7 @@
 import {
   clientRetentionSchema,
   listCategoriesResponseSchema,
+  memoryInputLimits,
   memoryKindSchema,
   memoryRequestBundleResponseSchema,
   memorySensitivitySchema,
@@ -13,87 +14,96 @@ import { FunesVaultApiClient, type FunesVaultMcpApi } from "./api-client.js";
 const purpose = z
   .string()
   .trim()
-  .max(160)
+  .max(memoryInputLimits.purpose)
   .nullable()
   .optional()
   .describe(
     "Optional caller-declared audit reason; does not affect permissions or retrieval."
   );
-export const requestMemoryToolInputSchema = z.object({
-  task: z
-    .string()
-    .trim()
-    .min(1)
-    .max(1000)
-    .describe("Information needed for the task; drives retrieval."),
-  purpose,
-  tokenBudget: z
-    .number()
-    .int()
-    .min(100)
-    .max(8000)
-    .default(1200)
-    .describe("Maximum tokens in the returned bundle."),
-  requestedCategories: z
-    .array(z.string().trim().min(1))
-    .max(24)
-    .default([])
-    .describe("Optional category keys to narrow retrieval."),
-  retention: clientRetentionSchema
-    .default("UNKNOWN")
-    .describe("How the app intends to retain disclosed context."),
-  thirdPartyProcessors: z
-    .array(z.string().trim().min(1).max(120))
-    .max(12)
-    .default([])
-    .describe("Declared third-party processors that may receive context.")
-});
+export const requestMemoryToolInputSchema = z
+  .object({
+    task: z
+      .string()
+      .trim()
+      .min(1)
+      .max(memoryInputLimits.task)
+      .describe("Information needed for the task; drives retrieval."),
+    purpose,
+    tokenBudget: z
+      .number()
+      .int()
+      .min(memoryInputLimits.tokenBudgetMin)
+      .max(memoryInputLimits.tokenBudgetMax)
+      .default(memoryInputLimits.tokenBudgetDefault)
+      .describe("Maximum tokens in the returned bundle."),
+    requestedCategories: z
+      .array(z.string().trim().min(1))
+      .max(memoryInputLimits.requestedCategories)
+      .default([])
+      .describe("Optional category keys to narrow retrieval."),
+    retention: clientRetentionSchema
+      .default("UNKNOWN")
+      .describe("How the app intends to retain disclosed context."),
+    thirdPartyProcessors: z
+      .array(z.string().trim().min(1).max(memoryInputLimits.processorName))
+      .max(memoryInputLimits.processors)
+      .default([])
+      .describe("Declared third-party processors that may receive context.")
+  })
+  .strict();
 export type RequestMemoryToolInput = z.infer<
   typeof requestMemoryToolInputSchema
 >;
-export const suggestMemoryToolInputSchema = z.object({
-  purpose,
-  kind: memoryKindSchema.default("FACT").describe("Kind of proposed memory."),
-  title: z
-    .string()
-    .trim()
-    .min(1)
-    .max(180)
-    .describe("Short title for the proposal."),
-  body: z.string().trim().min(1).max(10000).describe("Proposed memory text."),
-  categoryKeys: z
-    .array(z.string().trim().min(1))
-    .max(12)
-    .default([])
-    .describe("Category keys for the proposal."),
-  sensitivity: memorySensitivitySchema
-    .default("LOW")
-    .describe("Sensitivity of the proposed information."),
-  evidence: z
-    .string()
-    .trim()
-    .max(2000)
-    .nullable()
-    .optional()
-    .describe("Supporting evidence supplied by the caller."),
-  confidence: z
-    .number()
-    .min(0)
-    .max(1)
-    .default(0.5)
-    .describe("Caller confidence in the proposal."),
-  expiresAt: z.iso
-    .datetime()
-    .nullable()
-    .optional()
-    .describe("Optional expiry timestamp."),
-  sourceMetadata: z
-    .record(z.string(), z.unknown())
-    .default({})
-    .describe(
-      "Caller-supplied metadata; never controls actions or permissions."
-    )
-});
+export const suggestMemoryToolInputSchema = z
+  .object({
+    purpose,
+    kind: memoryKindSchema.default("FACT").describe("Kind of proposed memory."),
+    title: z
+      .string()
+      .trim()
+      .min(1)
+      .max(memoryInputLimits.title)
+      .describe("Short title for the proposal."),
+    body: z
+      .string()
+      .trim()
+      .min(1)
+      .max(memoryInputLimits.body)
+      .describe("Proposed memory text."),
+    categoryKeys: z
+      .array(z.string().trim().min(1))
+      .max(memoryInputLimits.categoryKeys)
+      .default([])
+      .describe("Category keys for the proposal."),
+    sensitivity: memorySensitivitySchema
+      .default("LOW")
+      .describe("Sensitivity of the proposed information."),
+    evidence: z
+      .string()
+      .trim()
+      .max(memoryInputLimits.evidence)
+      .nullable()
+      .optional()
+      .describe("Supporting evidence supplied by the caller."),
+    confidence: z
+      .number()
+      .min(0)
+      .max(1)
+      .default(0.5)
+      .describe("Caller confidence in the proposal."),
+    expiresAt: z.iso
+      .datetime()
+      .nullable()
+      .optional()
+      .describe("Optional expiry timestamp."),
+    sourceMetadata: z
+      .record(z.string(), z.unknown())
+      .default({})
+      .describe(
+        "Caller-supplied metadata; never controls actions or permissions."
+      )
+  })
+  .strict();
 export type SuggestMemoryToolInput = z.infer<
   typeof suggestMemoryToolInputSchema
 >;

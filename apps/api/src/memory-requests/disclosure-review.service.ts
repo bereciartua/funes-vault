@@ -7,6 +7,7 @@ import {
   MemoryRequestStatus,
   Prisma
 } from "@funes-vault/db";
+import { appPermissionsLabel } from "@funes-vault/shared";
 import {
   type AuditTransport,
   type PaginationQuery,
@@ -84,7 +85,11 @@ export class DisclosureReviewService {
       clientId: request.clientId,
       operation: "READ"
     });
-    if (!request.policyId || gate.decision === "DENY") {
+    if (
+      request.status !== MemoryRequestStatus.NEEDS_USER_APPROVAL ||
+      !request.policyId ||
+      gate.decision === "DENY"
+    ) {
       return [];
     }
 
@@ -100,14 +105,15 @@ export class DisclosureReviewService {
     request: MemoryRequest,
     candidates: Array<{ id: string; relevanceScore: number }>
   ) {
-    return previewDisclosure(
+    return previewDisclosure({
       tx,
       request,
       candidates,
-      this.evaluator,
-      this.compiler,
-      (tx, request) => this.invalidate(tx, request)
-    );
+      evaluator: this.evaluator,
+      compiler: this.compiler,
+      invalidate: (tx, request, version, clientName) =>
+        this.invalidate(tx, request, version, clientName)
+    });
   }
 
   async preview(userId: string, id: string) {
@@ -125,7 +131,7 @@ export class DisclosureReviewService {
     const candidates =
       decision.action === "approve" ? await this.candidates(userId, id) : [];
 
-    const result = await this.prisma.client.$transaction(async (tx) => {
+    return this.prisma.client.$transaction(async (tx) => {
       const request = await lockDisclosureRequest(tx, userId, id);
       if (request.status !== MemoryRequestStatus.NEEDS_USER_APPROVAL) {
         throw new ConflictException("This request has already been reviewed.");
@@ -153,9 +159,9 @@ export class DisclosureReviewService {
           candidates
         );
         if (!preview.canApprove || preview.revision !== decision.revision) {
-          await this.invalidate(tx, request);
-
-          return { ok: false as const };
+          throw new ConflictException(
+            "The preview changed. Refresh it before approving."
+          );
         }
         const ids = new Set(decision.memoryIds);
         const items = snapshot.items.filter((item) => ids.has(item.memoryId));
@@ -193,13 +199,6 @@ export class DisclosureReviewService {
 
       return { ok: true as const };
     });
-    if (!result.ok) {
-      throw new ConflictException(
-        "The memories or access rules changed. Refresh the preview before approving."
-      );
-    }
-
-    return result;
   }
 
   async result(
@@ -231,12 +230,12 @@ export class DisclosureReviewService {
         !request.approvalExpiresAt ||
         request.approvalExpiresAt <= new Date()
       ) {
-        await this.invalidate(tx, request);
+        await requireFreshReview(tx, request.id, null);
 
         return {
           ...empty,
           status: MemoryRequestStatus.NEEDS_USER_APPROVAL,
-          reason: "policy_changed" as const
+          reason: null
         };
       }
       const snapshot = parsed.data;
@@ -262,7 +261,12 @@ export class DisclosureReviewService {
             versions.get(item.memoryId) === snapshot.versions[item.memoryId]
         );
       if (!unchanged) {
-        await this.invalidate(tx, request);
+        await this.invalidate(
+          tx,
+          request,
+          context.bound ? context.policyVersion : undefined,
+          context.client.name
+        );
 
         return {
           ...empty,
@@ -303,7 +307,7 @@ export class DisclosureReviewService {
             type: AuditSubjectType.POLICY,
             id: request.policyId,
             role: AuditSubjectRole.POLICY,
-            label: `${context.client.name} permissions`
+            label: appPermissionsLabel(context.client.name)
           },
           ...snapshot.items.map((item) => ({
             type: AuditSubjectType.MEMORY,
@@ -350,16 +354,26 @@ export class DisclosureReviewService {
 
   private async invalidate(
     tx: Prisma.TransactionClient,
-    request: MemoryRequest
+    request: MemoryRequest,
+    policyVersion?: string | null,
+    clientName?: string
   ) {
-    await requireFreshReview(tx, request.id);
+    const updated = await requireFreshReview(
+      tx,
+      request.id,
+      "policy_changed",
+      policyVersion
+    );
     await recordDisclosureDecision(
       this.auditTrail,
       tx,
       request,
       AuditEventType.MEMORY_REQUEST_DENIED,
       [],
-      "policy_changed"
+      "policy_changed",
+      clientName
     );
+
+    return updated;
   }
 }

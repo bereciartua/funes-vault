@@ -1,7 +1,11 @@
+import { memoryRequestReasonLabel } from "@funes-vault/shared";
+import Link from "next/link";
+
 import { Button } from "../../../components/ui/button";
 import { CheckboxField } from "../../../components/ui/checkbox";
 import { FeedbackMessages } from "../../../components/ui/feedback-messages";
 import { PaginationControls } from "../../../components/ui/pagination";
+import { formatDateTime } from "../../../lib/dates";
 import { label } from "../../../lib/domain/labels";
 import { SettingsPane } from "../settings-scaffolding";
 import { useDisclosureReviews } from "./use-disclosure-reviews";
@@ -86,11 +90,29 @@ export function DisclosureReviews() {
             </div>
             <div>
               <dt>App permissions</dt>
-              <dd>{preview.request.policyId ?? "Removed"}</dd>
+              <dd>
+                {preview.request.policyId ? (
+                  <Link href="/settings/clients">
+                    {preview.request.clientName} permissions
+                  </Link>
+                ) : (
+                  "Removed"
+                )}
+              </dd>
+            </div>
+            <div>
               <dt>Permission version</dt>
-              <dd>{preview.request.policyVersion ?? "Not provided"}</dd>
+              <dd>
+                {preview.request.policyVersion
+                  ? formatDateTime(preview.request.policyVersion)
+                  : "Not evaluated"}
+              </dd>
+            </div>
+            <div>
               <dt>Reason</dt>
-              <dd>{preview.request.reason ?? "Allowed"}</dd>
+              <dd>{memoryRequestReasonLabel(preview.request.reason)}</dd>
+            </div>
+            <div>
               <dt>Declared retention</dt>
               <dd>
                 {preview.request.retention.replaceAll("_", " ").toLowerCase()}
@@ -131,7 +153,7 @@ export function DisclosureReviews() {
           {!preview.canApprove ? (
             <p>
               This request has already been reviewed or no memories are allowed
-              by its current policy.
+              by its current app permissions.
             </p>
           ) : null}
           <div className="disclosure-review-actions">

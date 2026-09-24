@@ -258,7 +258,7 @@ describe("privacy: privacy acceptance tests", () => {
       userId: "user_1",
       clientId: "client_1",
       body: createMemoryBundleRequestSchema.parse({
-        purpose: "software_development",
+        purpose: "Help review the repository",
         task: "Help with this repository"
       })
     });

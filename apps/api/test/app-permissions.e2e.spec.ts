@@ -219,6 +219,11 @@ describe("privacy: app permissions and stated purpose", () => {
       .send({ text: "Another color note", captureId: "capture_test_123" })
       .expect(201);
     expect(capture.body.deduplicated).toBe(false);
+    expect(
+      await prisma.memorySuggestion.findUniqueOrThrow({
+        where: { id: capture.body.suggestionId }
+      })
+    ).toMatchObject({ policyId });
     await prisma.policy.update({
       where: { id: policyId },
       data: { operations: ["READ", "SUGGEST", "WRITE"] }
@@ -314,22 +319,61 @@ describe("privacy: app permissions and stated purpose", () => {
     );
   });
 
-  it("only explicitly restores first-party permissions on the existing client", async () => {
-    const firstParty = app.get(FirstPartyAccessService);
-    const initial = await firstParty.ensureWebChatAccess(owner.userId);
-    await prisma.policy.delete({ where: { id: initial.policyId! } });
-    expect(await firstParty.ensureWebChatAccess(owner.userId)).toEqual({
-      clientId: initial.clientId,
-      policyId: null
-    });
-    const restored = await api()
-      .post(`/v1/policies/defaults/${initial.clientId}`)
+  it.each(["web", "voice"])(
+    "explicitly restores %s defaults on the same client and audits them",
+    async (channel) => {
+      const access = app.get(FirstPartyAccessService);
+      const ensure = () =>
+        channel === "web"
+          ? access.ensureWebChatAccess(owner.userId)
+          : access.ensureVoiceAccess(owner.userId);
+      const initial = await ensure();
+      const original = await prisma.policy.findUniqueOrThrow({
+        where: { id: initial.policyId! }
+      });
+      await prisma.policy.delete({ where: { id: initial.policyId! } });
+      expect(await ensure()).toEqual({
+        clientId: initial.clientId,
+        policyId: null
+      });
+      const path = `/v1/policies/defaults/${initial.clientId}`;
+      const foreign = await createUserWithSession(
+        prisma,
+        "foreign@example.test"
+      );
+      await api().post(path).set("Cookie", foreign.cookie).expect(404);
+      const restored = await api()
+        .post(path)
+        .set("Cookie", owner.cookie)
+        .expect(201);
+      expect(restored.body.policy).toMatchObject({
+        clientId: initial.clientId,
+        maxSensitivity: original.maxSensitivity,
+        operations: original.operations,
+        requiresConfirmation: original.requiresConfirmation
+      });
+      await api().post(path).set("Cookie", owner.cookie).expect(409);
+      const events = await prisma.auditEvent.findMany({
+        where: {
+          clientId: initial.clientId,
+          type: "POLICY_CREATED",
+          actorType: "USER"
+        }
+      });
+      expect(events).toHaveLength(1);
+      expect(events[0]?.metadata).toMatchObject({
+        firstPartyDefault: channel === "web" ? "web_chat" : "voice"
+      });
+    }
+  );
+  it("rejects defaults on connected or missing apps", async () => {
+    await api()
+      .post(`/v1/policies/defaults/${clientId}`)
       .set("Cookie", owner.cookie)
-      .expect(201);
-    expect(restored.body.policy).toMatchObject({
-      clientId: initial.clientId,
-      maxSensitivity: "SECRET",
-      operations: ["READ", "SUGGEST", "WRITE"]
-    });
+      .expect(400);
+    await api()
+      .post("/v1/policies/defaults/missing")
+      .set("Cookie", owner.cookie)
+      .expect(404);
   });
 });

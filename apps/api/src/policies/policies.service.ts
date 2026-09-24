@@ -4,6 +4,8 @@ import {
   type Policy,
   type Prisma
 } from "@funes-vault/db";
+import { isFirstPartyClient, voiceClientName } from "@funes-vault/shared";
+import { appPermissionsLabel } from "@funes-vault/shared";
 import {
   type CreatePolicyRequest,
   type ListPoliciesQuery,
@@ -22,9 +24,8 @@ import { buildPagination, paginationSkip } from "../common/pagination.js";
 import { isPrismaError } from "../common/prisma-errors.js";
 import { toIsoString } from "../common/serialization.js";
 import {
-  defaultVoiceMaxSensitivity,
-  voiceClientName,
-  webChatClientName
+  voiceDefinition,
+  webChatDefinition
 } from "../first-party-access/first-party-access.service.js";
 import { CategoriesService } from "../memories/categories.service.js";
 import { toCategoryConnect } from "../memories/memory-update.js";
@@ -72,33 +73,32 @@ export class PoliciesService {
     const client = await this.prisma.client.client.findFirst({
       where: { id: clientId, userId }
     });
-    if (
-      !client ||
-      client.type !== "WEB_APP" ||
-      ![webChatClientName, voiceClientName].includes(client.name)
-    ) {
+    if (!client) {
+      throw new NotFoundException("App not found");
+    }
+    if (!isFirstPartyClient(client)) {
       throw new BadRequestException("This app has no first-party defaults");
     }
+    const definition =
+      client.name === voiceClientName ? voiceDefinition() : webChatDefinition();
 
-    return this.createPolicy(userId, {
-      clientId,
-      allowedCategoryKeys: (
-        await this.prisma.client.memoryCategory.findMany({
-          select: { key: true }
-        })
-      ).map((category) => category.key),
-      deniedCategoryKeys: [],
-      maxSensitivity:
-        client.name === voiceClientName
-          ? defaultVoiceMaxSensitivity()
-          : "SECRET",
-      operations:
-        client.name === voiceClientName
-          ? ["READ", "SUGGEST"]
-          : ["READ", "SUGGEST", "WRITE"],
-      requiresConfirmation: false,
-      expiresAt: null
-    });
+    return this.createPolicy(
+      userId,
+      {
+        clientId,
+        allowedCategoryKeys: (
+          await this.prisma.client.memoryCategory.findMany({
+            select: { key: true }
+          })
+        ).map((category) => category.key),
+        deniedCategoryKeys: [],
+        maxSensitivity: definition.maxSensitivity,
+        operations: definition.operations,
+        requiresConfirmation: definition.requiresConfirmation,
+        expiresAt: null
+      },
+      definition.firstPartyDefault
+    );
   }
 
   async listPolicies(
@@ -128,7 +128,11 @@ export class PoliciesService {
     };
   }
 
-  async createPolicy(userId: string, input: CreatePolicyRequest) {
+  async createPolicy(
+    userId: string,
+    input: CreatePolicyRequest,
+    firstPartyDefault?: string
+  ) {
     await this.ensureClientBelongsToUser(userId, input.clientId);
     await this.categories.assertExist([
       ...input.allowedCategoryKeys,
@@ -159,7 +163,8 @@ export class PoliciesService {
           actorId: userId,
           metadata: {
             policyId: created.id,
-            policyLabel: `${created.client?.name} permissions`
+            ...(firstPartyDefault ? { firstPartyDefault } : {}),
+            policyLabel: appPermissionsLabel(created.client?.name)
           }
         });
 
@@ -187,33 +192,30 @@ export class PoliciesService {
       ...(input.deniedCategoryKeys ?? [])
     ]);
 
-    try {
-      const policy = await this.prisma.client.$transaction(async (tx) => {
-        const updated = await tx.policy.update({
-          where: { id: existing.id },
-          data: this.toUpdateData(input),
-          include: policyInclude
-        });
-
-        await this.auditService.createAuditEvent(tx, {
-          userId,
-          clientId: updated.clientId,
-          type: AuditEventType.POLICY_UPDATED,
-          actorType: AuditActorType.USER,
-          actorId: userId,
-          metadata: {
-            policyId: updated.id,
-            changedFields: Object.keys(input)
-          }
-        });
-
-        return updated;
+    const policy = await this.prisma.client.$transaction(async (tx) => {
+      const updated = await tx.policy.update({
+        where: { id: existing.id },
+        data: this.toUpdateData(input),
+        include: policyInclude
       });
 
-      return { policy: toPolicyResponse(policy) };
-    } catch (error) {
-      throw this.toDuplicatePermissionsError(error);
-    }
+      await this.auditService.createAuditEvent(tx, {
+        userId,
+        clientId: updated.clientId,
+        type: AuditEventType.POLICY_UPDATED,
+        actorType: AuditActorType.USER,
+        actorId: userId,
+        metadata: {
+          policyId: updated.id,
+          policyLabel: appPermissionsLabel(updated.client?.name),
+          changedFields: Object.keys(input)
+        }
+      });
+
+      return updated;
+    });
+
+    return { policy: toPolicyResponse(policy) };
   }
 
   async deletePolicy(userId: string, id: string) {
@@ -236,7 +238,7 @@ export class PoliciesService {
         actorId: userId,
         metadata: {
           policyId: existing.id,
-          policyLabel: `${existing.client?.name} permissions`
+          policyLabel: appPermissionsLabel(existing.client?.name)
         }
       });
     });

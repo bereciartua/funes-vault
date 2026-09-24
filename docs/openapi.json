@@ -1155,6 +1155,15 @@
               }
             }
           },
+          "400": {
+            "description": "This app has no first-party defaults"
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "App not found"
+          },
           "409": {
             "description": "This app already has permissions"
           }
@@ -1210,9 +1219,6 @@
           },
           "404": {
             "description": "Policy not found."
-          },
-          "409": {
-            "description": "This app already has permissions"
           }
         },
         "security": [
@@ -3887,6 +3893,26 @@
       "CaptureResponseDto": {
         "type": "object",
         "properties": {
+          "reason": {
+            "type": "string",
+            "enum": [
+              "unknown_or_blocked_client",
+              "no_client_policy",
+              "policy_expired",
+              "operation_not_allowed",
+              "no_matching_memories",
+              "no_allowed_memories",
+              "confirmation_required",
+              "policy_changed",
+              "inactive_memory",
+              "unapproved_memory",
+              "expired_memory",
+              "above_sensitivity_ceiling",
+              "denied_category",
+              "category_not_allowed"
+            ],
+            "nullable": true
+          },
           "suggestionId": {
             "type": "object",
             "example": "cmqvt0v580000xeg7jgy7v1u3",
@@ -3915,7 +3941,13 @@
             "example": false
           }
         },
-        "required": ["suggestionId", "status", "auditEventId", "deduplicated"]
+        "required": [
+          "reason",
+          "suggestionId",
+          "status",
+          "auditEventId",
+          "deduplicated"
+        ]
       },
       "CreateMemorySuggestionDto": {
         "type": "object",
@@ -4203,6 +4235,15 @@
       "ReviewableMemorySuggestionDto": {
         "type": "object",
         "properties": {
+          "statedPurpose": {
+            "type": "string",
+            "nullable": true,
+            "description": "Caller-declared audit reason; does not grant permissions."
+          },
+          "policyId": {
+            "type": "string",
+            "nullable": true
+          },
           "id": {
             "type": "string",
             "example": "cmqvt0v580000xeg7jgy7v1u3"
@@ -4289,6 +4330,8 @@
           }
         },
         "required": [
+          "statedPurpose",
+          "policyId",
           "id",
           "title",
           "body",
@@ -4466,6 +4509,10 @@
       "ClientPolicySummaryDto": {
         "type": "object",
         "properties": {
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          },
           "maxSensitivity": {
             "type": "string",
             "enum": [
@@ -4498,7 +4545,7 @@
         "properties": {
           "policySummary": {
             "nullable": true,
-            "description": "Most recently updated unexpired policy, included in client lists.",
+            "description": "The app’s single permission set, including expired permissions, in client lists.",
             "type": "object",
             "allOf": [
               {

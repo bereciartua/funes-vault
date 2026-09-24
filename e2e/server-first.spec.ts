@@ -58,7 +58,7 @@ test("reviews a server disclosure, excludes a memory, and consumes only the appr
   const policy = await page.request.post(`${api}/v1/policies`, {
     data: {
       clientId: client.client.id,
-      purpose: "coding assistance",
+
       operations: ["READ"],
       maxSensitivity: "LOW",
       requiresConfirmation: true,
@@ -71,7 +71,6 @@ test("reviews a server disclosure, excludes a memory, and consumes only the appr
   const requested = await page.request.post(`${api}/v1/memory-requests`, {
     headers,
     data: {
-      purpose: "coding assistance",
       task: subject,
       retention: "NO_STORAGE"
     }

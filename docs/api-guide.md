@@ -58,7 +58,7 @@ An external client requests context through `POST /v1/memory-requests`:
 
 ```json
 {
-  "purpose": "software_development",
+  "purpose": "Help review the user’s code",
   "task": "Help me plan the next accessible garden-planner feature",
   "requestedCategories": ["communication_style", "project_context"],
   "retention": "NO_STORAGE",
@@ -67,7 +67,7 @@ An external client requests context through `POST /v1/memory-requests`:
 }
 ```
 
-The server authenticates the client, retrieves candidates and evaluates policy.
+The server authenticates the client, checks app authority before retrieval, then evaluates eligible candidates.
 The response includes `requestId`, `status`, `items`, `denied`, token accounting,
 instructions and the relevant audit reference. A transport success does not imply
 permission: inspect the response status. `NEEDS_USER_APPROVAL` contains no

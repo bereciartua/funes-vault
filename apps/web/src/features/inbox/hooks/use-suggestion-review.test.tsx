@@ -15,6 +15,8 @@ it("removes pending reviews immediately and restores only partial failures", asy
   const key = apiQueryKey(apiUrl, queryKeys.suggestions.list(1), "alice");
   const item = (id: string) => ({
     id,
+    statedPurpose: null,
+    policyId: null,
     title: id,
     body: "Context",
     kind: "FACT" as const,

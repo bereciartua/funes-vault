@@ -2,6 +2,7 @@ import type { INestApplication } from "@nestjs/common";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { apiEnv } from "../src/config.js";
 import { renderConsentPage } from "../src/oauth/oauth-consent.html.js";
 import { hashOAuthCredential } from "../src/oauth/oauth-credentials.js";
 import { OAuthGrantsService } from "../src/oauth/oauth-grants.service.js";
@@ -17,6 +18,7 @@ describe("privacy: OAuth app permission boundaries", () => {
   let app: INestApplication;
   let prisma: ReturnType<typeof createE2ePrismaClient>;
   let userId: string;
+  let cookie: string;
   let clientId: string;
   let registrationId: string;
   let policyId: string;
@@ -31,9 +33,12 @@ describe("privacy: OAuth app permission boundaries", () => {
   });
   beforeEach(async () => {
     await resetTestDatabase(prisma);
-    userId = (
-      await createUserWithSession(prisma, "oauth-permissions@example.test")
-    ).userId;
+    const owner = await createUserWithSession(
+      prisma,
+      "oauth-permissions@example.test"
+    );
+    userId = owner.userId;
+    cookie = owner.cookie;
     const registration = await prisma.oAuthClientRegistration.create({
       data: {
         clientId: "registered-test",
@@ -208,5 +213,52 @@ describe("privacy: OAuth app permission boundaries", () => {
       (await prisma.client.findUniqueOrThrow({ where: { id: clientId } }))
         .trustLevel
     ).toBe("BLOCKED");
+  });
+  it("shows and records re-added operations through the HTTP consent routes", async () => {
+    const pending = await consentRequest();
+    const page = await api()
+      .get(`/oauth/consent?request=${pending.id}&nonce=nonce`)
+      .set("Cookie", cookie)
+      .set("Host", new URL(apiEnv().GOOGLE_REDIRECT_URI).host)
+      .expect(200);
+    expect(page.text).toContain("Operations added by approving: READ");
+    await api()
+      .post("/oauth/consent/decision")
+      .set("Cookie", cookie)
+      .type("form")
+      .send({ request: pending.id, nonce: "nonce", decision: "approve" })
+      .expect(303);
+    expect(
+      await prisma.auditEvent.findFirst({
+        where: { clientId, type: "POLICY_UPDATED" }
+      })
+    ).toMatchObject({
+      metadata: {
+        policyId,
+        changedFields: ["operations"],
+        previousOperations: ["SUGGEST"],
+        operations: ["SUGGEST", "READ"],
+        oauthConsent: true
+      }
+    });
+  });
+  it("distinguishes recreation and shows a useful forbidden page for blocked apps", async () => {
+    await prisma.policy.delete({ where: { id: policyId } });
+    const pending = await consentRequest();
+    const page = () =>
+      api()
+        .get(`/oauth/consent?request=${pending.id}&nonce=nonce`)
+        .set("Cookie", cookie)
+        .set("Host", new URL(apiEnv().GOOGLE_REDIRECT_URI).host);
+    expect((await page().expect(200)).text).toContain(
+      "You removed this app’s permissions"
+    );
+    await prisma.client.update({
+      where: { id: clientId },
+      data: { trustLevel: "BLOCKED" }
+    });
+    const blocked = await page().expect(403);
+    expect(blocked.text).toContain("Unblock it in Apps &amp; access");
+    expect(blocked.text).not.toContain("start the connection again");
   });
 });

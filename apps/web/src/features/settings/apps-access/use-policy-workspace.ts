@@ -1,9 +1,15 @@
 "use client";
-import { type Client, type Policy } from "@funes-vault/shared";
+import {
+  type Client,
+  isFirstPartyClient,
+  type Policy
+} from "@funes-vault/shared";
 import { type FormEvent, useState } from "react";
 
 import { useConfirm } from "../../../components/ui/confirmation-dialog";
-import { apiErrorMessage } from "../../../lib/api/api-client";
+import { ApiError, apiErrorMessage } from "../../../lib/api/api-client";
+import { queryKeys } from "../../../lib/api/query-keys";
+import { useInvalidateQueries } from "../../../lib/api/use-api";
 import { toExpiresAtIso } from "../../../lib/dates";
 import {
   emptyPolicyDraft,
@@ -15,6 +21,7 @@ import { usePolicies } from "./use-policies";
 import { usePolicyMutations } from "./use-policy-mutations";
 export function usePolicyWorkspace(client: Client) {
   const query = usePolicies(client.id);
+  const invalidate = useInvalidateQueries();
   const policies = query.data?.items ?? [];
   const [policyEditor, setPolicyEditor] = useState<PolicyEditorState>(null);
   const [policyDraft, setPolicyDraft] = useState<PolicyDraft>(emptyPolicyDraft);
@@ -70,7 +77,12 @@ export function usePolicyWorkspace(client: Client) {
       setMessage(id ? "Permissions updated." : "Permissions created.");
     } catch (error) {
       setError(apiErrorMessage(error, "Could not save these permissions."));
-      await query.refetch();
+      if (error instanceof ApiError && error.status === 409) {
+        setPolicyEditor(null);
+        await invalidate(queryKeys.clients.all, queryKeys.policies.all);
+      } else {
+        await query.refetch();
+      }
     }
   }
   async function confirmDeletePolicy(policy: Policy) {
@@ -91,24 +103,30 @@ export function usePolicyWorkspace(client: Client) {
       setPolicyEditor(null);
       setMessage("Permissions removed.");
     } catch (error) {
-      setError(apiErrorMessage(error, "Could not delete this policy."));
+      setError(apiErrorMessage(error, "Could not remove these permissions."));
     }
   }
 
   async function restoreDefaults() {
+    setError(null);
+    setMessage(null);
     try {
       await mutations.restore.mutateAsync(client.id);
+      setPolicyEditor(null);
       setMessage("Default permissions restored.");
     } catch (error) {
       setError(apiErrorMessage(error, "Could not restore permissions."));
-      await query.refetch();
+      if (error instanceof ApiError && error.status === 409) {
+        setPolicyEditor(null);
+        await invalidate(queryKeys.clients.all, queryKeys.policies.all);
+      } else {
+        await query.refetch();
+      }
     }
   }
 
   return {
-    isFirstParty:
-      client.type === "WEB_APP" &&
-      ["Funes Vault Web Chat", "Funes Vault Voice"].includes(client.name),
+    isFirstParty: isFirstPartyClient(client),
     restoreDefaults,
     policies,
     policyEditor,
@@ -125,10 +143,7 @@ export function usePolicyWorkspace(client: Client) {
     error:
       error ??
       (query.error
-        ? apiErrorMessage(
-            query.error,
-            "Could not load the policies for this app."
-          )
+        ? apiErrorMessage(query.error, "Could not load this app’s permissions.")
         : null)
   };
 }

@@ -65,6 +65,7 @@ function createClient(overrides: Record<string, unknown> = {}) {
     type: ClientType.MCP_CLIENT,
     trustLevel: ClientTrustLevel.APPROVED,
     declaredRetention: ClientRetention.NO_STORAGE,
+    _count: { policies: 1 },
     tokenHash: "hashed-token",
     lastUsedAt: null,
     createdAt: now,
@@ -148,7 +149,7 @@ function createExport() {
         id: "policy_1",
         clientId: "client_1",
         clientName: "Local Agent",
-        purpose: "software_development",
+
         allowedCategoryKeys: ["communication_style"],
         deniedCategoryKeys: [],
         maxSensitivity: MemorySensitivity.INTERNAL,

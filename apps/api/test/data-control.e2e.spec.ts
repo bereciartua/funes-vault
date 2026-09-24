@@ -49,7 +49,6 @@ describe("privacy: vault portability (e2e)", () => {
       .set("Cookie", alice.cookie)
       .send({
         clientId: client.body.client.id,
-        purpose: "writing",
         operations: ["READ"]
       })
       .expect(201);
@@ -59,6 +58,7 @@ describe("privacy: vault portability (e2e)", () => {
       .expect(200);
     const file = vaultExportResponseSchema.parse(exported.body).export;
     expect(file.memories).toHaveLength(1);
+    expect(file.clients[0]?.hasPolicy).toBe(true);
     expect(exported.text).not.toContain("tokenHash");
     expect(exported.text).not.toContain(client.body.token);
     const empty = await api()

@@ -1,16 +1,20 @@
 # Changelog
 
-## Unreleased
+All notable changes are documented here, following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and Semantic Versioning.
 
-- Breaking: one App permissions set per authenticated client; optional purpose is audit context only.
+## [Unreleased]
+
+### Changed
+
+- **Breaking:** one App permissions set per authenticated client; optional purpose is audit context only.
 - Check app authority before retrieval, report typed decision reasons, audit denials and bind approvals to policy versions.
 - Expose described MCP schemas without purpose hints or retry; isolate caller suggestion metadata from server actions.
 - Show resulting OAuth permissions, preserve removed first-party permissions and offer explicit default restoration.
 - Add the additive app-permissions migration and export v2; old exports and pre-migration approvals are not compatible.
 
-All notable changes are documented here, following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and Semantic Versioning.
+### Removed
 
-## [Unreleased]
+- Purpose-based policy selection, MCP purpose substitution and v1 export import compatibility. See the [migration guide](docs/deployment-and-operations.md#app-permissions-migration) before upgrading.
 
 ## [1.0.0] - 2026-09-23
 

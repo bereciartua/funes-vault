@@ -26,6 +26,11 @@ export function PolicyList({
     error
   } = model;
 
+  const policy = policies[0];
+  const isExpanded =
+    policyEditor?.mode === "edit" && policyEditor.policyId === policy?.id;
+  const factors = policy ? policyRiskFactors(policy, categories.length) : [];
+
   return (
     <>
       <FeedbackMessages message={message} error={error} />{" "}
@@ -46,6 +51,7 @@ export function PolicyList({
           {policies.length === 0 && model.isFirstParty ? (
             <Button
               type="button"
+              size="sm"
               variant="secondary"
               disabled={model.isSaving}
               onClick={() => void model.restoreDefaults()}
@@ -61,43 +67,36 @@ export function PolicyList({
           </p>
         ) : null}
         <div className="policy-list">
-          {policies.map((policy) => {
-            const isExpanded =
-              policyEditor?.mode === "edit" &&
-              policyEditor.policyId === policy.id;
-            const factors = policyRiskFactors(policy, categories.length);
-
-            return (
-              <article key={policy.id} className="policy-row">
-                <div className="policy-row-heading">
-                  <p className="eyebrow">App permissions</p>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    aria-expanded={isExpanded}
-                    onClick={() => togglePolicyEditor(policy)}
-                  >
-                    {isExpanded ? "Close" : "Edit permissions"}
-                  </Button>
-                </div>
-                <p>{policySummary(policy)}</p>
-                {factors.length > 0 ? (
-                  <p className="risk-sentence">
-                    {factors.map((factor) => factor.label).join(" · ")} —
-                    consider tightening this policy.
-                  </p>
-                ) : null}
-                {isExpanded ? (
-                  <PolicyEditor
-                    editingPolicy={policy}
-                    model={model}
-                    categories={categories}
-                  />
-                ) : null}
-              </article>
-            );
-          })}
+          {policy ? (
+            <article key={policy.id} className="policy-row">
+              <div className="policy-row-heading">
+                <p className="eyebrow">App permissions</p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  aria-expanded={isExpanded}
+                  onClick={() => togglePolicyEditor(policy)}
+                >
+                  {isExpanded ? "Close" : "Edit permissions"}
+                </Button>
+              </div>
+              <p>{policySummary(policy, model.isFirstParty)}</p>
+              {factors.length > 0 ? (
+                <p className="risk-sentence">
+                  {factors.map((factor) => factor.label).join(" · ")} — consider
+                  tightening these permissions.
+                </p>
+              ) : null}
+              {isExpanded ? (
+                <PolicyEditor
+                  editingPolicy={policy}
+                  model={model}
+                  categories={categories}
+                />
+              ) : null}
+            </article>
+          ) : null}
           {policyEditor?.mode === "create" ? (
             <article className="policy-row">
               <p className="eyebrow">Set up permissions</p>

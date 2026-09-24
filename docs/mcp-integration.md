@@ -138,16 +138,16 @@ The demo prints the same policy-filtered memory bundle returned by `POST /v1/mem
 
 ## Tool Inputs
 
-`request_memory` accepts camelCase or MCP-style snake_case fields:
+`request_memory` accepts only the advertised camelCase fields. Unknown keys are rejected instead of silently ignored. Direct HTTP routes retain their snake_case aliases:
 
 ```json
 {
-  "purpose": "software_development",
+  "purpose": "Help the user work on this repository",
   "task": "Help with this repository",
-  "requested_categories": ["communication_style", "project_context"],
+  "requestedCategories": ["communication_style", "project_context"],
   "retention": "NO_STORAGE",
-  "third_party_processors": [],
-  "token_budget": 1200
+  "thirdPartyProcessors": [],
+  "tokenBudget": 1200
 }
 ```
 
@@ -155,11 +155,11 @@ The demo prints the same policy-filtered memory bundle returned by `POST /v1/mem
 
 ```json
 {
-  "purpose": "software_development",
-  "kind": "preference",
+  "purpose": "Help the user work on this repository",
+  "kind": "PREFERENCE",
   "title": "Prefers local-first tools",
   "body": "The user prefers local-first tools for privacy-sensitive workflows.",
-  "categories": ["privacy_preferences"],
+  "categoryKeys": ["privacy_preferences"],
   "confidence": 0.8
 }
 ```

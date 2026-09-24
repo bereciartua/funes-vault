@@ -161,7 +161,7 @@ describe("privacy: tenant isolation (e2e)", () => {
     await api()
       .post("/v1/policies")
       .set("Cookie", bob.cookie)
-      .send({ clientId: client.id, purpose: "cross-user" })
+      .send({ clientId: client.id })
       .expect(400);
     expect(
       await prisma.memorySuggestion.findUniqueOrThrow({

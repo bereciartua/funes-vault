@@ -44,13 +44,11 @@ describe("privacy: ClientsService", () => {
         _count: { select: { policies: true } },
         policies: {
           where: {
-            userId: "user_1",
-            OR: [{ expiresAt: null }, { expiresAt: { gt: expect.any(Date) } }]
+            userId: "user_1"
           },
-          orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
-          take: 1,
           select: {
             maxSensitivity: true,
+            expiresAt: true,
             requiresConfirmation: true,
             allowedCategories: { select: { key: true } }
           }
@@ -100,13 +98,11 @@ describe("privacy: ClientsService", () => {
         _count: { select: { policies: true } },
         policies: {
           where: {
-            userId: "user_1",
-            OR: [{ expiresAt: null }, { expiresAt: { gt: expect.any(Date) } }]
+            userId: "user_1"
           },
-          orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
-          take: 1,
           select: {
             maxSensitivity: true,
+            expiresAt: true,
             requiresConfirmation: true,
             allowedCategories: { select: { key: true } }
           }
@@ -216,6 +212,7 @@ it("returns only the selected display summary, without policy credentials or own
   ]);
   const result = await service.listClients("user_1");
   expect(result.items[0]?.policySummary).toEqual({
+    expiresAt: null,
     maxSensitivity: "LOW",
     requiresConfirmation: true,
     allowedCategoryKeys: ["work"]

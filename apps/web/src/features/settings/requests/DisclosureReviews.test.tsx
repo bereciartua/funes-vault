@@ -165,3 +165,34 @@ it("requires explicit refresh when a changed revision would reset an edited sele
   await act(() => result.current.refresh());
   expect(result.current.preview?.revision).toBe("revision-2");
 });
+
+it("shows an orphaned request as not evaluated, with separate facts", async () => {
+  vi.mocked(apiFetch).mockImplementation(async (input) =>
+    input.path.includes("?")
+      ? {
+          items: [request],
+          pagination: { page: 1, limit: 20, total: 1, totalPages: 1 }
+        }
+      : {
+          ...preview,
+          canApprove: false,
+          request: {
+            ...request,
+            statedPurpose: null,
+            policyId: null,
+            reason: null
+          }
+        }
+  );
+  const { container } = render(
+    <ApiProvider apiUrl="http://server">
+      <DisclosureReviews />
+    </ApiProvider>
+  );
+  expect(await screen.findByText("Not provided")).toBeTruthy();
+  expect(screen.getByText("Not evaluated")).toBeTruthy();
+  expect(screen.queryByText("Allowed")).toBeNull();
+  for (const fact of container.querySelectorAll("dl.memory-facts > div")) {
+    expect(fact.querySelectorAll("dt")).toHaveLength(1);
+  }
+});

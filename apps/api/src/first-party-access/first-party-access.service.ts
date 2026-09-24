@@ -8,17 +8,12 @@ import {
   PolicyOperation,
   type Prisma
 } from "@funes-vault/db";
+import { voiceClientName, webChatClientName } from "@funes-vault/shared";
 import { Injectable } from "@nestjs/common";
 
 import { AuditTrailService } from "../audit-trail/audit-trail.service.js";
 import { apiEnv } from "../config.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-
-export const webChatClientName = "Funes Vault Web Chat";
-export const webChatPurpose = "memory_chat";
-
-export const voiceClientName = "Funes Vault Voice";
-export const voicePurpose = "memory_voice";
 
 const voiceSensitivityValues = Object.values(MemorySensitivity);
 
@@ -49,12 +44,14 @@ type FirstPartyDefinition = {
   firstPartyDefault: string;
   maxSensitivity: MemorySensitivity;
   operations: PolicyOperation[];
+  requiresConfirmation: boolean;
 };
 
-function webChatDefinition(): FirstPartyDefinition {
+export function webChatDefinition(): FirstPartyDefinition {
   return {
     clientName: webChatClientName,
     firstPartyDefault: "web_chat",
+    requiresConfirmation: false,
     maxSensitivity: MemorySensitivity.SECRET,
     operations: [
       PolicyOperation.READ,
@@ -64,11 +61,12 @@ function webChatDefinition(): FirstPartyDefinition {
   };
 }
 
-// No WRITE: memory writes from a voice session always queue for review.
-function voiceDefinition(): FirstPartyDefinition {
+// No WRITE by default: voice proposals queue until the owner grants WRITE.
+export function voiceDefinition(): FirstPartyDefinition {
   return {
     clientName: voiceClientName,
     firstPartyDefault: "voice",
+    requiresConfirmation: false,
     maxSensitivity: defaultVoiceMaxSensitivity(),
     operations: [PolicyOperation.READ, PolicyOperation.SUGGEST]
   };
@@ -228,7 +226,7 @@ export class FirstPartyAccessService {
         clientId: input.clientId,
         maxSensitivity: input.definition.maxSensitivity,
         operations: input.definition.operations,
-        requiresConfirmation: false,
+        requiresConfirmation: input.definition.requiresConfirmation,
         expiresAt: null,
         allowedCategories: {
           connect: categories.map((category) => ({ id: category.id }))
@@ -248,7 +246,7 @@ export class FirstPartyAccessService {
         clientId: input.clientId,
         maxSensitivity: input.definition.maxSensitivity,
         operations: input.definition.operations,
-        requiresConfirmation: false,
+        requiresConfirmation: input.definition.requiresConfirmation,
         allowedCategoryCount: categories.length,
         firstPartyDefault: input.definition.firstPartyDefault
       }

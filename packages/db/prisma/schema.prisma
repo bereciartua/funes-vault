@@ -639,6 +639,7 @@ model MemoryRequest {
   @@index([userId, status])
   @@index([clientId])
   @@index([createdAt])
+  @@index([policyId])
 }
 
 /// Disclosure snapshot owned through its request; preserves exactly what was shared.
@@ -686,6 +687,7 @@ model MemorySuggestion {
 
   @@index([userId, status])
   @@index([sourceClientId])
+  @@index([policyId])
 }
 
 /// Owner-scoped provider vector. A SQL-managed HNSW index supports cosine retrieval.

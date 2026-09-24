@@ -62,7 +62,7 @@ function createTx() {
       findMany: vi.fn().mockResolvedValue([{ id: "category_1" }])
     },
     policy: {
-      findFirst: vi.fn().mockResolvedValue(null),
+      findUnique: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ id: "policy_1" }),
       update: vi.fn()
     },
@@ -82,6 +82,8 @@ async function createService(request: ReturnType<typeof createRequest> | null) {
   const tx = createTx();
   const prisma = {
     client: {
+      client: tx.client,
+      memoryCategory: tx.memoryCategory,
       oAuthAuthorizationRequest: {
         findUnique: vi.fn().mockResolvedValue(request)
       },
@@ -174,7 +176,7 @@ describe("privacy: OAuthGrantsService.approve", () => {
       id: "client_1",
       trustLevel: ClientTrustLevel.APPROVED
     });
-    tx.policy.findFirst.mockResolvedValue({
+    tx.policy.findUnique.mockResolvedValue({
       id: "policy_1",
       operations: [PolicyOperation.READ, PolicyOperation.SUGGEST]
     });

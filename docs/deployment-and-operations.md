@@ -261,10 +261,16 @@ both architectures. Only `v*` tag runs move `latest`; a manual dispatch from
 any branch publishes its `sha-<commit>` tag (and version tags if the ref is a
 release tag) without touching `latest`.
 
-### App permissions migration
+## App permissions migration
 
-Deploy API, MCP and web together after the additive migration. Verified locally with
-`DATABASE_URL=postgresql://funes_vault:funes_vault@localhost:5432/funes_permissions_test pnpm --filter @funes-vault/db db:migrate`.
-Production uses the normal `docker compose -f docker-compose.prod.yml run --rm migrate` step.
-The migration keeps the most recently updated policy per client (id breaks ties), deletes surplus policies, and removes policy purpose. Existing requests retain stated purpose but have null policy bindings: they can only be denied, and clients must submit fresh requests. Accounts, sessions, clients and OAuth grants remain valid. Policy deletion similarly prevents old requests from being revived.
-Rollback requires stopping affected services and running the previous images against a disposable reset; do not mix old and new authorization models on the live schema.
+Deploy API, MCP and web as one coordinated breaking release. Stop the old services, then run the migration before starting the new images:
+
+```sh
+docker compose --env-file .env.production -f docker-compose.prod.yml run --rm migrate
+```
+
+The migration removes invalid cross-owner grants first, then keeps the newest valid policy for each client (`updatedAt`, with id breaking ties). Surplus policies and policy purpose are removed. Old requests retain stated purpose but have null policy bindings; they can only be denied, and apps must submit fresh requests. Accounts, sessions, clients and OAuth grants remain valid.
+
+Legacy CLIENT_SUGGESTION metadata is wrapped under `caller` because its top-level keys cannot be trusted. Manual captures, chat and consolidation metadata retain their server-owned shape. Old bearer captures are indistinguishable from other client suggestions, so their old capture ids no longer deduplicate; drain device capture queues before upgrading to avoid retry duplicates. Newly recorded captures retain server-owned capture ids.
+
+Do not run old and new authorization models against the same schema. Roll back by stopping services and restoring a pre-upgrade backup before restarting the previous images. A disposable test vault may instead be reset. Never reset a personal or deployed vault as a rollback procedure.

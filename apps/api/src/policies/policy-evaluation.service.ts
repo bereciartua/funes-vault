@@ -82,7 +82,7 @@ export class PolicyEvaluationService {
         policyId: policy?.id ?? null,
         allowedMemoryIds: [],
         denied: [],
-        requiresConfirmation: true,
+        requiresConfirmation: policy?.requiresConfirmation ?? false,
         reason
       };
     }
@@ -112,16 +112,6 @@ export function evaluateCandidateMemories(input: {
   now?: Date;
 }): PolicyEvaluationResult {
   const now = input.now ?? new Date();
-  if (input.policy.expiresAt && input.policy.expiresAt <= now) {
-    return {
-      decision: "DENY",
-      policyId: input.policy.id,
-      allowedMemoryIds: [],
-      denied: [],
-      requiresConfirmation: true,
-      reason: MemoryRequestReason.policy_expired
-    };
-  }
   const allowedCategories = new Set(
     input.policy.allowedCategories.map((c) => c.key)
   );

@@ -100,10 +100,11 @@ export function renderConsentPage(input: {
   } will be able to:</p>
   <ul>${scopeItems}</ul>
   <p><strong>App permissions after approval:</strong> ${escapeHtml(context.operations.join(", "))}</p>
-  <p>${context.createsPermissions ? "Approving creates permissions, including when you previously removed them." : "Existing category, sensitivity, confirmation and expiration settings are preserved."}</p>
+  <p>${context.recreating ? "You removed this app’s permissions. Approving will restore default permissions." : context.createsPermissions ? "Approving creates permissions for this app." : "Existing category, sensitivity, confirmation and expiration settings are preserved."}</p>
+  ${context.addedOperations.length ? `<p>Operations added by approving: ${escapeHtml(context.addedOperations.join(", "))}.</p>` : ""}
   <p>Allowed categories: ${escapeHtml(context.allowedCategories.join(", ") || "All categories")}. Denied categories: ${escapeHtml(context.deniedCategories.join(", ") || "None")}.</p>
-  <p>Confirmation: ${context.requiresConfirmation ? "Required" : "Not required"}. Expiration: ${escapeHtml(context.expiresAt ?? "None")}.</p>
-  ${context.operations.includes("WRITE") ? "<p>Proposals from this app are applied immediately without review when permitted by these limits.</p>" : ""}
+  <p>Confirmation: ${context.requiresConfirmation ? "Required" : "Not required"}. Expiration: ${context.expiresAt && new Date(context.expiresAt) <= new Date() ? "Expired — update the expiration in Apps &amp; access before using this app. " : ""}${escapeHtml(context.expiresAt ?? "None")}.</p>
+  ${context.operations.includes("WRITE") && !context.requiresConfirmation && context.scopes.includes("memory.suggest") ? "<p>Proposals from this app are applied immediately without review when permitted by these limits.</p>" : ""}
   <p class="muted">The disclosure ceiling is
   <strong>${escapeHtml(context.maxSensitivity.toLowerCase())}</strong> sensitivity.
   Every disclosure is audited, and you can revoke this grant at any time in
@@ -123,12 +124,12 @@ created by the requesting application and is not vetted by Funes Vault.</p>`
   );
 }
 
-export function renderErrorPage(message: string) {
+export function renderErrorPage(message: string, retry = true) {
   return pageShell(
     "Request problem",
     `
 <h1>This request cannot continue</h1>
 <div class="card"><p>${escapeHtml(message)}</p>
-<p class="muted">Return to the application and start the connection again.</p></div>`
+${retry ? '<p class="muted">Return to the application and start the connection again.</p>' : "<p>Open Apps &amp; access in Funes Vault to manage this app.</p>"}</div>`
   );
 }

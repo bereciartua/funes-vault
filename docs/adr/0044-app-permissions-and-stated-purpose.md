@@ -1,12 +1,13 @@
-# 0044: App permissions and stated purpose
+# 0044 — App permissions and stated purpose
 
-Status: Accepted
+Date: 2026-09-24
+Status: accepted
 
-## Context
+## Context and problem
 
 Free-form task reasons selected exact policy keys, coupling audit context to authority and hiding usable permissions from connected apps.
 
-## Decision
+## Decision outcome
 
 Each authenticated client has at most one Policy. Purpose is optional, nullable caller-declared audit context only; task continues to drive retrieval. App permissions alone grant operations and memory ceilings. No policy grants no access. OAuth scopes remain a separate route ceiling; WRITE has no new scope and permits immediate application only when the policy allows it.
 
@@ -18,6 +19,8 @@ Ship one additive migration after the public baseline. Keep the most recently up
 
 ## Consequences
 
-Deploy the migration before API, MCP and web together. Consent explicitly shows resulting permissions; refresh and ordinary first-party use never restore removed permissions. Owners can restore first-party defaults on the existing client. MCP exposes canonical described schemas and makes exactly one API call.
+Deploy the migration before API, MCP and web together. Consent explicitly shows resulting permissions; refresh and ordinary first-party use never restore removed permissions. Owners can restore first-party defaults on the existing client. MCP exposes strict camelCase schemas with uppercase enum values and rejects unknown keys; direct HTTP inputs retain their aliases. Each tool makes exactly one API call.
 
-The owner-scoped voice steward sensitivity bypass remains a separate follow-up; this change preserves the existing voice request ceiling and review-only writes.
+The owner-scoped voice steward sensitivity bypass remains a separate follow-up; voice queues proposals by default because its default app permissions omit WRITE. Owners may grant WRITE through App permissions, with the same sensitivity and confirmation limits as other clients. The explicit extraction review mode remains review-only for every channel.
+
+The shared `MemoryRequestReason` enum deliberately covers both request-level and per-memory denial diagnostics so audit, HTTP, MCP and UI can use one vocabulary. Request-level evaluators emit only the request subset, while `denied[].reason` records a memory-level rule; this is enforced by evaluator tests rather than separate wire enums.

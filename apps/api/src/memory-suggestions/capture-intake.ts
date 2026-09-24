@@ -12,6 +12,7 @@ import type {
   CreateCaptureRequest,
   CreateMemorySuggestionRequest
 } from "@funes-vault/shared";
+import { appPermissionsLabel } from "@funes-vault/shared";
 
 import type { AuditTrailService } from "../audit-trail/audit-trail.service.js";
 import { assertNoSecretLikeContent } from "../common/secret-like-content.js";
@@ -22,9 +23,12 @@ import {
   quickCaptureTitle
 } from "./quick-capture.js";
 import { quickCaptureConfidence } from "./suggestion.constants.js";
+import {
+  proposedMemoryId,
+  recordSuggestionDenial
+} from "./suggestion-denial.js";
 import { createSuggestionRecord } from "./suggestion-records.js";
 import { suggestionAuditSubjects } from "./suggestion-subjects.js";
-const proposedMemoryId = "proposed_memory";
 
 /** Authorize and record a review-only capture within one transaction. */
 export async function captureNote(
@@ -50,8 +54,7 @@ export async function captureNote(
     expiresAt: null,
     sourceMetadata: {
       channel: quickCapturePurpose,
-      ...(capture.captureId ? { captureId: capture.captureId } : {}),
-      ...(capture.capturedAt ? { capturedAt: capture.capturedAt } : {})
+      ...(capture.captureId ? { captureId: capture.captureId } : {})
     }
   };
   assertNoSecretLikeContent(request);
@@ -80,25 +83,17 @@ export async function captureNote(
     );
 
     if (policy.decision === "DENY") {
-      const deniedPolicy = policy;
-      const event = await auditTrail.createAuditEvent(tx, {
+      const event = await recordSuggestionDenial(tx, auditTrail, {
         userId: input.userId,
         clientId: input.clientId,
-        type: AuditEventType.MEMORY_SUGGESTION_DENIED,
-        actorType: AuditActorType.CLIENT,
-        actorId: input.clientId,
-        metadata: {
-          statedPurpose: quickCapturePurpose,
-          policyId: deniedPolicy.policyId,
-          policyVersion: deniedPolicy.policyVersion,
-          reason: deniedPolicy.reason,
-          operation: "SUGGEST"
-        }
+        statedPurpose: quickCapturePurpose,
+        policy
       });
 
       return {
         suggestionId: null,
         status: "DENIED" as const,
+        reason: policy.reason,
         auditEventId: event.id,
         deduplicated: false
       };
@@ -120,6 +115,7 @@ export async function captureNote(
       return {
         suggestionId: existing.id,
         status: existing.status,
+        reason: null,
         auditEventId: null,
         deduplicated: true
       };
@@ -138,7 +134,10 @@ export async function captureNote(
     sourceClientId: input.clientId ?? null,
     policyId: policy?.policyId,
     serverMetadata: request.sourceMetadata,
-    request: { ...request, sourceMetadata: {} }
+    request: {
+      ...request,
+      sourceMetadata: { capturedAt: capture.capturedAt ?? null }
+    }
   });
   const auditEvent = await auditTrail.createAuditEvent(tx, {
     userId: input.userId,
@@ -154,7 +153,7 @@ export async function captureNote(
       reason: policy?.reason ?? null,
       channel: quickCapturePurpose,
       captureId: capture.captureId ?? null,
-      capturedAt: capture.capturedAt ?? null,
+      caller: { capturedAt: capture.capturedAt ?? null },
       clientId: input.clientId ?? null,
       sensitivity: quickCaptureSensitivity
     },
@@ -162,13 +161,14 @@ export async function captureNote(
       suggestion,
       clientId: input.clientId ?? null,
       policyId: policy?.policyId ?? null,
-      policyLabel: `${policy?.client?.name ?? "App"} permissions`
+      policyLabel: appPermissionsLabel(policy?.client?.name ?? "App")
     })
   });
 
   return {
     suggestionId: suggestion.id,
     status: suggestion.status,
+    reason: null,
     auditEventId: auditEvent.id,
     deduplicated: false
   };

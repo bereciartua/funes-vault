@@ -6,6 +6,7 @@ import {
   MemoryRequestStatus,
   PolicyOperation
 } from "@funes-vault/db";
+import { appPermissionsLabel } from "@funes-vault/shared";
 import {
   type AuditTransport,
   type CreateMemoryBundleRequest
@@ -17,7 +18,7 @@ import { PolicyEvaluationService } from "../policies/policy-evaluation.service.j
 import { PrismaService } from "../prisma/prisma.service.js";
 import { BundleCompilerService } from "./bundle-compiler.service.js";
 import { disclosureMetadata } from "./disclosure-metadata.js";
-import { RetrievalService } from "./retrieval.service.js";
+import { retrievalInclude, RetrievalService } from "./retrieval.service.js";
 
 /** Authorize before retrieval; commit the final request and its audit atomically. */
 @Injectable()
@@ -63,22 +64,28 @@ export class MemoryRequestsService {
                 userId: input.userId,
                 id: { in: candidates.map((c) => c.id) }
               },
-              include: { categories: true }
+              include: retrievalInclude
             });
-      const scores = new Map(candidates.map((c) => [c.id, c.relevanceScore]));
-      const current = live.map((m) => ({
-        ...m,
-        relevanceScore: scores.get(m.id) ?? 0
-      }));
-      const policy = await this.policyEvaluationService.evaluateForClient(
-        input.userId,
-        {
-          clientId: input.clientId,
-          operation: PolicyOperation.READ,
-          candidateMemories: current
-        },
-        tx
-      );
+      const byId = new Map(live.map((memory) => [memory.id, memory]));
+      const current = candidates.flatMap((candidate) => {
+        const memory = byId.get(candidate.id);
+
+        return memory
+          ? [{ ...memory, relevanceScore: candidate.relevanceScore }]
+          : [];
+      });
+      const policy =
+        gate.decision === "DENY"
+          ? gate
+          : await this.policyEvaluationService.evaluateForClient(
+              input.userId,
+              {
+                clientId: input.clientId,
+                operation: PolicyOperation.READ,
+                candidateMemories: current
+              },
+              tx
+            );
       const status =
         policy.decision === "ALLOW"
           ? MemoryRequestStatus.FULFILLED
@@ -121,7 +128,7 @@ export class MemoryRequestsService {
           type: AuditSubjectType.POLICY,
           id: policy.policyId,
           role: AuditSubjectRole.POLICY,
-          label: `${policy.client?.name ?? "App"} permissions`
+          label: appPermissionsLabel(policy.client?.name ?? "App")
         }
       ];
       const empty = {
@@ -146,6 +153,7 @@ export class MemoryRequestsService {
             actorType: AuditActorType.CLIENT,
             actorId: input.clientId,
             metadata: {
+              memoryIds: [],
               statedPurpose: request.purpose,
               task: request.task,
               operation: "READ",

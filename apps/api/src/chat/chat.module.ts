@@ -5,7 +5,6 @@ import { MemoriesModule } from "../memories/memories.module.js";
 import { MemoryProcessingModule } from "../memory-processing/memory-processing.module.js";
 import { MemoryRequestsModule } from "../memory-requests/memory-requests.module.js";
 import { MemorySuggestionsModule } from "../memory-suggestions/memory-suggestions.module.js";
-import { PoliciesModule } from "../policies/policies.module.js";
 import { ChatController } from "./chat.controller.js";
 import { ChatService } from "./chat.service.js";
 import { ChatGenerationService } from "./chat-generation.service.js";
@@ -18,7 +17,6 @@ import { ThreadTitleService } from "./thread-title.service.js";
 @Module({
   imports: [
     MemoryProcessingModule,
-    PoliciesModule,
     FirstPartyAccessModule,
 
     MemoryRequestsModule,

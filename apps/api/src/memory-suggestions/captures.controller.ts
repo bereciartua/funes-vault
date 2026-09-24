@@ -1,7 +1,7 @@
-import { oauthScopeSuggest } from "@funes-vault/shared";
 import {
   type CreateCaptureRequest,
-  createCaptureRequestSchema
+  createCaptureRequestSchema,
+  oauthScopeSuggest
 } from "@funes-vault/shared";
 import { Body, Controller, Post, Req, UseGuards } from "@nestjs/common";
 import {

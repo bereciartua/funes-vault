@@ -9,6 +9,7 @@ import {
   memoryRequestStatusSchema,
   memorySensitivitySchema
 } from "./enums.js";
+import { memoryInputLimits } from "./memory-input-limits.js";
 
 export const memoryRequestInputPreprocessor = (value: unknown) => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -35,15 +36,23 @@ export const createMemoryBundleRequestSchema = z.preprocess(
       .string()
       .trim()
       .min(1)
-      .max(1000)
+      .max(memoryInputLimits.task)
       .describe("Information needed for this task; drives retrieval."),
-    requestedCategories: z.array(z.string().trim().min(1)).max(24).default([]),
+    requestedCategories: z
+      .array(z.string().trim().min(1))
+      .max(memoryInputLimits.requestedCategories)
+      .default([]),
     retention: clientRetentionSchema.default("UNKNOWN"),
     thirdPartyProcessors: z
-      .array(z.string().trim().min(1).max(120))
-      .max(12)
+      .array(z.string().trim().min(1).max(memoryInputLimits.processorName))
+      .max(memoryInputLimits.processors)
       .default([]),
-    tokenBudget: z.number().int().min(100).max(8000).default(1200)
+    tokenBudget: z
+      .number()
+      .int()
+      .min(memoryInputLimits.tokenBudgetMin)
+      .max(memoryInputLimits.tokenBudgetMax)
+      .default(memoryInputLimits.tokenBudgetDefault)
   })
 );
 

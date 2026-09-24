@@ -7,6 +7,7 @@ import {
   MemorySensitivity,
   PolicyOperation
 } from "@funes-vault/db";
+import { voiceClientName, webChatClientName } from "@funes-vault/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createService } from "../../test/mocks/create-service.js";
@@ -14,9 +15,7 @@ import { AuditTrailService } from "../audit-trail/audit-trail.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import {
   defaultVoiceMaxSensitivity,
-  FirstPartyAccessService,
-  voiceClientName,
-  webChatClientName
+  FirstPartyAccessService
 } from "./first-party-access.service.js";
 
 describe("privacy: FirstPartyAccessService", () => {

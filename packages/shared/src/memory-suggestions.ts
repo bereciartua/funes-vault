@@ -1,11 +1,12 @@
 import { z } from "zod";
 
-import { statedPurposeSchema } from "./common.js";
-import { deniedMemorySchema, jsonRecordSchema } from "./common.js";
 import {
+  deniedMemorySchema,
+  jsonRecordSchema,
   nullableDatetimeSchema,
   paginationQuerySchema,
-  paginationSchema
+  paginationSchema,
+  statedPurposeSchema
 } from "./common.js";
 import { memoryRequestReasonSchema } from "./enums.js";
 import {
@@ -15,6 +16,7 @@ import {
   sourceTypeSchema
 } from "./enums.js";
 import { memorySchema, provenanceSubjectSchema } from "./memories.js";
+import { memoryInputLimits } from "./memory-input-limits.js";
 
 export const memorySuggestionInputPreprocessor = (value: unknown) => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -46,11 +48,19 @@ export const createMemorySuggestionRequestSchema = z.preprocess(
   z.object({
     purpose: statedPurposeSchema,
     kind: memoryKindSchema.default("FACT"),
-    title: z.string().trim().min(1).max(180),
-    body: z.string().trim().min(1).max(10000),
-    categoryKeys: z.array(z.string().trim().min(1)).max(12).default([]),
+    title: z.string().trim().min(1).max(memoryInputLimits.title),
+    body: z.string().trim().min(1).max(memoryInputLimits.body),
+    categoryKeys: z
+      .array(z.string().trim().min(1))
+      .max(memoryInputLimits.categoryKeys)
+      .default([]),
     sensitivity: memorySensitivitySchema.default("LOW"),
-    evidence: z.string().trim().max(2000).nullable().optional(),
+    evidence: z
+      .string()
+      .trim()
+      .max(memoryInputLimits.evidence)
+      .nullable()
+      .optional(),
     confidence: z.number().min(0).max(1).default(0.5),
     expiresAt: nullableDatetimeSchema,
     sourceMetadata: jsonRecordSchema.default({})
@@ -77,6 +87,8 @@ export type MemorySuggestionResponse = z.infer<
 >;
 
 export const reviewableMemorySuggestionSchema = z.object({
+  statedPurpose: z.string().nullable(),
+  policyId: z.string().nullable(),
   id: z.string().min(1),
   title: z.string().min(1),
   body: z.string().min(1),
@@ -102,7 +114,7 @@ export type ReviewableMemorySuggestion = z.infer<
 >;
 
 export const createCaptureRequestSchema = z.object({
-  text: z.string().trim().min(1).max(10000),
+  text: z.string().trim().min(1).max(memoryInputLimits.body),
   captureId: z
     .string()
     .trim()
@@ -114,6 +126,7 @@ export const createCaptureRequestSchema = z.object({
 export type CreateCaptureRequest = z.infer<typeof createCaptureRequestSchema>;
 
 export const captureResponseSchema = z.object({
+  reason: memoryRequestReasonSchema.nullable(),
   suggestionId: z.string().min(1).nullable(),
   status: z.union([memorySuggestionStatusSchema, z.literal("DENIED")]),
   auditEventId: z.string().min(1).nullable(),

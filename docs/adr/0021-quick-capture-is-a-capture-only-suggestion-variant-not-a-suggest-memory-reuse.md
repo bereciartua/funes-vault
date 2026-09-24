@@ -16,6 +16,6 @@ The quick-capture endpoint (`POST /v1/captures`) is a stricter capture-only vari
 
 Raw captures cannot smuggle WRITE parameters or raise sensitivity privileges. Offline queues need owner isolation and idempotent retry before the server creates a reviewable suggestion.
 
-## Amendment: App permissions
+## Amendment — App permissions
 
-[ADR 0044](0044-app-permissions-and-stated-purpose.md) removes purpose from authorization. Any purpose named above is optional audit context only. Each app has one permission set; normal first-party use never recreates removed permissions. OAuth scopes remain a separate route ceiling, with WRITE governed only by app permissions.
+Bearer captures require the app’s SUGGEST permission and the memory.suggest token scope. Purpose is audit context only. Caller metadata cannot control archive dispatch or capture deduplication. See [ADR 0044](0044-app-permissions-and-stated-purpose.md).

@@ -7,7 +7,13 @@ test("sets up, edits and removes one app permission set, then restores first-par
   await page.goto("/vault");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page.getByRole("link", { name: "Continue with Google" }).click();
-  await page.getByRole("link", { name: "Choose test account" }).click();
+  const login = new URL(
+    (await page
+      .getByRole("link", { name: "Choose test account", exact: true })
+      .getAttribute("href"))!
+  );
+  login.searchParams.set("code", `test-permissions-${Date.now()}@example.test`);
+  await page.goto(login.href);
   const name = `Permissions test ${Date.now()}`;
   const created = await page.request.post(`${api}/v1/clients`, {
     data: { name, type: "MCP_CLIENT", trustLevel: "APPROVED" }
@@ -29,6 +35,9 @@ test("sets up, edits and removes one app permission set, then restores first-par
   ).toHaveCount(0);
   await page.getByRole("button", { name: "Edit permissions" }).click();
   await page.getByRole("checkbox", { name: "Write", exact: true }).check();
+  await page
+    .getByRole("checkbox", { name: "Ask me before each disclosure" })
+    .uncheck();
   await expect(
     page.getByText(/Proposals from this app are applied immediately/).first()
   ).toBeVisible();
@@ -37,6 +46,13 @@ test("sets up, edits and removes one app permission set, then restores first-par
     .getByRole("button", { name: "Save", exact: true })
     .click();
   await expect(page.getByText("Permissions updated.")).toBeVisible();
+  const saved = (
+    await (
+      await page.request.get(`${api}/v1/policies?clientId=${client.id}`)
+    ).json()
+  ).items;
+  expect(saved).toHaveLength(1);
+  expect(saved[0].operations).toContain("WRITE");
   await page.getByRole("button", { name: "Edit permissions" }).click();
   await page
     .getByRole("button", { name: "Remove permissions", exact: true })
@@ -77,4 +93,15 @@ test("sets up, edits and removes one app permission set, then restores first-par
     .getByRole("button", { name: "Restore default permissions" })
     .click();
   await expect(page.getByText("Default permissions restored.")).toBeVisible();
+  const restored = (
+    await (
+      await page.request.get(`${api}/v1/policies?clientId=${chat.id}`)
+    ).json()
+  ).items;
+  expect(restored).toHaveLength(1);
+  expect(restored[0]).toMatchObject({
+    clientId: chat.id,
+    operations: ["READ", "SUGGEST", "WRITE"],
+    maxSensitivity: "SECRET"
+  });
 });

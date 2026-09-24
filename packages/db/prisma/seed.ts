@@ -98,7 +98,6 @@ async function seedClientAndPolicy(user: User) {
     data: {
       userId: user.id,
       clientId: client.id,
-
       maxSensitivity: MemorySensitivity.INTERNAL,
       operations: [PolicyOperation.READ, PolicyOperation.SUGGEST],
       requiresConfirmation: false,
@@ -172,11 +171,17 @@ async function seedReviewItems(
   client: Client,
   communicationMemory: Memory
 ) {
+  const policy = await prisma.policy.findUniqueOrThrow({
+    where: { clientId: client.id }
+  });
   const memoryRequest = await prisma.memoryRequest.create({
     data: {
       userId: user.id,
       clientId: client.id,
       statedPurpose: "Help with software development",
+      policyId: policy.id,
+      policyVersion: policy.updatedAt.toISOString(),
+      decisionReason: null,
       task: "Help the user work on the Funes Vault repository.",
       status: MemoryRequestStatus.FULFILLED,
       requestedCategories: ["communication_style", "software_development"],
@@ -280,7 +285,7 @@ async function seedAuditTrail(input: {
       metadata: {
         seed: true,
         policyId: policy.id,
-        purpose: `${client.name} permissions`
+        policyLabel: `${client.name} permissions`
       }
     }
   });

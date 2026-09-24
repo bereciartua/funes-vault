@@ -179,6 +179,6 @@ export class OAuthConsentController {
         : "Something went wrong handling this authorization request.";
     const status = error instanceof HttpException ? error.getStatus() : 500;
 
-    this.sendHtml(res, status, renderErrorPage(message));
+    this.sendHtml(res, status, renderErrorPage(message, status !== 403));
   }
 }

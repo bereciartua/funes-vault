@@ -31,7 +31,8 @@ export type ExportVaultQuery = z.infer<typeof exportVaultQuerySchema>;
 
 export const vaultExportMetadataSchema = z.object({
   schemaVersion: z.literal(exportSchemaVersion, {
-    error: "Unsupported export version; expected funes-vault.export.v2"
+    error: (issue) =>
+      `Unsupported export version ${typeof issue.input === "string" && /^funes-vault\.export\.v[0-9]+$/.test(issue.input) ? issue.input : "(invalid version)"}; expected ${exportSchemaVersion}`
   }),
   exportedAt: z.iso.datetime(),
   source: z.object({
@@ -106,9 +107,7 @@ export const importVaultRequestSchema = z.object({
 export type ImportVaultRequest = z.infer<typeof importVaultRequestSchema>;
 
 export const importVaultPreviewResultSchema = z.object({
-  schemaVersion: z.literal(exportSchemaVersion, {
-    error: "Unsupported export version; expected funes-vault.export.v2"
-  }),
+  schemaVersion: z.literal(exportSchemaVersion),
   exportedAt: z.iso.datetime(),
   memories: z.number().int().min(0),
   archivedMemories: z.number().int().min(0).default(0),

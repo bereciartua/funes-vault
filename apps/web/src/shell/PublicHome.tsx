@@ -22,11 +22,11 @@ const workflowSteps = [
   ],
   [
     "Approve clients",
-    "Give each app a narrow policy by category, operation, and sensitivity."
+    "Give each app narrow permissions by category, operation, and sensitivity."
   ],
   [
     "Audit disclosure",
-    "See what was shared, who received it, and which policy allowed it."
+    "See what was shared, who received it, and which permissions allowed it."
   ]
 ] as const;
 
@@ -167,7 +167,7 @@ export function PublicHome({
           <p className="eyebrow">How it works</p>
           <h2 id="how-title">A small consent loop before memory leaves.</h2>
           <p className="public-section-lede">
-            Nothing is shared by accident. Memory moves only through policies
+            Nothing is shared by accident. Memory moves only through permissions
             you wrote, at sensitivities you chose, to clients you approved.
           </p>
           <div className="public-steps">
@@ -218,8 +218,9 @@ export function PublicHome({
               </h2>
               <p className="public-section-lede">
                 Agents and apps request compact memory bundles over MCP or HTTP,
-                under its app permissions. The vault answers with exactly what
-                policy allows, with an audit entry for each disclosure.
+                under their app permissions. The vault answers with exactly what
+                their permissions allow, with an audit entry for each
+                disclosure.
               </p>
             </div>
             <pre className="public-code" aria-label="MCP configuration example">
@@ -264,7 +265,7 @@ function DisclosurePreview() {
         <i aria-hidden="true" />
         <p>
           <strong>Shared</strong> — coding preferences and project context, 4
-          memories within policy.
+          memories within their permissions.
         </p>
       </div>
       <div className="disclosure-decision" data-tone="warn">
@@ -278,7 +279,7 @@ function DisclosurePreview() {
         <i aria-hidden="true" />
         <p>
           <strong>Denied</strong> — personal context is outside this
-          agent&apos;s policy.
+          agent&apos;s permissions.
         </p>
       </div>
       <p className="disclosure-preview-footer">

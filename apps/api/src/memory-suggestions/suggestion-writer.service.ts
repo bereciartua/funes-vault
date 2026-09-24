@@ -171,10 +171,6 @@ export class SuggestionWriterService {
       }
     );
 
-    if (!input.transaction) {
-      await this.enqueueEmbeddingGeneration(input.userId, memory.id);
-    }
-
     return {
       suggestionId: suggestion.id,
       memoryId: memory.id,

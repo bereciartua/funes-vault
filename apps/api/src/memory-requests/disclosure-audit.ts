@@ -6,11 +6,15 @@ import {
   type MemoryRequest,
   type Prisma
 } from "@funes-vault/db";
+import {
+  appPermissionsLabel,
+  type MemoryRequestReason
+} from "@funes-vault/shared";
 
 import type { AuditTrailService } from "../audit-trail/audit-trail.service.js";
 
 /** Persist the owner’s sharing decision in the same transaction as the snapshot. */
-export function recordDisclosureDecision(
+export async function recordDisclosureDecision(
   auditTrail: AuditTrailService,
   tx: Prisma.TransactionClient,
   request: MemoryRequest,
@@ -18,8 +22,16 @@ export function recordDisclosureDecision(
     | typeof AuditEventType.MEMORY_REQUEST_APPROVED
     | typeof AuditEventType.MEMORY_REQUEST_DENIED,
   memoryIds: string[],
-  reason: string | null = null
+  reason: MemoryRequestReason | null = null,
+  clientName?: string
 ) {
+  clientName ??= (
+    await tx.client.findFirst({
+      where: { id: request.clientId, userId: request.userId },
+      select: { name: true }
+    })
+  )?.name;
+
   return auditTrail.createAuditEvent(tx, {
     userId: request.userId,
     clientId: request.clientId,
@@ -30,6 +42,9 @@ export function recordDisclosureDecision(
     actorId: reason === "policy_changed" ? null : request.userId,
     metadata: {
       memoryIds,
+      decision:
+        type === AuditEventType.MEMORY_REQUEST_APPROVED ? "ALLOW" : "DENY",
+      requiresConfirmation: true,
       statedPurpose: request.statedPurpose,
       policyId: request.policyId,
       policyVersion: request.policyVersion,
@@ -44,7 +59,7 @@ export function recordDisclosureDecision(
               type: AuditSubjectType.POLICY,
               id: request.policyId,
               role: AuditSubjectRole.POLICY,
-              label: "App permissions"
+              label: appPermissionsLabel(clientName)
             }
           ]
         : []),

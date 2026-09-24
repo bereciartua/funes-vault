@@ -9,6 +9,7 @@ import {
   PolicyOperation,
   type Prisma
 } from "@funes-vault/db";
+import { appPermissionsLabel } from "@funes-vault/shared";
 import {
   BadRequestException,
   ConflictException,
@@ -25,7 +26,9 @@ import {
   hashOAuthCredential
 } from "./oauth-credentials.js";
 import {
+  consentClient,
   defaultConnectorMaxSensitivity,
+  resultingOperations,
   scopesToOperations
 } from "./oauth-permissions.js";
 
@@ -41,6 +44,8 @@ export type ConsentContext = {
   maxSensitivity: MemorySensitivity;
   operations: PolicyOperation[];
   createsPermissions: boolean;
+  recreating: boolean;
+  addedOperations: PolicyOperation[];
   allowedCategories: string[];
   deniedCategories: string[];
   requiresConfirmation: boolean;
@@ -71,20 +76,8 @@ export class OAuthGrantsService {
   ): Promise<ConsentContext> {
     const request = await this.loadPendingRequest(requestId);
     const client = userId
-      ? await this.prisma.client.client.findFirst({
-          where: { userId, oauthRegistrationId: request.registrationId },
-          include: {
-            policies: {
-              include: { allowedCategories: true, deniedCategories: true }
-            }
-          }
-        })
+      ? await consentClient(this.prisma.client, userId, request.registrationId)
       : null;
-    if (client?.trustLevel === ClientTrustLevel.BLOCKED) {
-      throw new BadRequestException(
-        "This app is blocked. Manage it in Apps & access before reconnecting."
-      );
-    }
     const policy = client?.policies[0];
 
     return {
@@ -96,14 +89,19 @@ export class OAuthGrantsService {
       redirectOrigin: new URL(request.redirectUri).origin,
       scopes: request.scopes,
       registrationStatus: request.registration.status,
-      operations: [
-        ...new Set([
-          ...(policy?.operations ?? []),
-          ...scopesToOperations(request.scopes)
-        ])
-      ],
+      operations: resultingOperations(policy?.operations ?? [], request.scopes),
+      addedOperations: scopesToOperations(request.scopes).filter(
+        (operation) => !policy?.operations.includes(operation)
+      ),
+      recreating: Boolean(client && !policy),
       createsPermissions: !policy,
-      allowedCategories: policy?.allowedCategories.map((c) => c.key) ?? [],
+      allowedCategories:
+        policy?.allowedCategories.map((c) => c.key) ??
+        (
+          await this.prisma.client.memoryCategory.findMany({
+            select: { key: true }
+          })
+        ).map((category) => category.key),
       deniedCategories: policy?.deniedCategories.map((c) => c.key) ?? [],
       requiresConfirmation: policy?.requiresConfirmation ?? false,
       expiresAt: policy?.expiresAt?.toISOString() ?? null,
@@ -257,19 +255,12 @@ export class OAuthGrantsService {
       registrationClientId: string;
     }
   ) {
-    const existing = await tx.client.findFirst({
-      where: {
-        userId: input.userId,
-        oauthRegistrationId: input.registrationId
-      }
-    });
-
+    const existing = await consentClient(
+      tx,
+      input.userId,
+      input.registrationId
+    );
     if (existing) {
-      if (existing.trustLevel === ClientTrustLevel.BLOCKED) {
-        throw new BadRequestException(
-          "This app is blocked. Manage it in Apps & access before reconnecting."
-        );
-      }
       if (existing.trustLevel !== ClientTrustLevel.APPROVED) {
         return tx.client.update({
           where: { id: existing.id },
@@ -322,7 +313,7 @@ export class OAuthGrantsService {
     input: { userId: string; clientId: string; scopes: string[] }
   ) {
     const operations = scopesToOperations(input.scopes);
-    const existing = await tx.policy.findFirst({
+    const existing = await tx.policy.findUnique({
       where: {
         userId: input.userId,
         clientId: input.clientId
@@ -331,12 +322,30 @@ export class OAuthGrantsService {
     });
 
     if (existing) {
-      const merged = [...new Set([...existing.operations, ...operations])];
+      const merged = resultingOperations(existing.operations, input.scopes);
 
       if (merged.length !== existing.operations.length) {
         await tx.policy.update({
           where: { id: existing.id },
           data: { operations: merged }
+        });
+        const client = await tx.client.findFirst({
+          where: { id: input.clientId, userId: input.userId }
+        });
+        await this.auditService.createAuditEvent(tx, {
+          userId: input.userId,
+          clientId: input.clientId,
+          type: AuditEventType.POLICY_UPDATED,
+          actorType: AuditActorType.USER,
+          actorId: input.userId,
+          metadata: {
+            policyId: existing.id,
+            policyLabel: appPermissionsLabel(client?.name),
+            changedFields: ["operations"],
+            previousOperations: existing.operations,
+            operations: merged,
+            oauthConsent: true
+          }
         });
       }
 

@@ -1,5 +1,6 @@
-import { MemorySuggestionStatus } from "@funes-vault/db";
+import { MemorySuggestionStatus, PolicyOperation } from "@funes-vault/db";
 import { MemoryStatus, Prisma } from "@funes-vault/db";
+import { voicePurpose, webChatPurpose } from "@funes-vault/shared";
 import {
   createMemorySuggestionRequestSchema,
   memoryProcessingOutcomeSchema
@@ -8,10 +9,6 @@ import { Injectable } from "@nestjs/common";
 
 import { toJson } from "../common/serialization.js";
 import { parseRequest } from "../common/zod.js";
-import {
-  voicePurpose,
-  webChatPurpose
-} from "../first-party-access/first-party-access.service.js";
 import { SuggestionIntakeService } from "../memory-suggestions/suggestion-intake.service.js";
 import { SuggestionWriterService } from "../memory-suggestions/suggestion-writer.service.js";
 import { PolicyEvaluationService } from "../policies/policy-evaluation.service.js";
@@ -48,30 +45,37 @@ export class CandidateApplier {
     if (existing) {
       return memoryProcessingOutcomeSchema.parse(existing.result);
     }
+    const body = parseRequest(createMemorySuggestionRequestSchema, {
+      ...candidate,
+      purpose: channel === "voice" ? voicePurpose : webChatPurpose,
+      confidence: extractionConfidence,
+      evidence: candidate.evidence.map((e) => e.quote).join("\n"),
+      sourceMetadata: {}
+    });
     const evaluationInput = {
       clientId,
       candidateMemories: [
         {
           id: candidate.id,
-          sensitivity: candidate.sensitivity,
+          sensitivity: body.sensitivity,
           status: "ACTIVE" as const,
           reviewState: "APPROVED" as const,
-          expiresAt: null,
-          categories: candidate.categoryKeys.map((key) => ({ key }))
+          expiresAt: body.expiresAt ? new Date(body.expiresAt) : null,
+          categories: body.categoryKeys.map((key) => ({ key }))
         }
       ]
     };
     const suggest = await this.evaluator.evaluateForClient(
       userId,
-      { ...evaluationInput, operation: "SUGGEST" },
+      { ...evaluationInput, operation: PolicyOperation.SUGGEST },
       tx
     );
     const write =
-      channel === "voice" || configuration.extraction.writeMode === "review"
+      configuration.extraction.writeMode === "review"
         ? null
         : await this.evaluator.evaluateForClient(
             userId,
-            { ...evaluationInput, operation: "WRITE" },
+            { ...evaluationInput, operation: PolicyOperation.WRITE },
             tx
           );
     const authorized =
@@ -82,7 +86,7 @@ export class CandidateApplier {
           where: {
             userId,
             status: MemoryStatus.ACTIVE,
-            body: { equals: candidate.body, mode: "insensitive" },
+            body: { equals: body.body, mode: "insensitive" },
             OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
           }
         });
@@ -93,7 +97,7 @@ export class CandidateApplier {
             where: {
               userId,
               status: MemorySuggestionStatus.QUEUED_FOR_REVIEW,
-              body: { equals: candidate.body, mode: "insensitive" }
+              body: { equals: body.body, mode: "insensitive" }
             }
           });
     const response =
@@ -107,9 +111,7 @@ export class CandidateApplier {
             userId,
             clientId,
             transaction: tx,
-            reviewOnly:
-              channel === "voice" ||
-              configuration.extraction.writeMode === "review",
+            reviewOnly: configuration.extraction.writeMode === "review",
             serverMetadata: {
               runId,
               candidateId: candidate.id,
@@ -120,19 +122,13 @@ export class CandidateApplier {
               rubric: configuration.rubric,
               processors: configuration.extraction.processors
             },
-            body: parseRequest(createMemorySuggestionRequestSchema, {
-              ...candidate,
-              purpose: channel === "voice" ? voicePurpose : webChatPurpose,
-              confidence: extractionConfidence,
-              evidence: candidate.evidence.map((e) => e.quote).join("\n"),
-              sourceMetadata: {}
-            })
+            body
           });
     const result = {
       candidateId: candidate.id,
       title: candidate.title,
       categoryKeys: candidate.categoryKeys,
-      sensitivity: candidate.sensitivity,
+      sensitivity: body.sensitivity,
       ...response
     };
     await tx.memoryCandidateApplication.create({

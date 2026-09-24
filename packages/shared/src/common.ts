@@ -1,11 +1,12 @@
 import { z } from "zod";
 
 import { memoryRequestReasonSchema } from "./enums.js";
+import { memoryInputLimits } from "./memory-input-limits.js";
 
 export const statedPurposeSchema = z
   .string()
   .trim()
-  .max(160)
+  .max(memoryInputLimits.purpose)
   .nullable()
   .optional()
   .transform((value) => value || null)

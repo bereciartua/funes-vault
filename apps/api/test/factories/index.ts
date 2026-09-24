@@ -87,6 +87,8 @@ export function createSuggestion(overrides: Record<string, unknown> = {}) {
     userId: "user_1",
     sourceType: SourceType.CHAT,
     sourceClientId: null,
+    statedPurpose: null,
+    policyId: null,
     title: "Uses TypeScript often",
     body: "The user frequently works in TypeScript projects.",
     suggestedKind: MemoryKind.PREFERENCE,

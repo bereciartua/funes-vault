@@ -15,46 +15,44 @@ import {
   summary
 } from "./disclosure-snapshot.js";
 
-/** Build an exact preview, invalidating stale authority without reopening consumed requests. */
-export async function previewDisclosure(
-  tx: Prisma.TransactionClient,
-  request: MemoryRequest,
-  candidates: Array<{ id: string; relevanceScore: number }>,
-  evaluator: PolicyEvaluationService,
-  compiler: BundleCompilerService,
+/** Approved previews inspect only the granted snapshot and never change its state. */
+export async function previewDisclosure(input: {
+  tx: Prisma.TransactionClient;
+  request: MemoryRequest;
+  candidates: Array<{ id: string; relevanceScore: number }>;
+  evaluator: PolicyEvaluationService;
+  compiler: BundleCompilerService;
   invalidate: (
     tx: Prisma.TransactionClient,
-    request: MemoryRequest
-  ) => Promise<void>
-) {
-  const context = await disclosureContext(
-    evaluator,
-    tx,
-    request,
-    candidates.map((c) => c.id)
-  );
+    request: MemoryRequest,
+    version?: string | null,
+    clientName?: string
+  ) => Promise<MemoryRequest>;
+}) {
+  const { tx, candidates, evaluator, compiler, invalidate } = input;
+  let request = input.request;
+  const previous = snapshotSchema.safeParse(request.reviewSnapshot);
+  const isApproved = request.status === MemoryRequestStatus.APPROVED;
+  const ids = isApproved
+    ? previous.success
+      ? previous.data.items.map((item) => item.memoryId)
+      : []
+    : candidates.map((c) => c.id);
+  const context = await disclosureContext(evaluator, tx, request, ids);
   if (
-    [
-      MemoryRequestStatus.NEEDS_USER_APPROVAL,
-      MemoryRequestStatus.APPROVED
-    ].some((status) => status === request.status) &&
+    request.status === MemoryRequestStatus.NEEDS_USER_APPROVAL &&
     request.policyId &&
     (!context.bound || request.policyVersion !== context.policyVersion)
   ) {
-    await invalidate(tx, request);
-    request.status = MemoryRequestStatus.NEEDS_USER_APPROVAL;
-    request.decisionReason = "policy_changed";
-    // A fresh preview may adopt the new version of the same policy, never a new policy.
-    if (context.bound) {
-      request.policyVersion = context.policyVersion;
-      await tx.memoryRequest.update({
-        where: { id: request.id },
-        data: { policyVersion: context.policyVersion }
-      });
-    }
+    request = await invalidate(
+      tx,
+      request,
+      context.bound ? context.policyVersion : undefined,
+      context.client.name
+    );
   }
   const byId = new Map(context.memories.map((m) => [m.id, m]));
-  const approved = candidates.flatMap((c) => {
+  const eligible = candidates.flatMap((c) => {
     const memory = byId.get(c.id);
 
     return memory && context.allowed.has(c.id)
@@ -62,52 +60,55 @@ export async function previewDisclosure(
       : [];
   });
   const bundle = compiler.compile({
-    candidates: approved,
+    candidates: eligible,
     tokenBudget: request.tokenBudget
   });
-  const versions = Object.fromEntries(
-    approved.map((m) => [m.id, m.updatedAt.toISOString()])
-  );
   const snapshot = {
     items: bundle.items,
-    versions,
+    versions: Object.fromEntries(
+      eligible.map((m) => [m.id, m.updatedAt.toISOString()])
+    ),
     instructions: bundle.instructions,
     policyId: context.policy?.id ?? "",
-    policyVersion: context.policy?.updatedAt.toISOString() ?? "",
+    policyVersion: context.policyVersion ?? "",
     clientVersion: clientRevision(context.client)
   };
-  if (request.status === MemoryRequestStatus.APPROVED) {
-    const previous = snapshotSchema.safeParse(request.reviewSnapshot);
-    if (
-      !previous.success ||
-      !request.approvalExpiresAt ||
-      request.approvalExpiresAt <= new Date() ||
-      previous.data.clientVersion !== snapshot.clientVersion ||
-      previous.data.items.some(
+  if (isApproved && previous.success) {
+    // A preview cannot revoke an approval when retrieval availability or ranking changes.
+    const unchanged =
+      context.bound &&
+      context.policyVersion === previous.data.policyVersion &&
+      clientRevision(context.client) === previous.data.clientVersion &&
+      request.approvalExpiresAt &&
+      request.approvalExpiresAt > new Date() &&
+      previous.data.items.every(
         (item) =>
-          !context.allowed.has(item.memoryId) ||
-          versions[item.memoryId] !== previous.data.versions[item.memoryId]
-      )
-    ) {
-      await invalidate(tx, request);
-      request.status = MemoryRequestStatus.NEEDS_USER_APPROVAL;
-      request.decisionReason = "policy_changed";
-    }
+          context.allowed.has(item.memoryId) &&
+          byId.get(item.memoryId)?.updatedAt.toISOString() ===
+            previous.data.versions[item.memoryId]
+      );
+    snapshot.items = unchanged
+      ? previous.data.items.map((item) => ({
+          ...item,
+          relevanceScore: item.relevanceScore ?? 0
+        }))
+      : [];
+    snapshot.versions = previous.data.versions;
+    snapshot.instructions = previous.data.instructions;
   }
-  const revision = createHash("sha256")
-    .update(JSON.stringify({ requestId: request.id, ...snapshot }))
-    .digest("hex");
 
   return {
     snapshot,
     preview: {
       request: summary(request, context.client.name),
-      revision,
-      items: bundle.items,
+      revision: createHash("sha256")
+        .update(JSON.stringify({ requestId: request.id, ...snapshot }))
+        .digest("hex"),
+      items: snapshot.items,
       canApprove:
         request.status === MemoryRequestStatus.NEEDS_USER_APPROVAL &&
         context.bound &&
-        bundle.items.length > 0
+        snapshot.items.length > 0
     }
   };
 }

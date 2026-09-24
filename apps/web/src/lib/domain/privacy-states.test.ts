@@ -65,7 +65,7 @@ describe("privacy state helpers", () => {
     };
 
     expect(policyRiskDescriptor(riskyPolicy, 5)).toMatchObject({
-      label: "High-risk policy",
+      label: "High-risk permissions",
       tone: "danger"
     });
     expect(

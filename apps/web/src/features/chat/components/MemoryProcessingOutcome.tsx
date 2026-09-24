@@ -1,7 +1,9 @@
 "use client";
 import {
   type MemoryProcessingResult,
-  memoryProcessingResultSchema
+  memoryProcessingResultSchema,
+  memoryRequestReasonLabel,
+  memoryRequestReasonSchema
 } from "@funes-vault/shared";
 import Link from "next/link";
 
@@ -40,6 +42,7 @@ export function MemoryProcessingOutcome({
   const queued = outcomes.filter(
     (o) => o.status === "QUEUED_FOR_REVIEW"
   ).length;
+  const denied = outcomes.filter((o) => o.status === "DENIED");
   const pending = outcomes.filter((o) =>
     ["pending_reconciliation", "needs_clarification"].includes(o.status)
   ).length;
@@ -70,8 +73,20 @@ export function MemoryProcessingOutcome({
             ? "processing skipped"
             : result.status === "pending" || result.status === "running"
               ? "processing"
-              : `${saved} saved, ${queued} queued${pending ? `, ${pending} awaiting clarification` : ""}`}
+              : `${saved} saved, ${queued} queued${denied.length ? `, ${denied.length} denied` : ""}${pending ? `, ${pending} awaiting clarification` : ""}`}
       </p>
+      {denied.map((outcome) => (
+        <p key={outcome.candidateId}>
+          {memoryRequestReasonSchema.safeParse(outcome.reason).success
+            ? memoryRequestReasonLabel(
+                memoryRequestReasonSchema.parse(outcome.reason)
+              )
+            : "The proposal was denied."}
+        </p>
+      ))}
+      {denied.some((outcome) => outcome.reason === "no_client_policy") ? (
+        <Link href="/settings/clients">Manage App permissions</Link>
+      ) : null}
       {result.reason === "processing_consent_required" ? (
         <Link href="/settings/profile">
           Enable memory processing in settings

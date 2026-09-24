@@ -98,9 +98,8 @@ export class VoiceSessionsService {
       startNewThread: request.startNewThread
     });
 
-    // Ensure the voice first-party client and its ceiling policy exist before
-    // the first tool call, so the session's disclosure rules are inspectable
-    // in Apps & access from the moment the session starts.
+    // Provision defaults only for a new voice client; starting another session
+    // preserves any permissions the owner edited or removed.
     await this.firstPartyAccess.ensureVoiceAccess(input.userId);
 
     const categories = await this.prisma.client.memoryCategory.findMany({

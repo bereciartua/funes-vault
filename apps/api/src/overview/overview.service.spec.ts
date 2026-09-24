@@ -46,7 +46,7 @@ function createPolicy(overrides: Record<string, unknown> = {}) {
     id: "policy_1",
     userId: "user_1",
     clientId: "client_1",
-    purpose: "software_development",
+
     maxSensitivity: MemorySensitivity.INTERNAL,
     operations: [PolicyOperation.READ],
     requiresConfirmation: true,

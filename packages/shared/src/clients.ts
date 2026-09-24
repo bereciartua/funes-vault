@@ -16,10 +16,11 @@ export const clientSchema = z.object({
   trustLevel: clientTrustLevelSchema,
   declaredRetention: clientRetentionSchema,
   hasToken: z.boolean(),
-  // The client list includes its latest unexpired policy for display.
+  // The client list includes its sole permission set, including expired permissions.
   policySummary: z
     .object({
       maxSensitivity: memorySensitivitySchema,
+      expiresAt: z.iso.datetime().nullable().optional(),
       allowedCategoryKeys: z.array(z.string()),
       requiresConfirmation: z.boolean()
     })

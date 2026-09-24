@@ -7,6 +7,7 @@ import {
   ReviewState,
   SourceType
 } from "@funes-vault/db";
+import { appPermissionsLabel } from "@funes-vault/shared";
 import {
   type AuditTransport,
   type CreateCaptureRequest,
@@ -23,10 +24,13 @@ import { PolicyEvaluationService } from "../policies/policy-evaluation.service.j
 import { PrismaService } from "../prisma/prisma.service.js";
 import { captureNote } from "./capture-intake.js";
 import { toMemorySuggestionResponse } from "./memory-suggestion.mapper.js";
+import {
+  proposedMemoryId,
+  recordSuggestionDenial
+} from "./suggestion-denial.js";
 import { createSuggestionRecord } from "./suggestion-records.js";
 import { suggestionAuditSubjects } from "./suggestion-subjects.js";
 import { SuggestionWriterService } from "./suggestion-writer.service.js";
-const proposedMemoryId = "proposed_memory";
 
 /**
  * Normalizes owner/client suggestion and capture intake, checks category and secret rules, and
@@ -76,17 +80,19 @@ export class SuggestionIntakeService {
       expiresAt: toDateOrNull(request.expiresAt),
       categories: request.categoryKeys.map((key) => ({ key }))
     };
-    const writePolicy = await this.policyEvaluationService.evaluateForClient(
-      input.userId,
-      {
-        clientId: input.clientId,
-        operation: PolicyOperation.WRITE,
-        candidateMemories: [proposedMemory]
-      },
-      input.transaction
-    );
+    const writePolicy = input.reviewOnly
+      ? null
+      : await this.policyEvaluationService.evaluateForClient(
+          input.userId,
+          {
+            clientId: input.clientId,
+            operation: PolicyOperation.WRITE,
+            candidateMemories: [proposedMemory]
+          },
+          input.transaction
+        );
 
-    if (writePolicy.decision === "ALLOW" && !input.reviewOnly) {
+    if (writePolicy?.decision === "ALLOW" && !input.reviewOnly) {
       return this.writer.createDirectMemoryFromSuggestion({
         userId: input.userId,
         clientId: input.clientId,
@@ -94,7 +100,7 @@ export class SuggestionIntakeService {
         request,
         transaction: input.transaction,
         policyVersion: writePolicy.policyVersion,
-        policyLabel: `${writePolicy.client?.name ?? "App"} permissions`,
+        policyLabel: appPermissionsLabel(writePolicy.client?.name ?? "App"),
         serverMetadata: input.serverMetadata,
         policyId: writePolicy.policyId
       });
@@ -111,21 +117,16 @@ export class SuggestionIntakeService {
     );
 
     if (policy.decision === "DENY") {
-      const event = await this.auditTrail.createAuditEvent(input.transaction, {
-        userId: input.userId,
-        clientId: input.clientId,
-        type: AuditEventType.MEMORY_SUGGESTION_DENIED,
-        actorType: AuditActorType.CLIENT,
-        actorId: input.clientId,
-        metadata: {
+      const event = await recordSuggestionDenial(
+        input.transaction,
+        this.auditTrail,
+        {
+          userId: input.userId,
+          clientId: input.clientId,
           statedPurpose: request.purpose,
-          policyId: policy.policyId,
-          policyVersion: policy.policyVersion,
-          reason: policy.reason,
-          decision: policy.decision,
-          operation: "SUGGEST"
+          policy
         }
-      });
+      );
 
       return {
         suggestionId: null,
@@ -174,7 +175,7 @@ export class SuggestionIntakeService {
           suggestion,
           clientId: input.clientId,
           policyId: policy.policyId,
-          policyLabel: `${policy.client?.name ?? "App"} permissions`
+          policyLabel: appPermissionsLabel(policy.client?.name ?? "App")
         })
       });
 
@@ -229,7 +230,7 @@ export class SuggestionIntakeService {
           suggestion: created,
           clientId: null,
           policyId: null,
-          policyLabel: "App permissions"
+          policyLabel: null
         })
       });
 
