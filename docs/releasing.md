@@ -145,7 +145,6 @@ of the reviewed Git index. Ordinary paths contribute their blob IDs and modes;
 version-bearing files are normalized from their staged Git content. Checkout line
 endings and clean/smudge filters therefore do not alter the fingerprint. Verification
 also rejects unstaged source edits, while allowing version and release-note edits.
-Versions are normalized for that fingerprint;
 `CHANGELOG.md` and the plan itself are excluded so notes can be finalized. All
 other code, configuration and dependency changes invalidate the assessment.
 CI validates pending plans and prevents unnoticed additions to the candidate. During
@@ -248,9 +247,17 @@ its notes while resolving merge conflicts, update the compatibility rationale an
 commit the merged candidate on a `chore/release-*` branch. Rerun
 `pnpm release:prepare <bump> /tmp/funes-release.md`: it accepts a baseline that has
 advanced along the existing release history and recalculates the version and
-comparison link from the hotfix tag. For example, a pending `1.0.1` patch becomes
-`1.0.2` after hotfix `v1.0.1`, while a pending `2.0.0` major remains `2.0.0` but
-compares against `v1.0.1`. Do not hand-edit the plan or fingerprint.
+comparison link from the hotfix tag. For example, a pending `2.0.0` major remains
+`2.0.0` but compares against `v1.0.1`. Do not hand-edit the plan or fingerprint.
+
+Preparation never folds an already-tagged version's notes into a new release. If
+the plan was edited after publication, restore it with
+`git restore --source=vX.Y.Z -- .release/plan.json`, commit, and prepare again.
+If a hotfix took the pending patch's version number, first save the pending notes
+outside the checkout. Restore both `.release/plan.json` and `CHANGELOG.md` from
+the hotfix tag, then put only the still-unreleased entries under `Unreleased`.
+Commit that reconciliation before preparing the next version. A pending `1.0.1`
+patch can then become `1.0.2` while preserving the hotfix's published `1.0.1` notes.
 
 Deployment remains separately triggered. Follow [Deployment and operations](deployment-and-operations.md):
 verify a database backup, review the release's migration/rollback instructions,

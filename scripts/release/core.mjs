@@ -217,11 +217,23 @@ function mergeSubsections(notes) {
     if (parts[i + 1].trim()) section.bodies.push(parts[i + 1].trim());
     sections.set(key, section);
   }
+  const order = [
+    "added",
+    "changed",
+    "deprecated",
+    "removed",
+    "fixed",
+    "security"
+  ];
+  const rank = ({ title }) => {
+    const index = order.indexOf(title.toLowerCase());
+    return index < 0 ? order.length : index;
+  };
   return [
     intro.trim(),
-    ...[...sections.values()].map(
-      ({ title, bodies }) => `### ${title}\n\n${bodies.join("\n\n")}`
-    )
+    ...[...sections.values()]
+      .sort((a, b) => rank(a) - rank(b))
+      .map(({ title, bodies }) => `### ${title}\n\n${bodies.join("\n\n")}`)
   ]
     .filter(Boolean)
     .join("\n\n");

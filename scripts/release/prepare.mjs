@@ -43,6 +43,12 @@ try {
     currentVersion !== previousTag.slice(1) ||
     (oldPlan && !isPublishedVersion(currentVersion));
   assert(
+    !pending ||
+      git("tag", "--merged", "HEAD", "--list", `v${currentVersion}`) !==
+        `v${currentVersion}`,
+    `v${currentVersion} is already published; restore .release/plan.json from the tag instead of reassessing it`
+  );
+  assert(
     !pending || oldPlan?.version === currentVersion,
     "Unrecognized version changes; reconcile the pending release first"
   );
@@ -53,7 +59,14 @@ try {
     );
     // A merged hotfix advances the baseline; divergent/replaced histories must
     // still be reconciled explicitly rather than silently accepted.
-    git("merge-base", "--is-ancestor", oldPlan.previousTag, previousTag);
+    try {
+      git("merge-base", "--is-ancestor", oldPlan.previousTag, previousTag);
+    } catch {
+      assert(
+        false,
+        `Pending baseline ${oldPlan.previousTag} is not an ancestor of ${previousTag}; fetch missing tags or reconcile the release history explicitly`
+      );
+    }
   }
   const date = new Date().toISOString().slice(0, 10);
   const changelog = finalizeChangelog(

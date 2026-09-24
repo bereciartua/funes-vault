@@ -44,8 +44,7 @@ test("refresh merges new and pending subsections without duplicating headings", 
 
 for (const [bump, expected] of [
   ["major", "2.0.0"],
-  ["minor", "1.1.0"],
-  ["patch", "1.0.2"]
+  ["minor", "1.1.0"]
 ]) {
   test(`a pending ${bump} release can be reassessed after a merged hotfix`, (t) => {
     const f = fixture(t);
