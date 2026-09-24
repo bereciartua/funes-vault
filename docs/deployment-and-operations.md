@@ -257,5 +257,6 @@ alone does not publish a release or change repository visibility.
 A manual dispatch accepts a target-platform choice. Keep the multi-architecture
 default for releases, or select `linux/amd64` when publishing for an x86 server
 and the ARM build cannot complete under emulation. Tag-triggered runs always build
-both architectures. Runs dispatched from a non-default branch publish their
-`sha-<commit>` tag without replacing `latest`.
+both architectures. Only `v*` tag runs move `latest`; a manual dispatch from
+any branch publishes its `sha-<commit>` tag (and version tags if the ref is a
+release tag) without touching `latest`.
