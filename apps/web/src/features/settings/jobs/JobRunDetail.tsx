@@ -1,5 +1,6 @@
 "use client";
 import {
+  consolidationFailureMessage,
   consolidationSemanticMetadataSchema,
   type JobRun
 } from "@funes-vault/shared";
@@ -10,6 +11,7 @@ import { formatDateTime } from "../../../lib/dates";
 import { label } from "../../../lib/domain/labels";
 import { pluralize } from "../../../lib/text";
 import { consolidationActionSubjects } from "./consolidation-subjects";
+import { ConsolidationExclusions } from "./ConsolidationExclusions";
 export function JobRunDetail({
   job,
   onRetry,
@@ -23,22 +25,34 @@ export function JobRunDetail({
   const semantic = consolidationSemanticMetadataSchema.safeParse(
     job.metadata.semantic
   ).data;
-  const canRetry = job.status === "FAILED" || job.status === "CANCELLED";
+  const needsChange =
+    semantic &&
+    [
+      "processing_consent_required",
+      "provider_not_configured",
+      "source_versions_changed",
+      "secret_like_content",
+      "pair_limit_reached"
+    ].includes(semantic.reason ?? "");
+  const canRetry =
+    (job.status === "FAILED" || job.status === "CANCELLED") && !needsChange;
+  const error =
+    job.error && semantic?.reason
+      ? consolidationFailureMessage(semantic.reason)
+      : job.error;
+  const allSourcesExcluded =
+    (semantic?.skippedSources ?? 0) > 0 &&
+    (semantic?.skippedSources ?? 0) >= (consolidation?.recentMemoryCount ?? 0);
 
   return (
     <section className="job-detail" aria-label="Job run details">
-      {job.error ? <pre className="job-error">{job.error}</pre> : null}
+      {error ? <p className="job-error">{error}</p> : null}
       <p>
         {job.attempts} of {job.maxAttempts} attempts
         {job.startedAt ? ` · started ${formatDateTime(job.startedAt)}` : ""}
         {job.finishedAt ? ` · finished ${formatDateTime(job.finishedAt)}` : ""}
       </p>
-      {semantic ? (
-        <p>
-          Semantic processing: {semantic.status} · {semantic.model} ·{" "}
-          {semantic.skippedPairs ?? 0} pairs skipped
-        </p>
-      ) : null}
+      {semantic ? <ConsolidationExclusions semantic={semantic} /> : null}
       {consolidation ? (
         <>
           <p>
@@ -47,14 +61,19 @@ export function JobRunDetail({
               "memory",
               "memories"
             )}{" "}
-            inspected · {pluralize(consolidation.candidateCount, "candidate")} ·{" "}
-            {pluralize(consolidation.suggestionsCreated, "suggestion")} ·{" "}
-            {pluralize(consolidation.actionsAutoApplied, "change")} applied ·{" "}
-            {pluralize(consolidation.noActionPairs, "pair")} unchanged
+            considered · {pluralize(consolidation.candidateCount, "candidate")}{" "}
+            · {pluralize(consolidation.suggestionsCreated, "suggestion")} ·{" "}
+            {pluralize(consolidation.actionsAutoApplied, "change")} applied
           </p>
           <div className="job-action-list">
             {consolidation.actions.length === 0 ? (
-              <p className="muted">No consolidation actions were produced.</p>
+              <p className="muted">
+                {job.status === "SUCCEEDED"
+                  ? allSourcesExcluded
+                    ? "No memories were eligible for comparison. Local maintenance produced no changes."
+                    : "No consolidation changes were needed for the memories checked."
+                  : "No consolidation changes were produced by this run."}
+              </p>
             ) : (
               consolidation.actions.map((action) => (
                 <article

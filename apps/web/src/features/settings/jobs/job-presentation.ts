@@ -1,4 +1,7 @@
-import type { JobRun } from "@funes-vault/shared";
+import {
+  consolidationSemanticMetadataSchema,
+  type JobRun
+} from "@funes-vault/shared";
 
 import { jobTypeLabel } from "../../../lib/domain/labels";
 import { pluralize } from "../../../lib/text";
@@ -6,6 +9,13 @@ import type { FeedTone } from "../settings-scaffolding";
 export function jobRunSentence(job: JobRun) {
   const type = jobTypeLabel(job.type);
   if (job.status === "SUCCEEDED") {
+    const semantic = consolidationSemanticMetadataSchema.safeParse(
+      job.metadata.semantic
+    ).data;
+    if (job.type === "CONSOLIDATE_MEMORIES" && semantic?.skippedSources) {
+      return `Consolidation completed · ${pluralize(semantic.skippedSources, "memory", "memories")} skipped`;
+    }
+
     return `${type} succeeded · ${pluralize(job.attempts || 1, "attempt")}`;
   }
   if (job.status === "FAILED") {

@@ -69,7 +69,14 @@ export const consolidationSemanticMetadataSchema = z
   .object({
     status: z.string().optional(),
     model: z.string().optional(),
-    skippedPairs: z.number().int().nonnegative().optional()
+    maxSensitivity: memorySensitivitySchema.optional(),
+    reason: z.string().nullable().optional(),
+    skippedPairs: z.number().int().nonnegative().optional(),
+    skippedSources: z.number().int().nonnegative().optional(),
+    skippedSourceReasons: z
+      .record(z.string(), z.number().int().nonnegative())
+      .optional(),
+    deferredPairs: z.number().int().nonnegative().optional()
   })
   .catchall(z.unknown());
 export type MemoryProcessingTask = z.infer<typeof memoryProcessingTaskSchema>;
@@ -89,3 +96,24 @@ export type MemoryProcessingResult = z.infer<
 export type ConsolidationSemanticMetadata = z.infer<
   typeof consolidationSemanticMetadataSchema
 >;
+
+export function consolidationFailureMessage(reason?: string | null) {
+  switch (reason) {
+    case "processing_consent_required":
+      return "Memory comparison needs your processing permission. Review it in Settings → Profile before running consolidation again.";
+    case "provider_not_configured":
+      return "Memory comparison is unavailable because its provider is not configured. Ask your vault administrator to check the processing configuration.";
+    case "source_versions_changed":
+      return "Some memories changed after this run started. Start a new consolidation run to check their current versions.";
+    case "pair_limit_reached":
+      return "The comparison limit was reached. Some memory comparisons remain unfinished.";
+    case "secret_like_content":
+      return "Memory comparison was blocked because the request contained possible credentials. Review your memories before starting another run.";
+    case "rate_limited":
+      return "The comparison service is receiving too many requests. Wait a few minutes, then retry.";
+    case "deadline_or_cancelled":
+      return "Memory comparison did not finish within the time limit. You can retry this run.";
+    default:
+      return "Memory comparison could not finish. You can retry this run. Any local maintenance already completed is recorded below.";
+  }
+}
