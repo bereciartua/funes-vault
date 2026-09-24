@@ -101,7 +101,8 @@ export function processingE2eHarness() {
     writeMode: "policy" | "review",
     consolidation = "system_2"
   ) {
-    Object.defineProperty(app.get(MemoryProcessingConfigService), "effective", {
+    const service = app.get(MemoryProcessingConfigService);
+    Object.defineProperty(service, "effective", {
       configurable: true,
       value: resolveProcessingConfiguration(
         apiEnvSchema.parse({
@@ -113,6 +114,9 @@ export function processingE2eHarness() {
         })
       )
     });
+    vi.spyOn(service, "forUser").mockImplementation(
+      async () => service.effective
+    );
   }
   async function source(
     userId: string,

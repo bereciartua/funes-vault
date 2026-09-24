@@ -1,4 +1,4 @@
-import { ReviewState } from "@funes-vault/db";
+import { type Prisma, ReviewState } from "@funes-vault/db";
 import { MemoryStatus } from "@funes-vault/db";
 import { isAtMostSensitivity } from "@funes-vault/shared/domain";
 import { Injectable } from "@nestjs/common";
@@ -42,6 +42,10 @@ export class ConsolidationLlmService {
 
   get configuration() {
     return this.config.effective;
+  }
+
+  configurationForUser(userId: string, tx?: Prisma.TransactionClient) {
+    return this.config.forUser(userId, tx);
   }
 
   async judge(

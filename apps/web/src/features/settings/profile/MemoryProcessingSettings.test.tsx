@@ -22,62 +22,62 @@ const capabilities = {
     processors: ["typesafe"],
     maxSensitivity: "INTERNAL"
   },
-  consents: []
+  options: {
+    extraction: { typesafe: true, openai: true },
+    consolidation: { typesafe: true, openai: true }
+  }
 };
 describe("memory processing controls", () => {
   beforeEach(() =>
     vi.mocked(apiFetch).mockReset().mockResolvedValue(capabilities)
   );
   afterEach(cleanup);
-  it("discloses hybrid processing and grants only the chosen consent scope", async () => {
+  it("discloses hybrid processing and selects OpenAI for extraction", async () => {
     render(
       <ApiProvider apiUrl="http://api">
         <MemoryProcessingSettings />
       </ApiProvider>
     );
-    await screen.findByText(/TypeSafe Jev \(memory classifier\) \+ OpenAI/);
+    await screen.findByRole("combobox", {
+      name: "Provider for conversational extraction"
+    });
     expect(screen.getByText(/before sensitivity is known/)).toBeTruthy();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Allow TypeSafe extraction" })
+    fireEvent.change(
+      screen.getByRole("combobox", {
+        name: "Provider for conversational extraction"
+      }),
+      { target: { value: "system_2" } }
     );
     await waitFor(() =>
       expect(apiFetch).toHaveBeenCalledWith(
         expect.objectContaining({
-          path: "/v1/memory-processing/consent",
-          body: { scope: "extraction", version: 1, granted: true }
+          path: "/v1/memory-processing/provider",
+          body: { scope: "extraction", system: "system_2" }
         })
       )
     );
     expect(
-      screen.getByRole("button", { name: "Allow TypeSafe consolidation" })
+      screen.getByRole("combobox", {
+        name: "Provider for saved-memory consolidation"
+      })
     ).toBeTruthy();
   });
-  it("revokes an existing scope without changing the other task", async () => {
-    vi.mocked(apiFetch).mockResolvedValue({
-      ...capabilities,
-      consents: [
-        {
-          processor: "typesafe",
-          scope: "consolidation",
-          version: 1,
-          revokedAt: null
-        }
-      ]
-    });
+  it("selects OpenAI for consolidation without changing extraction", async () => {
     render(
       <ApiProvider apiUrl="http://api">
         <MemoryProcessingSettings />
       </ApiProvider>
     );
-    fireEvent.click(
-      await screen.findByRole("button", {
-        name: "Revoke TypeSafe consolidation"
-      })
+    fireEvent.change(
+      await screen.findByRole("combobox", {
+        name: "Provider for saved-memory consolidation"
+      }),
+      { target: { value: "system_2" } }
     );
     await waitFor(() =>
       expect(apiFetch).toHaveBeenCalledWith(
         expect.objectContaining({
-          body: { scope: "consolidation", version: 1, granted: false }
+          body: { scope: "consolidation", system: "system_2" }
         })
       )
     );

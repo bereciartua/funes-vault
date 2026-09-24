@@ -29,6 +29,7 @@ export function JobRunDetail({
     semantic &&
     [
       "processing_consent_required",
+      "processing_provider_changed",
       "provider_not_configured",
       "source_versions_changed",
       "secret_like_content",

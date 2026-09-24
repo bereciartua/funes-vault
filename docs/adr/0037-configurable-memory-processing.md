@@ -2,7 +2,7 @@
 
 Date: 2026-09-20
 
-Status: accepted
+Status: accepted; provider selection and consent superseded by [0046](0046-owner-selected-memory-processing-providers.md)
 
 ## Context and problem
 

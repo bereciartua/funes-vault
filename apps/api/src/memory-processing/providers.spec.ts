@@ -2,10 +2,8 @@ import { Test } from "@nestjs/testing";
 import { describe, expect, it, vi } from "vitest";
 
 import { memoryFixtures } from "../../test/fixtures/memory-processing.js";
-import { AuditTrailService } from "../audit-trail/audit-trail.service.js";
 import { apiEnvSchema, validateEnvironment } from "../config.js";
 import { JevMemoryConsolidationProvider } from "../consolidation/consolidation.providers.js";
-import { PrismaService } from "../prisma/prisma.service.js";
 import type {
   Candidate,
   ExtractionInput,
@@ -16,6 +14,7 @@ import {
   sourceSpans
 } from "./jev-memory-extraction.provider.js";
 import { resolveProcessingConfiguration } from "./memory-processing-config.service.js";
+import { MemoryProcessingConfigService } from "./memory-processing-config.service.js";
 import { ProcessingPermissionService } from "./processing-permission.service.js";
 import { validateCandidate } from "./validation.js";
 const input: ExtractionInput = {
@@ -101,6 +100,37 @@ describe("privacy: memory processing contracts", () => {
     expect(config.consolidation.available).toBe(true);
     expect(config.extraction.available).toBe(false);
   });
+  it("defaults each task to TypeSafe when its required keys exist", () => {
+    const both = resolveProcessingConfiguration(
+      apiEnvSchema.parse({ OPENAI_API_KEY: "fake", TYPESAFE_API_KEY: "fake" })
+    );
+    expect(both.extraction.system).toBe("system_1");
+    expect(both.consolidation.system).toBe("system_1");
+    const explicit = resolveProcessingConfiguration(
+      apiEnvSchema.parse({
+        OPENAI_API_KEY: "fake",
+        TYPESAFE_API_KEY: "fake",
+        MEMORY_EXTRACTION_SYSTEM: "system_2"
+      })
+    );
+    expect(explicit.extraction.system).toBe("system_2");
+    expect(explicit.consolidation.system).toBe("system_1");
+  });
+  it("keeps voice extraction identity stable when only consolidation changes", () => {
+    const env = apiEnvSchema.parse({
+      OPENAI_API_KEY: "fake",
+      TYPESAFE_API_KEY: "fake"
+    });
+    const typesafe = resolveProcessingConfiguration(env);
+    const openaiConsolidation = resolveProcessingConfiguration(env, {
+      extraction: "system_1",
+      consolidation: "system_2"
+    });
+    expect(openaiConsolidation.extractionFingerprint).toBe(
+      typesafe.extractionFingerprint
+    );
+    expect(openaiConsolidation.fingerprint).not.toBe(typesafe.fingerprint);
+  });
   it("rejects explicitly selected dependencies without keys", () => {
     vi.stubEnv("MEMORY_EXTRACTION_SYSTEM", "system_1");
     vi.stubEnv("TYPESAFE_API_KEY", "");
@@ -180,26 +210,24 @@ describe("privacy: memory processing contracts", () => {
     await expect(provider.extract(input, context())).rejects.toThrow("outage");
     expect(normalize).toHaveBeenCalledTimes(1);
   });
-  it("guards the entire payload and rechecks consent at every stage", async () => {
-    const findUnique = vi
-      .fn()
-      .mockResolvedValue({ version: 1, revokedAt: null });
+  it("guards the entire payload and rechecks provider at every stage", async () => {
+    const forUser = vi.fn().mockResolvedValue({
+      extraction: { processors: ["typesafe", "openai"], available: true }
+    });
     const module = await Test.createTestingModule({
       providers: [
         ProcessingPermissionService,
-        {
-          provide: PrismaService,
-          useValue: { client: { processingConsent: { findUnique } } }
-        },
-        { provide: AuditTrailService, useValue: { createAuditEvent: vi.fn() } }
+        { provide: MemoryProcessingConfigService, useValue: { forUser } }
       ]
     }).compile();
     const permission = module.get(ProcessingPermissionService);
-    await permission.check("user", "extraction", ["typesafe"], input);
-    findUnique.mockResolvedValue({ version: 1, revokedAt: new Date() });
+    await permission.check("user", "extraction", ["typesafe", "openai"], input);
+    forUser.mockResolvedValue({
+      extraction: { processors: ["openai"], available: true }
+    });
     await expect(
-      permission.check("user", "extraction", ["typesafe"], input)
-    ).rejects.toThrow("processing_consent_required");
+      permission.check("user", "extraction", ["typesafe", "openai"], input)
+    ).rejects.toThrow("processing_provider_changed");
     await expect(
       permission.check("user", "extraction", ["openai"], {
         context: [

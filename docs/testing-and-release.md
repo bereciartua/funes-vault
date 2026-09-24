@@ -96,8 +96,8 @@ REDIS_URL=redis://localhost:6379 pnpm test:e2e:live
 Use a synthetic recording with a clear remember request and leading/trailing silence.
 Chromium reads the WAV as its microphone. The test checks structural persistence,
 processing status and durable result links rather than exact model wording. It
-revokes its extraction consent afterward. To exercise the TypeSafe Jev classifier,
-set the task selector and credentials described in [memory processing](memory-processing.md).
+uses the selected extraction provider. To exercise the TypeSafe Jev classifier,
+configure its credentials and select it as described in [memory processing](memory-processing.md).
 Physical-device installation, microphone acoustics and provider quality still need
 separate evaluation. Never use a personal recording or vault as a smoke fixture.
 

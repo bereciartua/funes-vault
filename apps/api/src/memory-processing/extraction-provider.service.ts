@@ -73,7 +73,8 @@ export class ExtractionProviderService {
       }
       if (
         voice.extractionFingerprint &&
-        voice.extractionFingerprint !== run.fingerprint
+        voice.extractionFingerprint !==
+          (configuration.extractionFingerprint || run.fingerprint)
       ) {
         throw new ProcessingBlocked("reconnect_voice_session");
       }

@@ -161,12 +161,12 @@ flowchart TD
     Audit --> UI[Typed result to chat and voice]
 ```
 
-Extraction and consolidation choose providers independently. System 2 is the
+Extraction and consolidation choose providers independently for each owner. System 2 is the
 OpenAI LLM pipeline. System 1 uses the TypeSafe Jev classifier; extraction also
 uses OpenAI normalization. These configuration names are defined in the
 [processing guide](docs/memory-processing.md). No automatic provider fallback
 occurs. Expired claims and late provider results cannot write after cancellation
-or revoked permission. Retries retain the original configuration snapshot unless
+or a provider switch. Retries retain the original configuration snapshot unless
 an explicit, audited reprocess is allowed.
 
 Consolidation gathers bounded candidates, separates deterministic maintenance from

@@ -39,12 +39,12 @@ describe("skipped capture recovery", () => {
       screen.queryByRole("button", { name: "Retry memory processing" })
     ).toBeNull();
   });
-  it("shows missing consent with a settings link", () => {
+  it("shows an old permission failure with a provider selector link", () => {
     show("processing_consent_required");
-    expect(screen.getByText(/needs your permission/)).toBeTruthy();
+    expect(screen.getByText(/Choose a provider in settings/)).toBeTruthy();
     expect(
       screen
-        .getByRole("link", { name: "Enable memory processing in settings" })
+        .getByRole("link", { name: "Choose a memory processing provider" })
         .getAttribute("href")
     ).toBe("/settings/profile");
   });

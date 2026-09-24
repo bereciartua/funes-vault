@@ -11,25 +11,25 @@ metaphor: **System 1** (`system_1`) is the classifier-led pipeline; **System 2**
 claims. TypeSafe is the classifier vendor, **Jev** its model, and **Noul probabilities**
 are its SDK's per-label probability outputs used by application thresholds.
 
-Conversational extraction and semantic consolidation are independent deployment tasks. Each defaults to System 2 (OpenAI). System 1 uses TypeSafe Jev; extraction additionally uses OpenAI to normalize selected passages. Chat answering, explicit memory editing, voice transport, embeddings and retrieval retain their existing providers. External MCP suggestions, manual CRUD, quick capture, import and standalone guided onboarding keep their contracts.
+Conversational extraction and semantic consolidation have independent owner-selectable providers. With no owner choice, an explicit deployment selector wins; otherwise TypeSafe Jev is the default when its required credentials are configured, and OpenAI is the default when they are not. System 1 uses TypeSafe Jev; extraction additionally uses OpenAI to normalize selected passages. Chat answering, explicit memory editing, voice transport, embeddings and retrieval retain their existing providers. External MCP suggestions, manual CRUD, quick capture, import and standalone guided onboarding keep their contracts.
 
 ## Configuration
 
 API and worker must receive identical task settings and restart together. Empty selectors retain credential-free vault access and report unavailable capabilities; explicitly selecting a task validates its credentials at startup. Credentials remain server-side environment secrets.
 
-| Variable                                                                                      | Default                  |
-| --------------------------------------------------------------------------------------------- | ------------------------ |
-| MEMORY_EXTRACTION_SYSTEM / MEMORY_CONSOLIDATION_SYSTEM                                        | system_2 when omitted    |
-| MEMORY_EXTRACTION_LLM_MODEL / MEMORY_CONSOLIDATION_LLM_MODEL / MEMORY_NORMALIZATION_LLM_MODEL | OPENAI_CHAT_MODEL        |
-| MEMORY_EXTRACTION_JEV_MODEL / MEMORY_CONSOLIDATION_JEV_MODEL                                  | jev-1.13.0               |
-| TYPESAFE_API_KEY                                                                              | unset                    |
-| MEMORY_EXTRACTION_TIMEOUT_MS                                                                  | 15000                    |
-| MEMORY_CONSOLIDATION_TIMEOUT_MS                                                               | 60000                    |
-| MEMORY_EXTRACTION_WRITE_MODE                                                                  | policy (or review)       |
-| MEMORY_CONSOLIDATION_APPLY_MODE                                                               | user_setting (or review) |
-| MEMORY_CONSOLIDATION_MAX_SENSITIVITY                                                          | INTERNAL                 |
+| Variable                                                                                      | Default                                      |
+| --------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| MEMORY_EXTRACTION_SYSTEM / MEMORY_CONSOLIDATION_SYSTEM                                        | TypeSafe when configured; otherwise system_2 |
+| MEMORY_EXTRACTION_LLM_MODEL / MEMORY_CONSOLIDATION_LLM_MODEL / MEMORY_NORMALIZATION_LLM_MODEL | OPENAI_CHAT_MODEL                            |
+| MEMORY_EXTRACTION_JEV_MODEL / MEMORY_CONSOLIDATION_JEV_MODEL                                  | jev-1.13.0                                   |
+| TYPESAFE_API_KEY                                                                              | unset                                        |
+| MEMORY_EXTRACTION_TIMEOUT_MS                                                                  | 15000                                        |
+| MEMORY_CONSOLIDATION_TIMEOUT_MS                                                               | 60000                                        |
+| MEMORY_EXTRACTION_WRITE_MODE                                                                  | policy (or review)                           |
+| MEMORY_CONSOLIDATION_APPLY_MODE                                                               | user_setting (or review)                     |
+| MEMORY_CONSOLIDATION_MAX_SENSITIVITY                                                          | INTERNAL                                     |
 
-For initial Jev use set the chosen selector to `system_1`, configure TypeSafe credentials, and set the relevant review override to `review`. Extraction needs OpenAI credentials in both systems. Jev consolidation independently works without OpenAI credentials. The user then enables the corresponding TypeSafe permission in Profile settings. Do not copy keys into configuration responses, logs or the browser.
+Extraction needs OpenAI credentials in both systems. Jev consolidation independently works without OpenAI credentials. Owners choose a provider separately for each task in Profile settings. Selecting a provider is immediately effective for new work and authorizes that task's processing; there is no additional TypeSafe permission button. The API rejects a choice whose credentials are unavailable. Existing explicit TypeSafe revocations migrate to OpenAI choices, preserving the owner's intent. Do not copy keys into configuration responses, logs or the browser.
 
 The effective non-secret configuration and fingerprint are logged at startup and available through authenticated `GET /v1/memory-processing/capabilities`. Compare API and worker startup fingerprints after every deployment. A mismatch requires correcting environment variables and restarting both processes before enabling jobs. Existing voice sessions must reconnect after a switch.
 
@@ -37,7 +37,7 @@ The effective non-secret configuration and fingerprint are logged at startup and
 
 Jev extraction selects source passages, OpenAI normalizes only selected passages, and Jev independently checks support, atomicity, kind, sensitivity and each category. A rejected selection does not invoke normalization. No provider automatically falls back to another. Question/rubric v1 thresholds are conservative product rules, not measured accuracy. Distribution confidence, Noul probabilities and LLM confidence remain distinct diagnostics; candidate epistemic confidence is not replaced by classifier probability.
 
-TypeSafe consent is version 1, separate for extraction and consolidation, revocable, and audited. Deployment selection is not user consent. Extraction sends unlabelled current text plus limited preceding context, so its disclosure happens before inferred sensitivity. Every stage checks permission and scans the complete outbound payload for secret-like content. Revocation stops subsequent stages and commit; already transmitted text cannot be recalled. Voice audio continues to go only to OpenAI Realtime. Consolidation filters known sensitivity and secret-like content before serialization. The new default INTERNAL ceiling intentionally skips sensitive memories; local expiration and exact duplicate maintenance are unchanged.
+Owner provider choice is separate for extraction and consolidation and changes are audited. Server configuration selects the initial provider when the owner has no saved choice. Extraction sends unlabelled current text plus limited preceding context, so its disclosure happens before inferred sensitivity. Every stage checks the current provider choice and scans the complete outbound payload for secret-like content. Switching providers stops subsequent stages and commit from the previous choice; already transmitted text cannot be recalled. Voice audio continues to go only to OpenAI Realtime. Consolidation filters known sensitivity and secret-like content before serialization. The default INTERNAL ceiling intentionally skips sensitive memories; local expiration and exact duplicate maintenance are unchanged.
 
 ## Durable outcomes
 
@@ -45,7 +45,7 @@ Text clients should supply `submissionId` on both message routes. Uniqueness is 
 
 One `MemoryExtractionRun` belongs to each source turn. Claims have attempt counters, expiring leases and claim tokens. Provider calls happen outside database transactions. Commit locks the owner/run, rechecks permission, validates the claim, and atomically writes candidates, suggestions/memories, provenance and durable result links. An expired owner cannot commit after a replacement claim. Cancellation before commit leaves no candidate writes; a completed commit survives answer failure. Source/candidate identity prevents retries from normalizing into duplicate writes.
 
-Results distinguish completed no-op, partial, skipped and failed. Source-turn processing metadata survives reconnect; `GET /v1/memory-processing/sources/:sourceId` reads it and `POST .../:sourceId/retry` retries incomplete work. Completed turns never rerun on deployment changes. Ordinary retries use the original configuration snapshot, even after a deployment switch. Unavailable original credentials return `configuration_unavailable`. An explicit `POST .../:sourceId/reprocess` can adopt the current configuration for a failed or skipped run; it records the old and new fingerprints in an audit. Completed sources are never reprocessed.
+Results distinguish completed no-op, partial, skipped and failed. Source-turn processing metadata survives reconnect; `GET /v1/memory-processing/sources/:sourceId` reads it and `POST .../:sourceId/retry` retries incomplete work. Completed turns never rerun on provider changes. Ordinary retries use the original configuration snapshot. A retry with a different current provider reports `processing_provider_changed`; the UI offers explicit `POST .../:sourceId/reprocess` for failed or skipped runs. Reprocessing adopts the current configuration and records the old and new fingerprints in an audit. Completed sources are never reprocessed.
 
 Voice capture-result and completion calls wait up to 30 seconds for their bound user item to finish transcript persistence and extraction, including when a tool arrives before transcription. On timeout the server still returns the authoritative current status; pending is not evidence that a run is actively running. Starting a new utterance does not rebind an already waiting call. Skipped outcomes show their recovery reason, and the UI omits retries for expired voice sessions, changed voice configuration and secret-like input because replaying the same source cannot resolve those conditions.
 
@@ -55,7 +55,7 @@ Semantic consolidation uses supplied pair IDs, source versions and timestamps co
 
 Provider failures, missing configuration or consent, changed source versions and comparison limits still leave the job incomplete. Failed outcomes emit `JOB_FAILED`; completed runs, including expected exclusions, emit `JOB_COMPLETED`. The job detail explains the cause and offers Retry for transient failures. Cases requiring changed settings, permission, content or a new run explain that action instead. Older runs without exclusion reasons retain their recorded status and explicitly say those reasons were not recorded. Job details do not describe memory counts as pair comparisons.
 
-Full vault export includes processing runs, pending candidate payloads, result links and consent records. Filtered memory exports omit unlabelled processing records. Import does not activate exported consent or replay extraction. Account deletion cascades processing records. Audits contain identifiers and operational metadata, never raw prompts, provider error bodies or credentials.
+Full vault export includes processing runs, pending candidate payloads, result links, legacy consent records and provider choices. Filtered memory exports omit unlabelled processing records. Import does not activate exported provider choices or replay extraction. Account deletion cascades processing records. Audits contain identifiers and operational metadata, never raw prompts, provider error bodies or credentials.
 
 ## Verification and live smoke
 
@@ -68,7 +68,7 @@ MEMORY_EXTRACTION_SYSTEM=system_1 pnpm --filter @funes-vault/api smoke:memory-pr
 MEMORY_CONSOLIDATION_SYSTEM=system_1 pnpm --filter @funes-vault/api smoke:memory-processing consolidation
 ```
 
-The smoke command uses committed synthetic fixtures only. `extraction all` runs the full fixture set; expected secret blocking is reported as such. It prints output, actual model versions, usage and elapsed time. These are observations, not quality or speed claims. Browser verification uses an isolated test vault, enables TypeSafe consent, sends synthetic claims, checks queued outcomes, then reviews them in the inbox. Real microphone/Realtime transport needs a separate manual session; mocked transport proves application integration only.
+The smoke command uses committed synthetic fixtures only. `extraction all` runs the full fixture set; expected secret blocking is reported as such. It prints output, actual model versions, usage and elapsed time. These are observations, not quality or speed claims. Browser verification uses an isolated test vault, selects TypeSafe, sends synthetic claims, checks queued outcomes, then reviews them in the inbox. Real microphone/Realtime transport needs a separate manual session; mocked transport proves application integration only.
 
 ## Deployment
 

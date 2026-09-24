@@ -17,12 +17,6 @@ test.use({
     ]
   }
 });
-test.afterEach(async ({ page }) => {
-  // Do not leave paid-provider processing enabled for later local smoke runs.
-  await page.request.post(`${api}/v1/memory-processing/consent`, {
-    data: { scope: "extraction", granted: false, version: 1 }
-  });
-});
 test("captures a synthetic voice turn through real Realtime and memory processing", async ({
   page
 }) => {
@@ -34,12 +28,11 @@ test("captures a synthetic voice turn through real Realtime and memory processin
   await expect(
     page.getByRole("navigation", { name: "Application navigation" })
   ).toBeVisible();
-  await page.goto("/settings/profile");
-  const consent = await page.request.post(
-    `${api}/v1/memory-processing/consent`,
-    { data: { scope: "extraction", granted: true, version: 1 } }
+  const capabilities = await page.request.get(
+    `${api}/v1/memory-processing/capabilities`
   );
-  expect(consent.ok()).toBeTruthy();
+  expect(capabilities.ok()).toBeTruthy();
+  expect((await capabilities.json()).extraction.available).toBe(true);
   await page.goto("/");
   const saved = page.waitForResponse(
     (response) =>

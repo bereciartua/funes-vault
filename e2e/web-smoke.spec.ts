@@ -169,46 +169,41 @@ test("redirects legacy surface URLs to canonical routes", async ({ page }) => {
   await expect(page).toHaveURL(/\/chat\/legacy-thread$/);
 });
 
-test.describe("memory processing permissions", () => {
+test.describe("memory processing providers", () => {
   test.beforeEach(async ({ page }) => {
     await signIn(page);
     for (const scope of ["extraction", "consolidation"]) {
       const response = await page.request.post(
-        `${apiBaseUrl}/v1/memory-processing/consent`,
-        { data: { scope, granted: false, version: 1 } }
+        `${apiBaseUrl}/v1/memory-processing/provider`,
+        { data: { scope, system: "system_2" } }
       );
       expect(response.ok()).toBeTruthy();
     }
   });
-  test("discloses memory processors and persists independent TypeSafe permission", async ({
+  test("discloses providers and persists independent selections", async ({
     page
   }) => {
-    await page.route(
-      `${apiBaseUrl}/v1/memory-processing/capabilities`,
-      async (route) => {
-        const response = await route.fetch();
-        const data = await response.json();
-        data.extraction.processors = ["typesafe", "openai"];
-        await route.fulfill({ response, json: data });
-      }
-    );
     await page.goto("/settings/profile");
     await expect(
       page.getByRole("heading", { name: "Memory processing" })
     ).toBeVisible();
+    await expect(
+      page.getByText(/OpenAI checks your latest message/)
+    ).toBeVisible();
+    const extraction = page.getByRole("combobox", {
+      name: "Provider for conversational extraction"
+    });
+    const consolidation = page.getByRole("combobox", {
+      name: "Provider for saved-memory consolidation"
+    });
+    await extraction.selectOption("system_1");
+    await expect(extraction).toHaveValue("system_1");
     await expect(page.getByText(/before sensitivity is known/)).toBeVisible();
-    const allow = page.getByRole("button", {
-      name: "Allow TypeSafe extraction"
-    });
-    const revoke = page.getByRole("button", {
-      name: "Revoke TypeSafe extraction"
-    });
-    await allow.click();
-    await expect(revoke).toBeVisible();
     await page.reload();
-    await expect(revoke).toBeVisible();
-    await revoke.click();
-    await expect(allow).toBeVisible();
+    await expect(extraction).toHaveValue("system_1");
+    await expect(consolidation).toHaveValue("system_2");
+    await extraction.selectOption("system_2");
+    await expect(extraction).toHaveValue("system_2");
   });
 });
 

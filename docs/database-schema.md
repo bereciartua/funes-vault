@@ -330,6 +330,7 @@ DISMISSED DISMISSED
         AuditEventType {
             MEMORY_PROCESSING_COMPLETED MEMORY_PROCESSING_COMPLETED
 PROCESSING_CONSENT_UPDATED PROCESSING_CONSENT_UPDATED
+PROCESSING_PROVIDER_SELECTED PROCESSING_PROVIDER_SELECTED
 MEMORY_CREATED MEMORY_CREATED
 MEMORY_UPDATED MEMORY_UPDATED
 MEMORY_ARCHIVED MEMORY_ARCHIVED
@@ -905,6 +906,14 @@ FAILED failed
     DateTime revokedAt "nullable"
     }
 
+
+  "ProcessingProviderPreference" {
+    String userId "PK"
+    String scope "PK"
+    String system
+    DateTime updatedAt
+    }
+
     "User" |o--|| "UserRole" : "enum:role"
     "User" |o--|| "ConsolidationMode" : "enum:consolidationMode"
     "ChatSession" }o--|| "User" : "user"
@@ -987,6 +996,7 @@ FAILED failed
     "MemoryExtractionRun" |o--|| "ChatMessage" : "source"
     "MemoryCandidateApplication" }o--|| "MemoryExtractionRun" : "run"
     "ProcessingConsent" }o--|| "User" : "user"
+    "ProcessingProviderPreference" }o--|| "User" : "user"
 ```
 
 <!-- ERD:END -->

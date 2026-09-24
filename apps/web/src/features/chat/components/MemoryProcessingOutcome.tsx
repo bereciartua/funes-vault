@@ -30,9 +30,21 @@ export function MemoryProcessingOutcome({
       queryKeys.chat.all
     ]
   });
-  const result = mutation.data ?? initial;
-  const busy = mutation.isPending;
-  const error = mutation.isError;
+  const reprocess = useApiMutation({
+    path: (sourceId: string) =>
+      `/v1/memory-processing/sources/${sourceId}/reprocess`,
+    schema: memoryProcessingResultSchema,
+    body: () => undefined,
+    invalidate: [
+      queryKeys.suggestions.all,
+      queryKeys.memories.all,
+      queryKeys.overview,
+      queryKeys.chat.all
+    ]
+  });
+  const result = reprocess.data ?? mutation.data ?? initial;
+  const busy = mutation.isPending || reprocess.isPending;
+  const error = mutation.isError || reprocess.isError;
   if (!result) {
     return null;
   }
@@ -93,14 +105,28 @@ export function MemoryProcessingOutcome({
       ) : null}
       {result.reason === "processing_consent_required" ? (
         <Link href="/settings/profile">
-          Enable memory processing in settings
+          Choose a memory processing provider
         </Link>
       ) : null}
       {canRetryProcessing(result.reason) &&
+      result.reason !== "processing_provider_changed" &&
+      result.reason !== "processing_consent_required" &&
       typeof result.sourceMessageId === "string" &&
       ["failed", "skipped"].includes(String(result.status)) ? (
         <Button disabled={busy} onClick={() => void retry()}>
           {busy ? "Retrying…" : "Retry memory processing"}
+        </Button>
+      ) : null}
+      {["processing_provider_changed", "processing_consent_required"].includes(
+        result.reason ?? ""
+      ) &&
+      typeof result.sourceMessageId === "string" &&
+      ["failed", "skipped"].includes(String(result.status)) ? (
+        <Button
+          disabled={busy}
+          onClick={() => reprocess.mutate(result.sourceMessageId!)}
+        >
+          {busy ? "Reprocessing…" : "Reprocess with current provider"}
         </Button>
       ) : null}
       <FeedbackMessages

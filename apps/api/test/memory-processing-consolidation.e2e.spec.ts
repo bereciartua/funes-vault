@@ -96,14 +96,6 @@ describe("privacy: memory processing consolidation (e2e)", () => {
         prisma,
         `${system}-archive@example.com`
       );
-      await prisma.processingConsent.create({
-        data: {
-          userId: user.userId,
-          processor: "typesafe",
-          scope: "consolidation",
-          version: 1
-        }
-      });
       const left = await prisma.memory.create({
         data: {
           userId: user.userId,
@@ -239,6 +231,12 @@ describe("privacy: memory processing consolidation (e2e)", () => {
         .semanticInspectedAt
     ).toBeNull();
     configure("system_2", "policy", "system_1");
+    const switched = await app
+      .get(ConsolidationOrchestratorService)
+      .runConsolidation({ userId: user.userId, jobRunId: job.id });
+    expect(switched.semantic.status).toBe("partial");
+    expect(switched.semantic.reason).toBe("processing_provider_changed");
+    configure("system_2", "policy", "system_2");
     const retried = await app
       .get(ConsolidationOrchestratorService)
       .runConsolidation({

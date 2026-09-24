@@ -61,8 +61,9 @@ content rejection still applies before storage, but it is pattern-based and cann
 recognize every possible secret.
 
 Conversational extraction and semantic consolidation select providers independently.
-The optional TypeSafe Jev memory classifier requires task-specific, versioned user
-permission. System 1 extraction also sends selected passages to OpenAI normalization;
+The optional TypeSafe Jev memory classifier is activated by the task's provider
+selection, initially determined by server configuration and subsequently controlled
+by the owner. System 1 extraction also sends selected passages to OpenAI normalization;
 System 2 uses the OpenAI LLM pipeline. See [memory processing](memory-processing.md)
 for the exact boundaries. Provider choice does not weaken write policy or review
 mode. No automatic provider fallback occurs.

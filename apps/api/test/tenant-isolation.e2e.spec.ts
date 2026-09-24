@@ -1,6 +1,14 @@
 import type { INestApplication } from "@nestjs/common";
 import request from "supertest";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi
+} from "vitest";
 
 import {
   createE2eApp,
@@ -14,6 +22,8 @@ describe("privacy: tenant isolation (e2e)", () => {
   let prisma: ReturnType<typeof createE2ePrismaClient>;
 
   beforeAll(async () => {
+    vi.stubEnv("OPENAI_API_KEY", "synthetic-test-key");
+    vi.stubEnv("TYPESAFE_API_KEY", "synthetic-test-key");
     app = await createE2eApp();
     prisma = createE2ePrismaClient();
   });
@@ -21,6 +31,7 @@ describe("privacy: tenant isolation (e2e)", () => {
   afterAll(async () => {
     await app.close();
     await prisma.$disconnect();
+    vi.unstubAllEnvs();
   });
 
   beforeEach(async () => {
@@ -170,7 +181,7 @@ describe("privacy: tenant isolation (e2e)", () => {
     ).toMatchObject({ status: "QUEUED_FOR_REVIEW", userId: alice.userId });
   });
 
-  it("isolates chat threads, voice sessions, source turns, and processing consent", async () => {
+  it("isolates chat threads, voice sessions, source turns, and provider choices", async () => {
     const alice = await createUserWithSession(prisma, "alice@example.com");
     const bob = await createUserWithSession(prisma, "bob@example.com");
     const api = () => request(app.getHttpServer());
@@ -231,29 +242,35 @@ describe("privacy: tenant isolation (e2e)", () => {
       .expect(200);
     expect(owned.body.status).toBe("pending");
     await api()
-      .post("/v1/memory-processing/consent")
+      .post("/v1/memory-processing/provider")
       .set("Cookie", alice.cookie)
-      .send({ scope: "extraction", granted: true, version: 1 })
+      .send({ scope: "extraction", system: "system_2" })
       .expect(201);
     const capabilities = await api()
       .get("/v1/memory-processing/capabilities")
       .set("Cookie", bob.cookie)
       .expect(200);
-    expect(capabilities.body.consents).toEqual([]);
+    expect(capabilities.body.extraction.system).toBe("system_1");
     await api()
-      .post("/v1/memory-processing/consent")
+      .post("/v1/memory-processing/provider")
       .set("Cookie", bob.cookie)
       .send({
         scope: "extraction",
-        granted: false,
-        version: 1,
+        system: "system_1",
         userId: alice.userId
       })
       .expect(201);
-    const consent = await prisma.processingConsent.findFirstOrThrow({
-      where: { userId: alice.userId }
-    });
-    expect(consent.revokedAt).toBeNull();
+    const preference =
+      await prisma.processingProviderPreference.findFirstOrThrow({
+        where: { userId: alice.userId }
+      });
+    expect(preference.system).toBe("system_2");
+    const aliceCapabilities = await api()
+      .get("/v1/memory-processing/capabilities")
+      .set("Cookie", alice.cookie)
+      .expect(200);
+    expect(aliceCapabilities.body.extraction.system).toBe("system_2");
+    expect(aliceCapabilities.body.consolidation.system).toBe("system_1");
     expect(
       await prisma.voiceSession.findUniqueOrThrow({ where: { id: voice.id } })
     ).toMatchObject({ endedAt: null });
