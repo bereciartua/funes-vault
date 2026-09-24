@@ -4,6 +4,12 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added
+
+- Agent release runbook and compatibility policy, synchronized version preparation,
+  and CI-gated tagging, container publication and GitHub Releases. Production
+  deployment remains a separate operation.
+
 ### Changed
 
 - **Breaking:** one App permissions set per authenticated client; optional purpose is audit context only.

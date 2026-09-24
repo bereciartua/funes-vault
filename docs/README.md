@@ -31,4 +31,5 @@ are defined in the [glossary](glossary.md).
 - [Database schema](database-schema.md) — inspect ownership, constraints and the generated ER diagram.
 - [Architecture decisions](adr/README.md) — read the rationale and superseded alternatives.
 - [Testing and release](testing-and-release.md) — choose the right test tier and verify a release.
+- [Release runbook](releasing.md) — choose versions, prepare/review releases, publish automatically and recover failures.
 - [Changelog](../CHANGELOG.md) — review released capabilities and limitations.

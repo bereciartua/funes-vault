@@ -103,6 +103,11 @@ separate evaluation. Never use a personal recording or vault as a smoke fixture.
 
 ## Release verification
 
+Follow [Releasing Funes Vault](releasing.md) for the compatibility policy, agent
+commands, publication gates and recovery. `pnpm test:release` exercises release
+tooling against disposable Git repositories without publishing or accessing a vault.
+CI also validates pending release plans before publication.
+
 Verify a clean dependency install, clean package-output typecheck, full tests and
 builds. Apply the single initial baseline to a fresh database, check drift, and
 confirm PostgreSQL can use the HNSW cosine index. Build all three Docker targets,

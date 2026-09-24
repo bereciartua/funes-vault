@@ -21,6 +21,7 @@ apps/api/dist-e2e/
 
 apps/desktop/
 **/release/
+!scripts/release/
 apps/web/next-env.d.ts
 .idea/
 .vscode/

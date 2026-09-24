@@ -248,18 +248,18 @@ review and requires connectivity; it does not use the PWA's device queue.
 
 ## Publishing images (maintainers)
 
-The pinned Publish Images workflow publishes all three multi-architecture targets
-on `v*` tags or explicit workflow dispatch. Local `pnpm publish:images [version]`
-is available for authorized maintainers with GHCR write access. Review the tree,
-changelog, test evidence and package visibility before publication. A source PR
-alone does not publish a release or change repository visibility.
+Follow the [release runbook](releasing.md) to assess compatibility and prepare the
+version, changelog and release plan. After a release PR merges into `main` and its
+push CI succeeds, the Release workflow creates the version tag, calls Publish
+Images for all three multi-architecture targets, then creates the GitHub Release.
+Tag pushes alone no longer publish. A source PR into `develop` does not publish or
+deploy a release or change repository visibility.
 
-A manual dispatch accepts a target-platform choice. Keep the multi-architecture
-default for releases, or select `linux/amd64` when publishing for an x86 server
-and the ARM build cannot complete under emulation. Tag-triggered runs always build
-both architectures. Only `v*` tag runs move `latest`; a manual dispatch from
-any branch publishes its `sha-<commit>` tag (and version tags if the ref is a
-release tag) without touching `latest`.
+Manual Publish Images dispatch accepts a target-platform choice and publishes only
+the selected commit's SHA tag. Stable version and `latest` aliases belong to the
+verified release workflow. Local `pnpm publish:images [tag]` is a maintainer escape
+hatch with GHCR write access; do not use it for stable release/version aliases or
+to bypass release verification. Check package visibility before deployment.
 
 ## App permissions migration
 
