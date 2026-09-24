@@ -149,7 +149,6 @@ function createExport() {
         id: "policy_1",
         clientId: "client_1",
         clientName: "Local Agent",
-
         allowedCategoryKeys: ["communication_style"],
         deniedCategoryKeys: [],
         maxSensitivity: MemorySensitivity.INTERNAL,
