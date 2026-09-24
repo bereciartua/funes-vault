@@ -14,11 +14,13 @@ export function JobsPanel() {
   const {
     settings,
     setSettings,
+    changeEnabled,
     jobs,
     selectedJobId,
     setSelectedJobId,
     jobsPagination,
     isLoading,
+    isSettingsLoading,
     isSaving,
     isRunning,
     retryingJobId,
@@ -46,9 +48,8 @@ export function JobsPanel() {
           <div className="settings-control-row">
             <SwitchField
               checked={settings.enabled}
-              onCheckedChange={(enabled) =>
-                setSettings((current) => ({ ...current, enabled }))
-              }
+              disabled={isSaving || isSettingsLoading}
+              onCheckedChange={(enabled) => void changeEnabled(enabled)}
             >
               Run consolidation daily
             </SwitchField>
@@ -63,6 +64,7 @@ export function JobsPanel() {
             <span className="field-label">Mode</span>
             <ToggleGroupField
               ariaLabel="Consolidation mode"
+              disabled={isSaving || isSettingsLoading}
               value={settings.mode}
               options={(["REVIEW_ONLY", "AUTO_APPLY"] as const).map((mode) => ({
                 label: label(mode),
@@ -83,7 +85,7 @@ export function JobsPanel() {
           </div>
 
           <div className="form-actions">
-            <Button type="submit" disabled={isSaving}>
+            <Button type="submit" disabled={isSaving || isSettingsLoading}>
               {isSaving ? "Saving..." : "Save"}
             </Button>
             <Button

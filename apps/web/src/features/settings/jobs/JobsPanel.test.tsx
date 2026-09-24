@@ -191,3 +191,159 @@ describe("JobsPanel feed", () => {
     );
   });
 });
+
+describe("JobsPanel consolidation settings", () => {
+  it("saves the daily switch immediately and loads the saved value after remount", async () => {
+    let enabled = false;
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes("consolidation-settings")) {
+          if (init?.method === "PATCH") {
+            enabled = JSON.parse(String(init.body)).enabled as boolean;
+          }
+
+          return new Response(
+            JSON.stringify({ settings: { enabled, mode: "REVIEW_ONLY" } }),
+            { status: 200 }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            items: [],
+            pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }
+          }),
+          { status: 200 }
+        );
+      }
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const first = render(
+      <ApiProvider apiUrl="http://localhost:4000">
+        <JobsPanel />
+      </ApiProvider>
+    );
+    const dailySwitch = await screen.findByRole("switch", {
+      name: "Run consolidation daily"
+    });
+    await waitFor(() =>
+      expect(dailySwitch.hasAttribute("disabled")).toBe(false)
+    );
+    fireEvent.click(dailySwitch);
+    await screen.findByText("Consolidation settings saved.");
+    expect(enabled).toBe(true);
+    expect(
+      fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH")
+    ).toHaveLength(1);
+
+    first.unmount();
+    render(
+      <ApiProvider apiUrl="http://localhost:4000">
+        <JobsPanel />
+      </ApiProvider>
+    );
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole("switch", { name: "Run consolidation daily" })
+          .getAttribute("aria-checked")
+      ).toBe("true")
+    );
+  });
+
+  it("reverts the switch and shows an error when saving fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes("consolidation-settings")) {
+          if (init?.method === "PATCH") {
+            return new Response(JSON.stringify({ message: "failed" }), {
+              status: 500
+            });
+          }
+
+          return new Response(
+            JSON.stringify({
+              settings: { enabled: false, mode: "REVIEW_ONLY" }
+            }),
+            { status: 200 }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            items: [],
+            pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }
+          }),
+          { status: 200 }
+        );
+      })
+    );
+
+    render(
+      <ApiProvider apiUrl="http://localhost:4000">
+        <JobsPanel />
+      </ApiProvider>
+    );
+    const dailySwitch = await screen.findByRole("switch", {
+      name: "Run consolidation daily"
+    });
+    await waitFor(() =>
+      expect(dailySwitch.hasAttribute("disabled")).toBe(false)
+    );
+    fireEvent.click(dailySwitch);
+    await screen.findByText("Could not save consolidation settings.");
+    expect(dailySwitch.getAttribute("aria-checked")).toBe("false");
+  });
+
+  it("requires confirmation when the switch would enable auto-apply", async () => {
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes("consolidation-settings")) {
+          return new Response(
+            JSON.stringify({
+              settings:
+                init?.method === "PATCH"
+                  ? { enabled: true, mode: "AUTO_APPLY" }
+                  : { enabled: false, mode: "REVIEW_ONLY" }
+            }),
+            { status: 200 }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            items: [],
+            pagination: { page: 1, limit: 20, total: 0, totalPages: 0 }
+          }),
+          { status: 200 }
+        );
+      }
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ApiProvider apiUrl="http://localhost:4000">
+        <JobsPanel />
+      </ApiProvider>
+    );
+    const dailySwitch = await screen.findByRole("switch", {
+      name: "Run consolidation daily"
+    });
+    await waitFor(() =>
+      expect(dailySwitch.hasAttribute("disabled")).toBe(false)
+    );
+    fireEvent.click(screen.getByRole("radio", { name: "Auto Apply" }));
+    fireEvent.click(dailySwitch);
+    expect(
+      await screen.findByText("Enable auto-apply consolidation?")
+    ).toBeTruthy();
+    expect(
+      fetchMock.mock.calls.filter(([, init]) => init?.method === "PATCH")
+    ).toHaveLength(0);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(dailySwitch.getAttribute("aria-checked")).toBe("false");
+  });
+});
