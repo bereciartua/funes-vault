@@ -37,7 +37,7 @@ export function toClientResponse(
     trustLevel: client.trustLevel,
     declaredRetention: client.declaredRetention,
     hasToken: Boolean(client.tokenHash),
-    policyCount: client._count?.policies ?? 0,
+    hasPolicy: (client._count?.policies ?? 0) > 0,
     oauthConnector: Boolean(client.oauthRegistrationId),
     lastUsedAt: toIsoString(client.lastUsedAt),
     createdAt: client.createdAt.toISOString(),

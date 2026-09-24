@@ -7,6 +7,7 @@ export function requireFreshReview(tx: Prisma.TransactionClient, id: string) {
     where: { id },
     data: {
       status: MemoryRequestStatus.NEEDS_USER_APPROVAL,
+      decisionReason: "policy_changed",
       approvedAt: null,
       approvalExpiresAt: null,
       reviewSnapshot: {}

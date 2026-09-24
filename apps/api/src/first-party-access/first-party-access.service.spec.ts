@@ -16,9 +16,7 @@ import {
   defaultVoiceMaxSensitivity,
   FirstPartyAccessService,
   voiceClientName,
-  voicePurpose,
-  webChatClientName,
-  webChatPurpose
+  webChatClientName
 } from "./first-party-access.service.js";
 
 describe("privacy: FirstPartyAccessService", () => {
@@ -80,7 +78,6 @@ describe("privacy: FirstPartyAccessService", () => {
       data: {
         userId: "user_1",
         clientId: "client_1",
-        purpose: webChatPurpose,
         maxSensitivity: MemorySensitivity.SECRET,
         operations: [
           PolicyOperation.READ,
@@ -199,7 +196,6 @@ describe("privacy: FirstPartyAccessService", () => {
     });
     expect(tx.policy.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        purpose: voicePurpose,
         maxSensitivity: MemorySensitivity.SENSITIVE,
         operations: [PolicyOperation.READ, PolicyOperation.SUGGEST]
       }),

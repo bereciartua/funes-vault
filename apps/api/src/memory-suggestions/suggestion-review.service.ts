@@ -100,7 +100,10 @@ export class SuggestionReviewService {
 
   async applyLoadedUserSuggestion(userId: string, existing: MemorySuggestion) {
     const sourceMetadata = getObjectMetadata(existing.sourceMetadata);
-    if (sourceMetadata.action === "archive_memory") {
+    if (
+      existing.sourceType === "CONSOLIDATION" &&
+      sourceMetadata.action === "archive_memory"
+    ) {
       return this.archive.applyArchiveSuggestion(
         userId,
         existing,

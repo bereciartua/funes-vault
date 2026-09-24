@@ -9,7 +9,6 @@ import {
   PolicyOperation,
   type Prisma
 } from "@funes-vault/db";
-import { oauthScopeRead, oauthScopeSuggest } from "@funes-vault/shared";
 import {
   BadRequestException,
   ConflictException,
@@ -18,48 +17,17 @@ import {
 } from "@nestjs/common";
 
 import { AuditTrailService } from "../audit-trail/audit-trail.service.js";
-import { apiEnv } from "../config.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import {
-  mcpConnectorPurpose,
-  oauthAuthorizationCodeTtlMs
-} from "./oauth.config.js";
+import { oauthAuthorizationCodeTtlMs } from "./oauth.config.js";
 import {
   createOAuthAuthorizationCode,
   credentialMatchesHash,
   hashOAuthCredential
 } from "./oauth-credentials.js";
-
-const connectorSensitivityValues = Object.values(MemorySensitivity);
-
-// Third-party connectors get a conservative default disclosure ceiling; the
-// user can raise or lower it afterwards in Apps & access like any policy.
-export function defaultConnectorMaxSensitivity(): MemorySensitivity {
-  const configured = apiEnv().MCP_CONNECTOR_MAX_SENSITIVITY;
-
-  if (
-    configured &&
-    connectorSensitivityValues.includes(configured as MemorySensitivity)
-  ) {
-    return configured as MemorySensitivity;
-  }
-
-  return MemorySensitivity.INTERNAL;
-}
-
-export function scopesToOperations(scopes: string[]): PolicyOperation[] {
-  const operations: PolicyOperation[] = [];
-
-  if (scopes.includes(oauthScopeRead)) {
-    operations.push(PolicyOperation.READ);
-  }
-
-  if (scopes.includes(oauthScopeSuggest)) {
-    operations.push(PolicyOperation.SUGGEST);
-  }
-
-  return operations;
-}
+import {
+  defaultConnectorMaxSensitivity,
+  scopesToOperations
+} from "./oauth-permissions.js";
 
 export type ConsentContext = {
   requestId: string;
@@ -71,6 +39,12 @@ export type ConsentContext = {
   scopes: string[];
   registrationStatus: OAuthRegistrationStatus;
   maxSensitivity: MemorySensitivity;
+  operations: PolicyOperation[];
+  createsPermissions: boolean;
+  allowedCategories: string[];
+  deniedCategories: string[];
+  requiresConfirmation: boolean;
+  expiresAt: string | null;
 };
 
 type ConsentDecisionInput = {
@@ -91,8 +65,27 @@ export class OAuthGrantsService {
     private readonly auditService: AuditTrailService
   ) {}
 
-  async getConsentContext(requestId: string): Promise<ConsentContext> {
+  async getConsentContext(
+    requestId: string,
+    userId?: string
+  ): Promise<ConsentContext> {
     const request = await this.loadPendingRequest(requestId);
+    const client = userId
+      ? await this.prisma.client.client.findFirst({
+          where: { userId, oauthRegistrationId: request.registrationId },
+          include: {
+            policies: {
+              include: { allowedCategories: true, deniedCategories: true }
+            }
+          }
+        })
+      : null;
+    if (client?.trustLevel === ClientTrustLevel.BLOCKED) {
+      throw new BadRequestException(
+        "This app is blocked. Manage it in Apps & access before reconnecting."
+      );
+    }
+    const policy = client?.policies[0];
 
     return {
       requestId: request.id,
@@ -103,7 +96,18 @@ export class OAuthGrantsService {
       redirectOrigin: new URL(request.redirectUri).origin,
       scopes: request.scopes,
       registrationStatus: request.registration.status,
-      maxSensitivity: defaultConnectorMaxSensitivity()
+      operations: [
+        ...new Set([
+          ...(policy?.operations ?? []),
+          ...scopesToOperations(request.scopes)
+        ])
+      ],
+      createsPermissions: !policy,
+      allowedCategories: policy?.allowedCategories.map((c) => c.key) ?? [],
+      deniedCategories: policy?.deniedCategories.map((c) => c.key) ?? [],
+      requiresConfirmation: policy?.requiresConfirmation ?? false,
+      expiresAt: policy?.expiresAt?.toISOString() ?? null,
+      maxSensitivity: policy?.maxSensitivity ?? defaultConnectorMaxSensitivity()
     };
   }
 
@@ -261,6 +265,11 @@ export class OAuthGrantsService {
     });
 
     if (existing) {
+      if (existing.trustLevel === ClientTrustLevel.BLOCKED) {
+        throw new BadRequestException(
+          "This app is blocked. Manage it in Apps & access before reconnecting."
+        );
+      }
       if (existing.trustLevel !== ClientTrustLevel.APPROVED) {
         return tx.client.update({
           where: { id: existing.id },
@@ -316,8 +325,7 @@ export class OAuthGrantsService {
     const existing = await tx.policy.findFirst({
       where: {
         userId: input.userId,
-        clientId: input.clientId,
-        purpose: mcpConnectorPurpose
+        clientId: input.clientId
       },
       select: { id: true, operations: true }
     });
@@ -343,7 +351,6 @@ export class OAuthGrantsService {
       data: {
         userId: input.userId,
         clientId: input.clientId,
-        purpose: mcpConnectorPurpose,
         maxSensitivity: defaultConnectorMaxSensitivity(),
         operations,
         requiresConfirmation: false,
@@ -363,7 +370,6 @@ export class OAuthGrantsService {
       actorId: input.userId,
       metadata: {
         policyId: created.id,
-        purpose: mcpConnectorPurpose,
         clientId: input.clientId,
         maxSensitivity: defaultConnectorMaxSensitivity(),
         operations,

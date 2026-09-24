@@ -2,7 +2,7 @@
 
 Use the [MCP setup guide](mcp-integration.md) for a tool-aware agent, or the
 [OpenAPI contract](openapi.json) for direct HTTP. Both use the same owner-bound
-client, purpose policies, disclosure checks and audit writer. Register a client
+client, app permissions, disclosure checks and audit writer. Register a client
 in **Settings → Apps & access** and copy its one-time token, or use the OAuth
 connector flow. Never send a browser session cookie to an external agent.
 

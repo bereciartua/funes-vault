@@ -15,7 +15,7 @@ import { requiredClientScopeKey } from "./client-scope.decorator.js";
 import { hashToken } from "./client-token.js";
 import { toClientResponse } from "./clients.service.js";
 
-/** Authenticates client bearer tokens and attaches their owner to the request. Domain services still enforce purpose, scope and disclosure policy. */
+/** Authenticates client bearer tokens and attaches their owner to the request. Domain services still enforce scope and app permissions. */
 @Injectable()
 export class ClientAuthGuard implements CanActivate {
   constructor(

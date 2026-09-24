@@ -200,7 +200,7 @@ test("exports and previews a portable vault without restoring credentials", asyn
   );
   expect(response.ok()).toBeTruthy();
   const payload = await response.json();
-  expect(payload.export.metadata.schemaVersion).toBe("funes-vault.export.v1");
+  expect(payload.export.metadata.schemaVersion).toBe("funes-vault.export.v2");
   expect(JSON.stringify(payload)).not.toContain('"tokenHash"');
   const preview = await page.request.post(`${api}/v1/data/import/preview`, {
     data: payload

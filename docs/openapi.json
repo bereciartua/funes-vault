@@ -1039,6 +1039,229 @@
         "tags": ["memory processing"]
       }
     },
+    "/v1/policies": {
+      "get": {
+        "operationId": "PoliciesController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "clientId",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListPoliciesResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid query parameters."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "List policies for the current user",
+        "tags": ["policies"]
+      },
+      "post": {
+        "operationId": "PoliciesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePolicyRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "409": {
+            "description": "This app already has permissions"
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Create a client access policy",
+        "tags": ["policies"]
+      }
+    },
+    "/v1/policies/defaults/{clientId}": {
+      "post": {
+        "operationId": "PoliciesController_restore",
+        "parameters": [
+          {
+            "name": "clientId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyResponseDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "This app already has permissions"
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Restore default permissions on an existing first-party app",
+        "tags": ["policies"]
+      }
+    },
+    "/v1/policies/{id}": {
+      "patch": {
+        "operationId": "PoliciesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePolicyRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyResponseDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request body."
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Policy not found."
+          },
+          "409": {
+            "description": "This app already has permissions"
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Update a client access policy",
+        "tags": ["policies"]
+      },
+      "delete": {
+        "operationId": "PoliciesController_delete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PolicyResponseDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing or invalid session."
+          },
+          "404": {
+            "description": "Policy not found."
+          }
+        },
+        "security": [
+          {
+            "funes_vault_session": []
+          }
+        ],
+        "summary": "Delete a client access policy",
+        "tags": ["policies"]
+      }
+    },
     "/v1/captures": {
       "post": {
         "description": "Capture-only variant of memory suggestions: raw text in, a QUEUED_FOR_REVIEW suggestion out. Never creates a memory directly. Accepts the web session cookie (PWA capture queue) or a registered client bearer token (OS shortcuts). Idempotent by captureId.",
@@ -1513,192 +1736,6 @@
         ],
         "summary": "Delete a current-user client",
         "tags": ["clients"]
-      }
-    },
-    "/v1/policies": {
-      "get": {
-        "operationId": "PoliciesController_list",
-        "parameters": [
-          {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {}
-          },
-          {
-            "name": "page",
-            "required": false,
-            "in": "query",
-            "schema": {}
-          },
-          {
-            "name": "clientId",
-            "required": false,
-            "in": "query",
-            "schema": {}
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ListPoliciesResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid query parameters."
-          },
-          "401": {
-            "description": "Missing or invalid session."
-          }
-        },
-        "security": [
-          {
-            "funes_vault_session": []
-          }
-        ],
-        "summary": "List policies for the current user",
-        "tags": ["policies"]
-      },
-      "post": {
-        "operationId": "PoliciesController_create",
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreatePolicyRequestDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PolicyResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request body."
-          },
-          "401": {
-            "description": "Missing or invalid session."
-          },
-          "409": {
-            "description": "A policy already exists for this client and purpose."
-          }
-        },
-        "security": [
-          {
-            "funes_vault_session": []
-          }
-        ],
-        "summary": "Create a client access policy",
-        "tags": ["policies"]
-      }
-    },
-    "/v1/policies/{id}": {
-      "patch": {
-        "operationId": "PoliciesController_update",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdatePolicyRequestDto"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PolicyResponseDto"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid request body."
-          },
-          "401": {
-            "description": "Missing or invalid session."
-          },
-          "404": {
-            "description": "Policy not found."
-          },
-          "409": {
-            "description": "A policy already exists for this client and purpose."
-          }
-        },
-        "security": [
-          {
-            "funes_vault_session": []
-          }
-        ],
-        "summary": "Update a client access policy",
-        "tags": ["policies"]
-      },
-      "delete": {
-        "operationId": "PoliciesController_delete",
-        "parameters": [
-          {
-            "name": "id",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PolicyResponseDto"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Missing or invalid session."
-          },
-          "404": {
-            "description": "Policy not found."
-          }
-        },
-        "security": [
-          {
-            "funes_vault_session": []
-          }
-        ],
-        "summary": "Delete a client access policy",
-        "tags": ["policies"]
       }
     },
     "/v1/memory-requests/{id}/result": {
@@ -3617,6 +3654,213 @@
         },
         "required": ["suggestions"]
       },
+      "PolicyDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "clientId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "clientName": {
+            "type": "object",
+            "example": "Local Coding Agent",
+            "nullable": true
+          },
+          "allowedCategoryKeys": {
+            "example": ["communication_style", "software_development"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deniedCategoryKeys": {
+            "example": ["health", "finance"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxSensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "INTERNAL"
+          },
+          "operations": {
+            "type": "array",
+            "example": ["READ"],
+            "items": {
+              "type": "string",
+              "enum": ["READ", "SUGGEST", "WRITE", "SUMMARIZE", "EXPORT"]
+            }
+          },
+          "requiresConfirmation": {
+            "type": "boolean",
+            "example": true
+          },
+          "expiresAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-06-27T00:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "clientId",
+          "clientName",
+          "allowedCategoryKeys",
+          "deniedCategoryKeys",
+          "maxSensitivity",
+          "operations",
+          "requiresConfirmation",
+          "expiresAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ListPoliciesResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PolicyDto"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/PaginationDto"
+          }
+        },
+        "required": ["items", "pagination"]
+      },
+      "CreatePolicyRequestDto": {
+        "type": "object",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "example": "cmqvt0v580000xeg7jgy7v1u3"
+          },
+          "allowedCategoryKeys": {
+            "example": ["communication_style", "software_development"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deniedCategoryKeys": {
+            "example": ["health", "finance"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxSensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "INTERNAL"
+          },
+          "operations": {
+            "type": "array",
+            "example": ["READ", "SUGGEST", "WRITE"],
+            "items": {
+              "type": "string",
+              "enum": ["READ", "SUGGEST", "WRITE", "SUMMARIZE", "EXPORT"]
+            }
+          },
+          "requiresConfirmation": {
+            "type": "boolean",
+            "example": true
+          },
+          "expiresAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          }
+        },
+        "required": ["clientId"]
+      },
+      "PolicyResponseDto": {
+        "type": "object",
+        "properties": {
+          "policy": {
+            "$ref": "#/components/schemas/PolicyDto"
+          }
+        },
+        "required": ["policy"]
+      },
+      "UpdatePolicyRequestDto": {
+        "type": "object",
+        "properties": {
+          "allowedCategoryKeys": {
+            "example": ["communication_style", "software_development"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "deniedCategoryKeys": {
+            "example": ["health", "finance"],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "maxSensitivity": {
+            "type": "string",
+            "enum": [
+              "PUBLIC",
+              "LOW",
+              "INTERNAL",
+              "SENSITIVE",
+              "RESTRICTED",
+              "SECRET"
+            ],
+            "example": "INTERNAL"
+          },
+          "operations": {
+            "type": "array",
+            "example": ["READ"],
+            "items": {
+              "type": "string",
+              "enum": ["READ", "SUGGEST", "WRITE", "SUMMARIZE", "EXPORT"]
+            }
+          },
+          "requiresConfirmation": {
+            "type": "boolean",
+            "example": false
+          },
+          "expiresAt": {
+            "type": "object",
+            "example": null,
+            "nullable": true
+          }
+        }
+      },
       "CreateCaptureDto": {
         "type": "object",
         "properties": {
@@ -3678,7 +3922,9 @@
         "properties": {
           "purpose": {
             "type": "string",
-            "example": "software_development"
+            "nullable": true,
+            "maxLength": 160,
+            "description": "Caller-declared audit reason; does not affect permissions or retrieval."
           },
           "kind": {
             "type": "string",
@@ -3743,7 +3989,7 @@
             "additionalProperties": true
           }
         },
-        "required": ["purpose", "kind", "title", "body"]
+        "required": ["kind", "title", "body"]
       },
       "DeniedSuggestionDto": {
         "type": "object",
@@ -3789,6 +4035,26 @@
             "example": "cmqvt0v580000xeg7jgy7v1u3",
             "nullable": true
           },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "unknown_or_blocked_client",
+              "no_client_policy",
+              "policy_expired",
+              "operation_not_allowed",
+              "no_matching_memories",
+              "no_allowed_memories",
+              "confirmation_required",
+              "policy_changed",
+              "inactive_memory",
+              "unapproved_memory",
+              "expired_memory",
+              "above_sensitivity_ceiling",
+              "denied_category",
+              "category_not_allowed"
+            ],
+            "nullable": true
+          },
           "auditEventId": {
             "type": "object",
             "example": "cmqvt0v580000xeg7jgy7v1u3",
@@ -3811,6 +4077,7 @@
           "memoryId",
           "status",
           "policyId",
+          "reason",
           "auditEventId",
           "decision",
           "denied"
@@ -4274,9 +4541,9 @@
             "type": "boolean",
             "example": true
           },
-          "policyCount": {
-            "type": "number",
-            "example": 1
+          "hasPolicy": {
+            "type": "boolean",
+            "example": true
           },
           "oauthConnector": {
             "type": "boolean",
@@ -4304,7 +4571,7 @@
           "trustLevel",
           "declaredRetention",
           "hasToken",
-          "policyCount",
+          "hasPolicy",
           "oauthConnector",
           "lastUsedAt",
           "createdAt",
@@ -4408,230 +4675,6 @@
           }
         }
       },
-      "PolicyDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "cmqvt0v580000xeg7jgy7v1u3"
-          },
-          "clientId": {
-            "type": "string",
-            "example": "cmqvt0v580000xeg7jgy7v1u3"
-          },
-          "clientName": {
-            "type": "object",
-            "example": "Local Coding Agent",
-            "nullable": true
-          },
-          "purpose": {
-            "type": "string",
-            "example": "software_development"
-          },
-          "allowedCategoryKeys": {
-            "example": ["communication_style", "software_development"],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "deniedCategoryKeys": {
-            "example": ["health", "finance"],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "maxSensitivity": {
-            "type": "string",
-            "enum": [
-              "PUBLIC",
-              "LOW",
-              "INTERNAL",
-              "SENSITIVE",
-              "RESTRICTED",
-              "SECRET"
-            ],
-            "example": "INTERNAL"
-          },
-          "operations": {
-            "type": "array",
-            "example": ["READ"],
-            "items": {
-              "type": "string",
-              "enum": ["READ", "SUGGEST", "WRITE", "SUMMARIZE", "EXPORT"]
-            }
-          },
-          "requiresConfirmation": {
-            "type": "boolean",
-            "example": true
-          },
-          "expiresAt": {
-            "type": "object",
-            "example": null,
-            "nullable": true
-          },
-          "createdAt": {
-            "type": "string",
-            "example": "2026-06-27T00:00:00.000Z"
-          },
-          "updatedAt": {
-            "type": "string",
-            "example": "2026-06-27T00:00:00.000Z"
-          }
-        },
-        "required": [
-          "id",
-          "clientId",
-          "clientName",
-          "purpose",
-          "allowedCategoryKeys",
-          "deniedCategoryKeys",
-          "maxSensitivity",
-          "operations",
-          "requiresConfirmation",
-          "expiresAt",
-          "createdAt",
-          "updatedAt"
-        ]
-      },
-      "ListPoliciesResponseDto": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/PolicyDto"
-            }
-          },
-          "pagination": {
-            "$ref": "#/components/schemas/PaginationDto"
-          }
-        },
-        "required": ["items", "pagination"]
-      },
-      "CreatePolicyRequestDto": {
-        "type": "object",
-        "properties": {
-          "clientId": {
-            "type": "string",
-            "example": "cmqvt0v580000xeg7jgy7v1u3"
-          },
-          "purpose": {
-            "type": "string",
-            "example": "software_development"
-          },
-          "allowedCategoryKeys": {
-            "example": ["communication_style", "software_development"],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "deniedCategoryKeys": {
-            "example": ["health", "finance"],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "maxSensitivity": {
-            "type": "string",
-            "enum": [
-              "PUBLIC",
-              "LOW",
-              "INTERNAL",
-              "SENSITIVE",
-              "RESTRICTED",
-              "SECRET"
-            ],
-            "example": "INTERNAL"
-          },
-          "operations": {
-            "type": "array",
-            "example": ["READ", "SUGGEST", "WRITE"],
-            "items": {
-              "type": "string",
-              "enum": ["READ", "SUGGEST", "WRITE", "SUMMARIZE", "EXPORT"]
-            }
-          },
-          "requiresConfirmation": {
-            "type": "boolean",
-            "example": true
-          },
-          "expiresAt": {
-            "type": "object",
-            "example": null,
-            "nullable": true
-          }
-        },
-        "required": ["clientId", "purpose"]
-      },
-      "PolicyResponseDto": {
-        "type": "object",
-        "properties": {
-          "policy": {
-            "$ref": "#/components/schemas/PolicyDto"
-          }
-        },
-        "required": ["policy"]
-      },
-      "UpdatePolicyRequestDto": {
-        "type": "object",
-        "properties": {
-          "clientId": {
-            "type": "string",
-            "example": "cmqvt0v580000xeg7jgy7v1u3"
-          },
-          "purpose": {
-            "type": "string",
-            "example": "software_development"
-          },
-          "allowedCategoryKeys": {
-            "example": ["communication_style", "software_development"],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "deniedCategoryKeys": {
-            "example": ["health", "finance"],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "maxSensitivity": {
-            "type": "string",
-            "enum": [
-              "PUBLIC",
-              "LOW",
-              "INTERNAL",
-              "SENSITIVE",
-              "RESTRICTED",
-              "SECRET"
-            ],
-            "example": "INTERNAL"
-          },
-          "operations": {
-            "type": "array",
-            "example": ["READ"],
-            "items": {
-              "type": "string",
-              "enum": ["READ", "SUGGEST", "WRITE", "SUMMARIZE", "EXPORT"]
-            }
-          },
-          "requiresConfirmation": {
-            "type": "boolean",
-            "example": false
-          },
-          "expiresAt": {
-            "type": "object",
-            "example": null,
-            "nullable": true
-          }
-        }
-      },
       "MemoryBundleItemDto": {
         "type": "object",
         "properties": {
@@ -4715,6 +4758,26 @@
             "example": "cmqvt0v580000xeg7jgy7v1u3",
             "nullable": true
           },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "unknown_or_blocked_client",
+              "no_client_policy",
+              "policy_expired",
+              "operation_not_allowed",
+              "no_matching_memories",
+              "no_allowed_memories",
+              "confirmation_required",
+              "policy_changed",
+              "inactive_memory",
+              "unapproved_memory",
+              "expired_memory",
+              "above_sensitivity_ceiling",
+              "denied_category",
+              "category_not_allowed"
+            ],
+            "nullable": true
+          },
           "tokenBudget": {
             "type": "number",
             "example": 1200
@@ -4751,6 +4814,7 @@
           "requestId",
           "status",
           "policyId",
+          "reason",
           "tokenBudget",
           "estimatedTokens",
           "items",
@@ -4764,7 +4828,9 @@
         "properties": {
           "purpose": {
             "type": "string",
-            "example": "software_development"
+            "nullable": true,
+            "maxLength": 160,
+            "description": "Caller-declared audit reason; does not affect permissions or retrieval."
           },
           "task": {
             "type": "string",
@@ -4796,7 +4862,7 @@
             "maximum": 8000
           }
         },
-        "required": ["purpose", "task"]
+        "required": ["task"]
       },
       "DisclosureSummaryDto": {
         "type": "object",
@@ -4807,8 +4873,37 @@
           "clientName": {
             "type": "string"
           },
-          "purpose": {
-            "type": "string"
+          "statedPurpose": {
+            "type": "string",
+            "nullable": true
+          },
+          "policyId": {
+            "type": "string",
+            "nullable": true
+          },
+          "policyVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "unknown_or_blocked_client",
+              "no_client_policy",
+              "policy_expired",
+              "operation_not_allowed",
+              "no_matching_memories",
+              "no_allowed_memories",
+              "confirmation_required",
+              "policy_changed",
+              "inactive_memory",
+              "unapproved_memory",
+              "expired_memory",
+              "above_sensitivity_ceiling",
+              "denied_category",
+              "category_not_allowed"
+            ],
+            "nullable": true
           },
           "task": {
             "type": "string"
@@ -4841,7 +4936,10 @@
         "required": [
           "id",
           "clientName",
-          "purpose",
+          "statedPurpose",
+          "policyId",
+          "policyVersion",
+          "reason",
           "task",
           "status",
           "retention",
@@ -5858,6 +5956,7 @@
               "MEMORY_REQUEST_APPROVED",
               "MEMORY_REQUEST_DENIED",
               "MEMORY_SUGGESTION_CREATED",
+              "MEMORY_SUGGESTION_DENIED",
               "MEMORY_SUGGESTION_APPROVED",
               "MEMORY_SUGGESTION_REJECTED",
               "CLIENT_CREATED",
@@ -6119,7 +6218,7 @@
         "properties": {
           "schemaVersion": {
             "type": "string",
-            "example": "funes-vault.export.v1"
+            "example": "funes-vault.export.v2"
           },
           "exportedAt": {
             "type": "string",
@@ -6220,7 +6319,7 @@
         "properties": {
           "schemaVersion": {
             "type": "string",
-            "example": "funes-vault.export.v1"
+            "example": "funes-vault.export.v2"
           },
           "exportedAt": {
             "type": "string",

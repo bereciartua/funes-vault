@@ -141,7 +141,10 @@ export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
           type: "audit-event",
           data: {
             auditEventId: bundle.auditEventId,
-            type: AuditEventType.MEMORY_DISCLOSURE,
+            type:
+              bundle.status === "DENIED"
+                ? AuditEventType.MEMORY_REQUEST_DENIED
+                : AuditEventType.MEMORY_DISCLOSURE,
             severity: bundle.items.length > 0 ? "RISK" : "INFO"
           }
         });
@@ -156,12 +159,17 @@ export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
           status: decision === "DENY" ? "denied" : "completed",
           summary:
             decision === "DENY"
-              ? "Policy denied the memory retrieval request."
+              ? bundle.reason === "no_matching_memories"
+                ? "No matching memories were found."
+                : bundle.reason === "no_client_policy"
+                  ? "This app has no permissions. Set them up in [Apps & access](/settings/clients)."
+                  : `Memory retrieval denied: ${bundle.reason ?? "no_allowed_memories"}.`
               : `${items.length} memory references returned.`,
           metadata: {
             requestId: bundle.requestId,
             status: bundle.status,
             policyId: bundle.policyId,
+            reason: bundle.reason,
             tokenBudget: bundle.tokenBudget,
             estimatedTokens: bundle.estimatedTokens,
             deniedCount: bundle.denied.length,
@@ -170,7 +178,7 @@ export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
         }
       });
 
-      return { items };
+      return { items, reason: bundle.reason };
     }
   },
   {

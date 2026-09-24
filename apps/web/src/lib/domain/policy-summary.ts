@@ -19,18 +19,10 @@ export function clientAccessSummary(
     ? `last seen ${formatRelative(client.lastUsedAt)}`
     : "not used yet";
   const access = policy
-    ? `reads up to ${label(policy.maxSensitivity)}, ${pluralize(
-        policy.allowedCategoryKeys.length,
-        "category",
-        "categories"
-      )}${policy.requiresConfirmation ? ", confirmation required above" : ""}`
-    : client.policyCount > 0
-      ? pluralize(
-          client.policyCount,
-          "disclosure policy",
-          "disclosure policies"
-        )
-      : "no disclosure policy";
+    ? `permissions up to ${label(policy.maxSensitivity)}, ${policy.allowedCategoryKeys.length ? pluralize(policy.allowedCategoryKeys.length, "category", "categories") : "all categories"}${policy.requiresConfirmation ? ", confirmation required" : ""}`
+    : client.hasPolicy
+      ? "App permissions configured"
+      : "no app permissions";
 
   return `${label(client.trustLevel)} · ${clientTypeLabel(
     client.type
@@ -85,10 +77,14 @@ export function policySummary(policy: Policy) {
     ? "Each matching request needs your confirmation."
     : "Matching requests are shared automatically, without asking you first.";
   const expiration = policy.expiresAt
-    ? `The policy expires on ${new Date(policy.expiresAt).toLocaleDateString()}.`
-    : "The policy never expires.";
+    ? `Permissions expire on ${new Date(policy.expiresAt).toLocaleDateString()}.`
+    : "Permissions never expire.";
 
-  return `${client} can ${operations} memories up to ${label(policy.maxSensitivity)} sensitivity ${categories}${denied}. ${confirmation} ${expiration}`;
+  const write = policy.operations.includes("WRITE")
+    ? " Proposals from this app are applied immediately without review when permitted by these limits."
+    : "";
+
+  return `${client} can ${operations} memories up to ${label(policy.maxSensitivity)} sensitivity ${categories}${denied}. ${confirmation} ${expiration}${write}`;
 }
 type PolicyRiskFactor = {
   label: string;

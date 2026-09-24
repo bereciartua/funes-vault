@@ -78,7 +78,7 @@ function createExport() {
 
   return {
     metadata: {
-      schemaVersion: "funes-vault.export.v1" as const,
+      schemaVersion: "funes-vault.export.v2" as const,
       exportedAt: now.toISOString(),
       source: {
         app: "funes-vault" as const,
@@ -137,6 +137,7 @@ function createExport() {
         trustLevel: ClientTrustLevel.APPROVED,
         declaredRetention: ClientRetention.NO_STORAGE,
         hasToken: false,
+        hasPolicy: true,
         lastUsedAt: null,
         createdAt: now.toISOString(),
         updatedAt: now.toISOString()

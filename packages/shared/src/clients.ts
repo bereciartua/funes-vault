@@ -25,8 +25,7 @@ export const clientSchema = z.object({
     })
     .nullable()
     .optional(),
-  // Defaults preserve compatibility with older vault exports.
-  policyCount: z.number().int().nonnegative().default(0),
+  hasPolicy: z.boolean(),
   oauthConnector: z.boolean().default(false),
   lastUsedAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),

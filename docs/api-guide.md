@@ -20,7 +20,7 @@ is not a public proxy for every API or operator endpoint.
 | Consumer                 | Credential                                       | Authority                                                |
 | ------------------------ | ------------------------------------------------ | -------------------------------------------------------- |
 | Browser owner            | `funes_vault_session` HTTP-only cookie           | Owner-scoped administration of the vault                 |
-| Registered static client | `Authorization: Bearer <token>`                  | Client's current trust and purpose/operation policy      |
+| Registered static client | `Authorization: Bearer <token>`                  | Client's current trust and app operation permissions     |
 | OAuth connector          | Opaque OAuth access token                        | Owner-approved client grant, scopes, resource and policy |
 | Queue administrator      | Valid owner session with `ADMIN` or `OWNER` role | Optional `/admin/queues` dashboard                       |
 
@@ -34,9 +34,7 @@ Creating or rotating a static client token shows its plaintext once. Store it in
 the calling tool's secret configuration. Client and session tokens are stored as
 hashes. Never put credentials in URLs, logs, issue reports or vault exports.
 
-Client credentials cannot call owner administration endpoints. A purpose string
-is an exact policy key, not a natural-language instruction that overrides access
-rules. Unknown and blocked clients fail closed.
+Client credentials cannot call owner administration endpoints. Purpose is optional caller-declared audit context and never selects or overrides permissions. Unknown and blocked clients fail closed.
 
 ## OAuth and MCP discovery
 
@@ -106,7 +104,7 @@ a refreshed preview on the owner's behalf. Retrieval writes a disclosure audit.
 | Memories                | `/v1/memories`                | Create, search, edit, archive/delete and inspect provenance |
 | Categories              | `/v1/categories`              | Owner-facing category catalog                               |
 | Client category catalog | `/v1/memory-categories`       | Bearer-authenticated integration catalog                    |
-| Clients and policies    | `/v1/clients`, `/v1/policies` | Manage trust, tokens and purpose rules                      |
+| Clients and policies    | `/v1/clients`, `/v1/policies` | Manage trust, tokens and app permissions                    |
 | Suggestions             | `/v1/memory-suggestions`      | Propose memory and review outcomes                          |
 | Disclosure reviews      | `/v1/memory-request-reviews`  | Owner preview and decision                                  |
 | Chat and voice          | `/v1/chat`                    | Threads, streams and source-bound voice sessions            |
@@ -194,3 +192,15 @@ application and exports the same document factory used by the running server;
 no database connection or provider request is required. CI regenerates the file
 and rejects unreviewed differences. Commit the generated JSON with the code and
 update this guide when an integration workflow changes.
+
+### App permissions contract
+
+`purpose` is optional, nullable audit context on reads and suggestions. It is trimmed, blank becomes null, and the limit is 160 characters after trimming. Task is required for reads and drives retrieval. Caller identity comes from authentication; no policy selector is accepted.
+
+Each client has at most one policy. Creating a second returns 409, “This app already has permissions”. Policy updates cannot move permissions to another client. `POST /v1/policies/defaults/:clientId` restores defaults only for an existing first-party app without permissions.
+
+Read and suggestion responses include nullable `reason`: `unknown_or_blocked_client`, `no_client_policy`, `policy_expired`, `operation_not_allowed`, `no_matching_memories`, `no_allowed_memories`, `confirmation_required`, or `policy_changed`. Client-level denials contain no memory identifiers. Per-memory denial reasons retain their category, sensitivity, status and expiry distinctions.
+
+OAuth `memory.read` gates requests and `memory.suggest` gates suggestions and captures. WRITE has no scope; an owner-granted WRITE permission allows eligible proposals to apply immediately. Capture and voice remain review-only. Caller `sourceMetadata` is nested under `caller` and cannot dispatch actions.
+
+Exports use `funes-vault.export.v2`. Import rejects v1, duplicate policies for a client, and policies whose client is absent from the export.

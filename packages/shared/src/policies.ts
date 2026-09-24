@@ -12,7 +12,6 @@ export const policySchema = z.object({
   id: z.string().min(1),
   clientId: z.string().min(1),
   clientName: z.string().min(1).nullable(),
-  purpose: z.string().min(1),
   allowedCategoryKeys: z.array(z.string().min(1)),
   deniedCategoryKeys: z.array(z.string().min(1)),
   maxSensitivity: memorySensitivitySchema,
@@ -27,7 +26,6 @@ export type Policy = z.infer<typeof policySchema>;
 
 export const createPolicyRequestSchema = z.object({
   clientId: z.string().trim().min(1),
-  purpose: z.string().trim().min(1).max(160),
   allowedCategoryKeys: z.array(z.string().trim().min(1)).max(24).default([]),
   deniedCategoryKeys: z.array(z.string().trim().min(1)).max(24).default([]),
   maxSensitivity: memorySensitivitySchema.default("INTERNAL"),
@@ -40,8 +38,6 @@ export type CreatePolicyRequest = z.infer<typeof createPolicyRequestSchema>;
 
 export const updatePolicyRequestSchema = z
   .object({
-    clientId: z.string().trim().min(1).optional(),
-    purpose: z.string().trim().min(1).max(160).optional(),
     allowedCategoryKeys: z.array(z.string().trim().min(1)).max(24).optional(),
     deniedCategoryKeys: z.array(z.string().trim().min(1)).max(24).optional(),
     maxSensitivity: memorySensitivitySchema.optional(),
@@ -49,6 +45,7 @@ export const updatePolicyRequestSchema = z
     requiresConfirmation: z.boolean().optional(),
     expiresAt: nullableDatetimeSchema
   })
+  .strict()
   .refine(requireAtLeastOneField, {
     message: "At least one field is required"
   });

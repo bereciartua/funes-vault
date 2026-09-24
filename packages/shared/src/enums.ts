@@ -72,6 +72,25 @@ export const policyOperationSchema = z.enum([
   "EXPORT"
 ]);
 
+export const memoryRequestReasonSchema = z.enum([
+  "unknown_or_blocked_client",
+  "no_client_policy",
+  "policy_expired",
+  "operation_not_allowed",
+  "no_matching_memories",
+  "no_allowed_memories",
+  "confirmation_required",
+  "policy_changed",
+  "inactive_memory",
+  "unapproved_memory",
+  "expired_memory",
+  "above_sensitivity_ceiling",
+  "denied_category",
+  "category_not_allowed"
+]);
+export const MemoryRequestReason = memoryRequestReasonSchema.enum;
+export type MemoryRequestReason = z.infer<typeof memoryRequestReasonSchema>;
+
 export const memoryRequestStatusSchema = z.enum([
   "PENDING",
   "APPROVED",
@@ -100,6 +119,7 @@ export const auditEventTypeSchema = z.enum([
   "MEMORY_REQUEST_APPROVED",
   "MEMORY_REQUEST_DENIED",
   "MEMORY_SUGGESTION_CREATED",
+  "MEMORY_SUGGESTION_DENIED",
   "MEMORY_SUGGESTION_APPROVED",
   "MEMORY_SUGGESTION_REJECTED",
   "CLIENT_CREATED",

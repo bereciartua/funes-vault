@@ -1,3 +1,4 @@
+import { oauthScopeSuggest } from "@funes-vault/shared";
 import {
   type CreateCaptureRequest,
   createCaptureRequestSchema
@@ -16,6 +17,7 @@ import {
 
 import { sessionCookieName } from "../auth/auth.constants.js";
 import type { FunesRequest } from "../auth/auth.types.js";
+import { RequireClientScope } from "../clients/client-scope.decorator.js";
 import { ZodValidationPipe } from "../common/zod-validation.pipe.js";
 import { captureActor, CaptureAuthGuard } from "./capture-auth.guard.js";
 import { CaptureResponseDto, CreateCaptureDto } from "./captures.dto.js";
@@ -32,6 +34,7 @@ export class CapturesController {
   ) {}
 
   @Post()
+  @RequireClientScope(oauthScopeSuggest)
   @ApiOperation({
     summary: "Quick-capture a text note as a reviewable memory suggestion",
     description:

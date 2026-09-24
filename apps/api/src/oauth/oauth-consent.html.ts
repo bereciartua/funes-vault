@@ -15,7 +15,7 @@ const scopeDescriptions: Record<string, string> = {
   [oauthScopeRead]:
     "Request policy-filtered memory bundles (never memories above the grant's sensitivity ceiling)",
   [oauthScopeSuggest]:
-    "Suggest new memories, which always queue for your review before becoming durable"
+    "Propose memories; App permissions determine whether they queue for review or apply immediately"
 };
 
 function pageShell(title: string, body: string) {
@@ -99,7 +99,12 @@ export function renderConsentPage(input: {
       : ""
   } will be able to:</p>
   <ul>${scopeItems}</ul>
-  <p class="muted">Approving creates a client grant with a disclosure ceiling of
+  <p><strong>App permissions after approval:</strong> ${escapeHtml(context.operations.join(", "))}</p>
+  <p>${context.createsPermissions ? "Approving creates permissions, including when you previously removed them." : "Existing category, sensitivity, confirmation and expiration settings are preserved."}</p>
+  <p>Allowed categories: ${escapeHtml(context.allowedCategories.join(", ") || "All categories")}. Denied categories: ${escapeHtml(context.deniedCategories.join(", ") || "None")}.</p>
+  <p>Confirmation: ${context.requiresConfirmation ? "Required" : "Not required"}. Expiration: ${escapeHtml(context.expiresAt ?? "None")}.</p>
+  ${context.operations.includes("WRITE") ? "<p>Proposals from this app are applied immediately without review when permitted by these limits.</p>" : ""}
+  <p class="muted">The disclosure ceiling is
   <strong>${escapeHtml(context.maxSensitivity.toLowerCase())}</strong> sensitivity.
   Every disclosure is audited, and you can revoke this grant at any time in
   Apps &amp; access. After approval, the app redirects to

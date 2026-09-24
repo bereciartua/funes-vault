@@ -5,7 +5,6 @@ import { type FormEvent, useState } from "react";
 import { useConfirm } from "../../../components/ui/confirmation-dialog";
 import { apiErrorMessage } from "../../../lib/api/api-client";
 import { toExpiresAtIso } from "../../../lib/dates";
-import { label } from "../../../lib/domain/labels";
 import {
   emptyPolicyDraft,
   type PolicyDraft,
@@ -28,7 +27,6 @@ export function usePolicyWorkspace(client: Client) {
     id: policyEditor?.mode === "edit" ? policyEditor.policyId : "draft-policy",
     clientId: client.id,
     clientName: client.name,
-    purpose: policyDraft.purpose || "New policy",
     expiresAt: toExpiresAtIso(policyDraft.expiresAt),
     createdAt: new Date(0).toISOString(),
     updatedAt: new Date(0).toISOString()
@@ -58,17 +56,8 @@ export function usePolicyWorkspace(client: Client) {
     setMessage(null);
     setError(null);
     const id = policyEditor.mode === "edit" ? policyEditor.policyId : null;
-    const purpose = policyDraft.purpose.trim();
-    if (
-      policies.some((policy) => policy.purpose === purpose && policy.id !== id)
-    ) {
-      setError("A policy with this purpose already exists for this app.");
-
-      return;
-    }
     const draft = {
       ...policyDraft,
-      purpose,
       expiresAt: toExpiresAtIso(policyDraft.expiresAt)
     };
     try {
@@ -78,17 +67,18 @@ export function usePolicyWorkspace(client: Client) {
         await mutations.create.mutateAsync({ ...draft, clientId: client.id });
       }
       setPolicyEditor(null);
-      setMessage(id ? "Policy updated." : "Policy created.");
+      setMessage(id ? "Permissions updated." : "Permissions created.");
     } catch (error) {
-      setError(apiErrorMessage(error, "Could not save this policy."));
+      setError(apiErrorMessage(error, "Could not save these permissions."));
+      await query.refetch();
     }
   }
   async function confirmDeletePolicy(policy: Policy) {
     if (
       !(await confirm({
-        title: "Delete policy?",
-        body: `Delete the "${label(policy.purpose)}" policy. Future requests that depended on it may be denied until a new policy is created.`,
-        confirmLabel: "Delete policy",
+        title: "Remove permissions?",
+        body: `Remove permissions for ${client.name}. Future requests will be denied until permissions are set up again.`,
+        confirmLabel: "Remove permissions",
         tone: "danger"
       }))
     ) {
@@ -99,13 +89,27 @@ export function usePolicyWorkspace(client: Client) {
     try {
       await mutations.remove.mutateAsync(policy.id);
       setPolicyEditor(null);
-      setMessage("Policy deleted.");
+      setMessage("Permissions removed.");
     } catch (error) {
       setError(apiErrorMessage(error, "Could not delete this policy."));
     }
   }
 
+  async function restoreDefaults() {
+    try {
+      await mutations.restore.mutateAsync(client.id);
+      setMessage("Default permissions restored.");
+    } catch (error) {
+      setError(apiErrorMessage(error, "Could not restore permissions."));
+      await query.refetch();
+    }
+  }
+
   return {
+    isFirstParty:
+      client.type === "WEB_APP" &&
+      ["Funes Vault Web Chat", "Funes Vault Voice"].includes(client.name),
+    restoreDefaults,
     policies,
     policyEditor,
     setPolicyEditor,

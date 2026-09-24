@@ -126,7 +126,7 @@ export function PrivacyOverview({
 
         <Link className="signal-card" href="/settings/clients">
           <div className="signal-head">
-            <p className="eyebrow">Broadest policy</p>
+            <p className="eyebrow">Broadest app permissions</p>
             <strong className="signal-value">{overview.policyTotal}</strong>
           </div>
           {highestRiskPolicy ? (

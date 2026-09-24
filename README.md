@@ -115,7 +115,7 @@ Use the canonical production Compose file with pinned image tags and three HTTPS
 
 ## Connecting an AI tool
 
-Create a client and purpose-scoped policy under **Settings → Apps & access**, or authorize an OAuth connector. Follow [MCP integration](docs/mcp-integration.md); HTTP consumers can use the [API guide](docs/api-guide.md) and [OpenAPI specification](docs/openapi.json).
+Create a client and App permissions under **Settings → Apps & access**, or authorize an OAuth connector. Follow [MCP integration](docs/mcp-integration.md); HTTP consumers can use the [API guide](docs/api-guide.md) and [OpenAPI specification](docs/openapi.json).
 
 ## Contributing, security and license
 

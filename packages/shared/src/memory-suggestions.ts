@@ -1,11 +1,13 @@
 import { z } from "zod";
 
+import { statedPurposeSchema } from "./common.js";
 import { deniedMemorySchema, jsonRecordSchema } from "./common.js";
 import {
   nullableDatetimeSchema,
   paginationQuerySchema,
   paginationSchema
 } from "./common.js";
+import { memoryRequestReasonSchema } from "./enums.js";
 import {
   memoryKindSchema,
   memorySensitivitySchema,
@@ -42,7 +44,7 @@ export const memorySuggestionInputPreprocessor = (value: unknown) => {
 export const createMemorySuggestionRequestSchema = z.preprocess(
   memorySuggestionInputPreprocessor,
   z.object({
-    purpose: z.string().trim().min(1).max(160),
+    purpose: statedPurposeSchema,
     kind: memoryKindSchema.default("FACT"),
     title: z.string().trim().min(1).max(180),
     body: z.string().trim().min(1).max(10000),
@@ -64,6 +66,7 @@ export const memorySuggestionResponseSchema = z.object({
   memoryId: z.string().min(1).nullable().default(null),
   status: z.union([memorySuggestionStatusSchema, z.literal("DENIED")]),
   policyId: z.string().nullable(),
+  reason: memoryRequestReasonSchema.nullable(),
   auditEventId: z.string().min(1).nullable(),
   decision: z.enum(["ALLOW", "NEEDS_CONFIRMATION", "DENY"]),
   denied: z.array(deniedMemorySchema)

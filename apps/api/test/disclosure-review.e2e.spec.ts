@@ -78,7 +78,6 @@ describe("privacy: one-time disclosure review (e2e)", () => {
       data: {
         userId: owner.userId,
         clientId,
-        purpose: "review",
         operations: ["READ"],
         requiresConfirmation: true,
         maxSensitivity: "INTERNAL"
@@ -149,6 +148,31 @@ describe("privacy: one-time disclosure review (e2e)", () => {
       })
     ).toBe(1);
   });
+
+  it.each(["FULFILLED", "DENIED"])(
+    "never reopens a %s request after permissions change",
+    async (status) => {
+      const id = await create();
+      if (status === "FULFILLED") {
+        await approve(id);
+        await result(id).expect(200);
+      } else {
+        await api()
+          .patch(reviewPath(id))
+          .set("Cookie", owner.cookie)
+          .send({ action: "deny" })
+          .expect(200);
+      }
+      await prisma.policy.update({
+        where: { id: policyId },
+        data: { maxSensitivity: "LOW" }
+      });
+      const view = await preview(id);
+      expect(view.canApprove).toBe(false);
+      expect((await result(id)).body.status).toBe(status);
+      expect((await approve(id, view)).status).toBe(409);
+    }
+  );
 
   it("isolates review and retrieval by both user and client", async () => {
     const id = await create();

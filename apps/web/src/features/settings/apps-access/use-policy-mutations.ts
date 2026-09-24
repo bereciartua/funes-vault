@@ -19,6 +19,12 @@ export function usePolicyMutations() {
     body: (draft: CreatePolicyRequest) => draft,
     invalidate
   });
+  const restore = useApiMutation({
+    path: (clientId: string) => `/v1/policies/defaults/${clientId}`,
+    schema: policyResponseSchema,
+    body: () => undefined,
+    invalidate
+  });
   const update = useApiMutation({
     path: ({ id }: { id: string; draft: UpdatePolicyRequest }) =>
       `/v1/policies/${id}`,
@@ -37,8 +43,13 @@ export function usePolicyMutations() {
 
   return {
     create,
+    restore,
     update,
     remove,
-    isPending: create.isPending || update.isPending || remove.isPending
+    isPending:
+      restore.isPending ||
+      create.isPending ||
+      update.isPending ||
+      remove.isPending
   };
 }

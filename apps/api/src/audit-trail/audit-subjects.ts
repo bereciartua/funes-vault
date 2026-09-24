@@ -208,7 +208,11 @@ export function inferAuditSubjects(
       type: AuditSubjectType.POLICY,
       id: policyId,
       role: AuditSubjectRole.POLICY,
-      label: metadata.purpose
+      label:
+        metadata.policyLabel ??
+        (typeof metadata.clientName === "string"
+          ? `${metadata.clientName} permissions`
+          : "App permissions")
     });
   }
 

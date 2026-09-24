@@ -73,7 +73,7 @@ describe("privacy: ClientsService", () => {
       expect.not.objectContaining({ tokenHash: "token_hash" })
     );
     expect(response.items[0]).toEqual(
-      expect.objectContaining({ policyCount: 2 })
+      expect.objectContaining({ hasPolicy: true })
     );
   });
 

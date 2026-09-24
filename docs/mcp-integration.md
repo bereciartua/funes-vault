@@ -106,7 +106,7 @@ Vendor assistant apps (Claude, ChatGPT) add remote MCP servers as custom connect
 1. The connector hits `/mcp` without a token, gets a 401 whose `WWW-Authenticate` header points at the protected resource metadata, and discovers the authorization server from it.
 2. It registers itself via `POST /register` (dynamic client registration). Registrations are stored approval-pending and grant no access by themselves.
 3. It sends the user's browser to `/authorize` (PKCE, S256 only). The API renders a consent screen — signing in with the vault account if needed — showing the requesting client, the scopes, and the grant's disclosure ceiling.
-4. Approval creates or updates a per-user client grant: a `Client` (type `MCP_CLIENT`, trust `APPROVED`, visible in Apps & access with an "OAuth connector" badge) plus an `mcp_connector` policy whose operations come from the granted scopes.
+4. Approval creates or updates a per-user client grant: a `Client` (type `MCP_CLIENT`, trust `APPROVED`, visible in Apps & access with an "OAuth connector" badge) plus an app permission set whose operations come from the granted scopes.
 5. The connector exchanges its code at `/token` for an access/refresh token pair. Access tokens work on `/mcp` and map to the grant; refresh tokens rotate on every use.
 
 Scopes:
@@ -116,7 +116,7 @@ Scopes:
 | `memory.read`    | `request_memory` (policy-filtered bundles), maps to the `READ` operation |
 | `memory.suggest` | `suggest_memory` (review-queued suggestions), maps to `SUGGEST`          |
 
-The connector-grant policy defaults to a `maxSensitivity` of `INTERNAL` (`MCP_CONNECTOR_MAX_SENSITIVITY` sets the creation default) with no per-request confirmation; the user can tighten or widen it in Apps & access like any policy. Requests under purposes other than `mcp_connector` follow the normal needs-approval flow.
+The connector-grant policy defaults to a `maxSensitivity` of `INTERNAL` (`MCP_CONNECTOR_MAX_SENSITIVITY` sets the creation default) with no per-request confirmation; the user can tighten or widen it in Apps & access like any policy. Purpose is optional audit context and never changes the result. Missing permissions deny access with `no_client_policy`; only an existing policy that requires confirmation creates an approval request.
 
 Revocation works from both sides: deleting the grant client (or setting its trust to blocked) in Apps & access revokes all issued tokens immediately, and connectors can revoke their own tokens at `/revoke` (RFC 7009). Replayed authorization codes and reused rotated refresh tokens revoke the grant's whole token family. Every issuance and revocation is audited (`OAUTH_TOKEN_ISSUED`, `OAUTH_TOKEN_REVOKED`, `OAUTH_GRANT_APPROVED`, `OAUTH_GRANT_DENIED`).
 
@@ -151,7 +151,7 @@ The demo prints the same policy-filtered memory bundle returned by `POST /v1/mem
 }
 ```
 
-`suggest_memory` requires a declared purpose so the API can evaluate `SUGGEST` policy access:
+`suggest_memory` uses the authenticated app’s SUGGEST or WRITE permissions. Purpose is optional audit context:
 
 ```json
 {

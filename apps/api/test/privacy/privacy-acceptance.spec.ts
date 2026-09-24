@@ -200,6 +200,7 @@ describe("privacy: privacy acceptance tests", () => {
 
   it("creates an audit event for an MCP memory request path", async () => {
     const prismaClient = {
+      memory: { findMany: vi.fn().mockResolvedValue([embeddableMemory()]) },
       memoryRequest: {
         create: vi.fn().mockResolvedValue({ id: "request_1" }),
         update: vi.fn().mockResolvedValue({})

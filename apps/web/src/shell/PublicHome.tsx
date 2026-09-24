@@ -22,7 +22,7 @@ const workflowSteps = [
   ],
   [
     "Approve clients",
-    "Give each app a narrow policy by purpose, category, operation, and sensitivity."
+    "Give each app a narrow policy by category, operation, and sensitivity."
   ],
   [
     "Audit disclosure",
@@ -37,7 +37,7 @@ const trustPoints = [
   ],
   [
     "Least privilege for each client",
-    "Apps request memory for a declared purpose; policies filter what actually leaves."
+    "Apps request memory for a task; app permissions filter what actually leaves."
   ],
   [
     "Sensitive data is deliberate",
@@ -218,8 +218,8 @@ export function PublicHome({
               </h2>
               <p className="public-section-lede">
                 Agents and apps request compact memory bundles over MCP or HTTP,
-                scoped by purpose. The vault answers with exactly what policy
-                allows, with an audit entry for each disclosure.
+                under its app permissions. The vault answers with exactly what
+                policy allows, with an audit entry for each disclosure.
               </p>
             </div>
             <pre className="public-code" aria-label="MCP configuration example">
@@ -250,7 +250,9 @@ function DisclosurePreview() {
     >
       <div className="disclosure-preview-header">
         <p className="eyebrow">Disclosure preview</p>
-        <p className="eyebrow">purpose: software development</p>
+        <p className="eyebrow">
+          stated purpose: help with software development
+        </p>
       </div>
       <h2 id="disclosure-preview-title">A coding agent asks for memory</h2>
       <div className="disclosure-request" aria-label="Requested context">

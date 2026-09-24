@@ -23,6 +23,8 @@ export async function createSuggestionRecord(
     sourceClientId: string | null;
     request: CreateMemorySuggestionRequest;
     status?: MemorySuggestionStatus;
+    policyId?: string | null;
+    serverMetadata?: Record<string, unknown>;
   }
 ) {
   return tx.memorySuggestion.create({
@@ -36,7 +38,14 @@ export async function createSuggestionRecord(
       suggestedSensitivity: input.request.sensitivity,
       suggestedCategories: input.request.categoryKeys,
       evidence: input.request.evidence,
-      sourceMetadata: input.request.sourceMetadata as Prisma.InputJsonValue,
+      statedPurpose: input.request.purpose,
+      policyId: input.policyId ?? null,
+      sourceMetadata: toJson({
+        ...input.serverMetadata,
+        statedPurpose: input.request.purpose,
+        policyId: input.policyId ?? null,
+        caller: input.request.sourceMetadata
+      }),
       confidence: input.request.confidence,
       expiresAt: toDateOrNull(input.request.expiresAt),
       status: input.status ?? MemorySuggestionStatus.QUEUED_FOR_REVIEW

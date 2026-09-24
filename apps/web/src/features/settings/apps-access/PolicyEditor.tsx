@@ -12,7 +12,6 @@ import {
 import { CategoryAccessMatrix } from "./CategoryAccessMatrix";
 import {
   operations,
-  purposeSuggestions,
   sensitivities,
   togglePolicyOperation
 } from "./policy-draft";
@@ -53,32 +52,6 @@ export function PolicyEditor({
       </div>
       <form className="form-stack" onSubmit={savePolicy}>
         <div className="form-grid">
-          <FormField label="Purpose">
-            <SelectField
-              ariaLabel="Policy purpose"
-              value={policyDraft.purpose}
-              options={[
-                ...purposeSuggestions,
-                ...(purposeSuggestions.includes(policyDraft.purpose)
-                  ? []
-                  : [policyDraft.purpose])
-              ].map((purpose) => ({
-                label: label(purpose),
-                value: purpose
-              }))}
-              onValueChange={(purpose) =>
-                setPolicyDraft((current) => ({
-                  ...current,
-                  purpose
-                }))
-              }
-              required
-            />
-            <span className="field-hint">
-              What the app says it needs memory for. Requests must declare this
-              same purpose to match. One policy per purpose.
-            </span>
-          </FormField>
           <FormField label="Max sensitivity">
             <SelectField
               ariaLabel="Policy max sensitivity"
@@ -149,6 +122,7 @@ export function PolicyEditor({
             <DeleteButton
               type="button"
               disabled={isSaving}
+              aria-label="Remove permissions"
               onClick={() => void confirmDeletePolicy(editingPolicy)}
             />
           ) : null}

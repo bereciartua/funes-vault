@@ -151,10 +151,10 @@ export function ConnectAgentGuideView({
       <summary>How do I connect Claude, ChatGPT, or a coding agent?</summary>
       <p className="muted">
         A connected app never browses your vault. It asks for memories for a
-        declared purpose and receives only what its policy allows, anything it
-        wants to remember follows its saving policy, and every disclosure is
-        recorded in the audit log. You can cut any app off from the list below
-        at any moment.
+        task and receives only what its app permissions allow, anything it wants
+        to remember follows its saving policy, and every disclosure is recorded
+        in the audit log. You can cut any app off from the list below at any
+        moment.
       </p>
       <TabsRoot defaultValue="assistants">
         <TabsList

@@ -6,6 +6,7 @@ import { mockPrisma } from "../../test/mocks/prisma.js";
 import { apiEnvSchema } from "../config.js";
 import { SuggestionIntakeService } from "../memory-suggestions/suggestion-intake.service.js";
 import { SuggestionWriterService } from "../memory-suggestions/suggestion-writer.service.js";
+import { PolicyEvaluationService } from "../policies/policy-evaluation.service.js";
 import { CandidateApplier } from "./candidate-applier.js";
 import type { Candidate } from "./contracts.js";
 import { resolveProcessingConfiguration } from "./memory-processing-config.service.js";
@@ -35,6 +36,12 @@ async function setup() {
     memoryId: null
   });
   const service = await createService(CandidateApplier, [
+    {
+      provide: PolicyEvaluationService,
+      useValue: {
+        evaluateForClient: vi.fn().mockResolvedValue({ decision: "ALLOW" })
+      }
+    },
     { provide: SuggestionIntakeService, useValue: { createSuggestion } },
     {
       provide: SuggestionWriterService,

@@ -17,17 +17,37 @@ export function recordDisclosureDecision(
   type:
     | typeof AuditEventType.MEMORY_REQUEST_APPROVED
     | typeof AuditEventType.MEMORY_REQUEST_DENIED,
-  memoryIds: string[]
+  memoryIds: string[],
+  reason: string | null = null
 ) {
   return auditTrail.createAuditEvent(tx, {
     userId: request.userId,
     clientId: request.clientId,
     memoryRequestId: request.id,
     type,
-    actorType: AuditActorType.USER,
-    actorId: request.userId,
-    metadata: { memoryIds, purpose: request.purpose },
+    actorType:
+      reason === "policy_changed" ? AuditActorType.SYSTEM : AuditActorType.USER,
+    actorId: reason === "policy_changed" ? null : request.userId,
+    metadata: {
+      memoryIds,
+      statedPurpose: request.statedPurpose,
+      policyId: request.policyId,
+      policyVersion: request.policyVersion,
+      reason,
+      task: request.task,
+      operation: "READ"
+    },
     subjects: [
+      ...(request.policyId
+        ? [
+            {
+              type: AuditSubjectType.POLICY,
+              id: request.policyId,
+              role: AuditSubjectRole.POLICY,
+              label: "App permissions"
+            }
+          ]
+        : []),
       {
         type: AuditSubjectType.MEMORY_REQUEST,
         id: request.id,

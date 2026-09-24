@@ -81,10 +81,16 @@ export function DisclosureReviews() {
               <dd>{preview.request.task}</dd>
             </div>
             <div>
-              <dt>Purpose</dt>
-              <dd>{preview.request.purpose}</dd>
+              <dt>Stated purpose</dt>
+              <dd>{preview.request.statedPurpose ?? "Not provided"}</dd>
             </div>
             <div>
+              <dt>App permissions</dt>
+              <dd>{preview.request.policyId ?? "Removed"}</dd>
+              <dt>Permission version</dt>
+              <dd>{preview.request.policyVersion ?? "Not provided"}</dd>
+              <dt>Reason</dt>
+              <dd>{preview.request.reason ?? "Allowed"}</dd>
               <dt>Declared retention</dt>
               <dd>
                 {preview.request.retention.replaceAll("_", " ").toLowerCase()}

@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { AuditTrailModule } from "../audit-trail/audit-trail.module.js";
 import { FirstPartyAccessModule } from "../first-party-access/first-party-access.module.js";
 import { MemorySuggestionsModule } from "../memory-suggestions/memory-suggestions.module.js";
+import { PoliciesModule } from "../policies/policies.module.js";
 import { CandidateApplier } from "./candidate-applier.js";
 import { ExtractionOutcomeWriter } from "./extraction-outcome-writer.js";
 import { ExtractionProviderService } from "./extraction-provider.service.js";
@@ -25,6 +26,7 @@ const providers = [
 @Module({
   imports: [
     AuditTrailModule,
+    PoliciesModule,
     ProcessingCoreModule,
 
     FirstPartyAccessModule,

@@ -1,7 +1,5 @@
 import { apiEnv } from "../config.js";
 
-export const mcpConnectorPurpose = "mcp_connector";
-
 const defaultAccessTokenTtlSeconds = 60 * 60;
 const defaultRefreshTokenTtlSeconds = 30 * 24 * 60 * 60;
 const defaultAuthorizationRequestTtlMs = 10 * 60 * 1000;

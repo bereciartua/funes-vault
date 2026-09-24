@@ -4,7 +4,6 @@ import { connectInMemory } from "../test/connect-in-memory.js";
 import {
   createFunesVaultMcpServer,
   FunesVaultApiClient,
-  type FunesVaultMcpApi,
   initialMcpToolNames,
   openConsentReview,
   requestMemoryToolInputSchema,
@@ -21,156 +20,76 @@ describe("mcp package", () => {
     expect(parsed.tokenBudget).toBe(1200);
   });
 
-  it("accepts suggest_memory input aliases", () => {
+  it("accepts canonical suggest_memory input", () => {
     const parsed = suggestMemoryToolInputSchema.parse({
       purpose: "software_development",
-      kind: "preference",
+      kind: "PREFERENCE",
       title: "Prefers local-first tools",
       body: "The user prefers local-first tools.",
-      categories: ["privacy_preferences"]
+      categoryKeys: ["privacy_preferences"]
     });
 
     expect(parsed.kind).toBe("PREFERENCE");
     expect(parsed.categoryKeys).toEqual(["privacy_preferences"]);
   });
 
+  it("exposes described canonical inputs and never retries a denial", async () => {
+    const calls: unknown[] = [];
+    const api = new FunesVaultApiClient();
+    api.requestMemory = async (input) => {
+      calls.push(input);
+
+      return {
+        requestId: "request",
+        status: "DENIED",
+        policyId: null,
+        reason: "no_client_policy",
+        tokenBudget: 1200,
+        estimatedTokens: 0,
+        items: [],
+        instructions: [],
+        denied: [],
+        auditEventId: "audit"
+      };
+    };
+    const server = createFunesVaultMcpServer(api);
+    const client = await connectInMemory(server);
+    try {
+      const { tools } = await client.listTools();
+      for (const tool of tools) {
+        expect(tool.inputSchema.type).toBe("object");
+        if (["request_memory", "suggest_memory"].includes(tool.name)) {
+          expect(tool.inputSchema.properties?.purpose).toMatchObject({
+            description: expect.stringContaining("audit")
+          });
+          expect(tool.inputSchema.required ?? []).not.toContain("purpose");
+          for (const field of Object.values(
+            tool.inputSchema.properties ?? {}
+          )) {
+            expect(field).toHaveProperty("description");
+          }
+        }
+      }
+      expect(
+        tools.find((t) => t.name === "request_memory")?.inputSchema.required
+      ).toContain("task");
+      await client.callTool({
+        name: "request_memory",
+        arguments: {
+          task: "Favorite color",
+          purpose: "Answer the color question"
+        }
+      });
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toMatchObject({ purpose: "Answer the color question" });
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
   it("includes the first version MCP tools", () => {
     expect(initialMcpToolNames).toContain("request_memory");
     expect(initialMcpToolNames).toContain("suggest_memory");
-  });
-
-  it("advertises the granted purpose in tool descriptions when configured", async () => {
-    // Policies match purposes exactly and the calling model fills the
-    // purpose field, so the hint is what makes a policy apply first try.
-
-    const server = createFunesVaultMcpServer(undefined, {
-      suggestedPurpose: "general_context"
-    });
-    const client = await connectInMemory(server);
-
-    const tools = await client.listTools();
-    const byName = new Map(tools.tools.map((tool) => [tool.name, tool]));
-    expect(byName.get("request_memory")?.description).toContain(
-      'grants the purpose "general_context"'
-    );
-    expect(byName.get("suggest_memory")?.description).toContain(
-      'grants the purpose "general_context"'
-    );
-    expect(byName.get("list_memory_categories")?.description).not.toContain(
-      "general_context"
-    );
-
-    await client.close();
-    await server.close();
-  });
-
-  it("retries under the granted purpose when the caller's purpose has no policy", async () => {
-    const seenPurposes: string[] = [];
-    const deniedNoPolicy = {
-      suggestionId: null,
-      memoryId: null,
-      status: "DENIED" as const,
-      policyId: null,
-      auditEventId: null,
-      decision: "DENY" as const,
-      denied: [{ memoryId: "proposed_memory", reason: "no_active_policy" }]
-    };
-    const queued = {
-      suggestionId: "s1",
-      memoryId: null,
-      status: "QUEUED_FOR_REVIEW" as const,
-      policyId: "p1",
-      auditEventId: "a1",
-      decision: "ALLOW" as const,
-      denied: []
-    };
-    const fakeApi: FunesVaultMcpApi = {
-      async getMemoryRequest() {
-        throw new Error("not used");
-      },
-      async requestMemory() {
-        throw new Error("not used");
-      },
-      async suggestMemory(input: { purpose: string }) {
-        seenPurposes.push(input.purpose);
-
-        return input.purpose === "general_context" ? queued : deniedNoPolicy;
-      },
-      async listMemoryCategories() {
-        return { items: [] };
-      }
-    };
-
-    const server = createFunesVaultMcpServer(fakeApi, {
-      suggestedPurpose: "general_context"
-    });
-    const client = await connectInMemory(server);
-
-    const result = await client.callTool({
-      name: "suggest_memory",
-      arguments: {
-        purpose: "personal_preferences",
-        title: "Likes cheesecake",
-        body: "The user likes cheesecake."
-      }
-    });
-
-    expect(seenPurposes).toEqual(["personal_preferences", "general_context"]);
-    expect(
-      (result.structuredContent as { status: string; decision: string }).status
-    ).toBe("QUEUED_FOR_REVIEW");
-
-    await client.close();
-    await server.close();
-  });
-
-  it("passes through non-policy denials without retrying", async () => {
-    const seenPurposes: string[] = [];
-    const fakeApi: FunesVaultMcpApi = {
-      async getMemoryRequest() {
-        throw new Error("not used");
-      },
-      async requestMemory() {
-        throw new Error("not used");
-      },
-      async suggestMemory(input: { purpose: string }) {
-        seenPurposes.push(input.purpose);
-
-        return {
-          suggestionId: null,
-          memoryId: null,
-          status: "DENIED" as const,
-          policyId: "p1",
-          auditEventId: null,
-          decision: "DENY" as const,
-          denied: [
-            { memoryId: "proposed_memory", reason: "above_sensitivity_ceiling" }
-          ]
-        };
-      },
-      async listMemoryCategories() {
-        return { items: [] };
-      }
-    };
-
-    const server = createFunesVaultMcpServer(fakeApi, {
-      suggestedPurpose: "general_context"
-    });
-    const client = await connectInMemory(server);
-
-    await client.callTool({
-      name: "suggest_memory",
-      arguments: {
-        purpose: "some_other_purpose",
-        title: "Too secret",
-        body: "…"
-      }
-    });
-
-    expect(seenPurposes).toEqual(["some_other_purpose"]);
-
-    await client.close();
-    await server.close();
   });
 
   it("calls the configured server API with the configured bearer token", async () => {
@@ -191,6 +110,7 @@ describe("mcp package", () => {
           requestId: "request_1",
           status: "FULFILLED",
           policyId: "policy_1",
+          reason: null,
           tokenBudget: 1200,
           estimatedTokens: 0,
           items: [],
@@ -241,6 +161,7 @@ describe("mcp package", () => {
         requestId,
         status: "FULFILLED",
         policyId: "policy_1",
+        reason: null,
         tokenBudget: 1200,
         estimatedTokens: 0,
         items: [],

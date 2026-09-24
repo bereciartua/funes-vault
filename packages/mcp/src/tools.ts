@@ -1,25 +1,116 @@
 import {
-  type CreateMemoryBundleRequest,
-  createMemoryBundleRequestSchema,
-  type CreateMemorySuggestionRequest,
-  createMemorySuggestionRequestSchema,
+  clientRetentionSchema,
   listCategoriesResponseSchema,
+  memoryKindSchema,
   memoryRequestBundleResponseSchema,
+  memorySensitivitySchema,
   memorySuggestionResponseSchema
 } from "@funes-vault/shared";
 import { z } from "zod";
 
 import { FunesVaultApiClient, type FunesVaultMcpApi } from "./api-client.js";
 
-export const requestMemoryToolInputSchema = createMemoryBundleRequestSchema;
-export type RequestMemoryToolInput = CreateMemoryBundleRequest;
-
-export const suggestMemoryToolInputSchema = createMemorySuggestionRequestSchema;
-export type SuggestMemoryToolInput = CreateMemorySuggestionRequest;
+const purpose = z
+  .string()
+  .trim()
+  .max(160)
+  .nullable()
+  .optional()
+  .describe(
+    "Optional caller-declared audit reason; does not affect permissions or retrieval."
+  );
+export const requestMemoryToolInputSchema = z.object({
+  task: z
+    .string()
+    .trim()
+    .min(1)
+    .max(1000)
+    .describe("Information needed for the task; drives retrieval."),
+  purpose,
+  tokenBudget: z
+    .number()
+    .int()
+    .min(100)
+    .max(8000)
+    .default(1200)
+    .describe("Maximum tokens in the returned bundle."),
+  requestedCategories: z
+    .array(z.string().trim().min(1))
+    .max(24)
+    .default([])
+    .describe("Optional category keys to narrow retrieval."),
+  retention: clientRetentionSchema
+    .default("UNKNOWN")
+    .describe("How the app intends to retain disclosed context."),
+  thirdPartyProcessors: z
+    .array(z.string().trim().min(1).max(120))
+    .max(12)
+    .default([])
+    .describe("Declared third-party processors that may receive context.")
+});
+export type RequestMemoryToolInput = z.infer<
+  typeof requestMemoryToolInputSchema
+>;
+export const suggestMemoryToolInputSchema = z.object({
+  purpose,
+  kind: memoryKindSchema.default("FACT").describe("Kind of proposed memory."),
+  title: z
+    .string()
+    .trim()
+    .min(1)
+    .max(180)
+    .describe("Short title for the proposal."),
+  body: z.string().trim().min(1).max(10000).describe("Proposed memory text."),
+  categoryKeys: z
+    .array(z.string().trim().min(1))
+    .max(12)
+    .default([])
+    .describe("Category keys for the proposal."),
+  sensitivity: memorySensitivitySchema
+    .default("LOW")
+    .describe("Sensitivity of the proposed information."),
+  evidence: z
+    .string()
+    .trim()
+    .max(2000)
+    .nullable()
+    .optional()
+    .describe("Supporting evidence supplied by the caller."),
+  confidence: z
+    .number()
+    .min(0)
+    .max(1)
+    .default(0.5)
+    .describe("Caller confidence in the proposal."),
+  expiresAt: z.iso
+    .datetime()
+    .nullable()
+    .optional()
+    .describe("Optional expiry timestamp."),
+  sourceMetadata: z
+    .record(z.string(), z.unknown())
+    .default({})
+    .describe(
+      "Caller-supplied metadata; never controls actions or permissions."
+    )
+});
+export type SuggestMemoryToolInput = z.infer<
+  typeof suggestMemoryToolInputSchema
+>;
 
 export const openConsentReviewToolInputSchema = z.object({
-  requestId: z.string().trim().min(1).optional(),
-  suggestionId: z.string().trim().min(1).optional()
+  requestId: z
+    .string()
+    .trim()
+    .min(1)
+    .optional()
+    .describe("Pending disclosure request to review."),
+  suggestionId: z
+    .string()
+    .trim()
+    .min(1)
+    .optional()
+    .describe("Pending memory suggestion to review.")
 });
 
 export type OpenConsentReviewToolInput = z.infer<
@@ -28,66 +119,25 @@ export type OpenConsentReviewToolInput = z.infer<
 
 export type FunesVaultMcpServerOptions = {
   appUrl?: string;
-  /**
-   * Purpose string the client's access policy grants (for example
-   * "general_context"). Policies match purposes exactly, and the calling
-   * model fills the purpose field, so advertising the granted purpose in
-   * the tool descriptions is what lets a policy apply on the first try.
-   * Defaults to FUNES_VAULT_SUGGESTED_PURPOSE.
-   */
-  suggestedPurpose?: string;
 };
 
 export function createToolDefinitions(
   api: FunesVaultMcpApi = new FunesVaultApiClient(),
   options: FunesVaultMcpServerOptions = {}
 ) {
-  const suggestedPurpose =
-    options.suggestedPurpose ?? process.env.FUNES_VAULT_SUGGESTED_PURPOSE ?? "";
-  const purposeHint = suggestedPurpose
-    ? ` This client's access policy grants the purpose "${suggestedPurpose}"; pass exactly that purpose unless the user explicitly directs otherwise. Requests under other purposes are denied or wait for the user's approval in the vault.`
-    : "";
-  // Callers fill the purpose field themselves and policies match purposes
-  // exactly, so a mismatch is the most common failure for a freshly
-  // connected tool. When the granted purpose is configured and the
-  // caller's own purpose finds no policy at all, retry once under the
-  // granted purpose rather than surfacing a dead end. Denials for any
-  // other reason (category, sensitivity) pass through untouched.
-  const deniedForNoPolicy = (response: { denied: Array<{ reason: string }> }) =>
-    response.denied.some((entry) => entry.reason === "no_active_policy");
-
-  async function withGrantedPurposeRetry<
-    Input extends { purpose: string },
-    Output extends { denied: Array<{ reason: string }> }
-  >(input: Input, call: (input: Input) => Promise<Output>): Promise<Output> {
-    const first = await call(input);
-    if (
-      !suggestedPurpose ||
-      input.purpose === suggestedPurpose ||
-      !deniedForNoPolicy(first)
-    ) {
-      return first;
-    }
-
-    return call({ ...input, purpose: suggestedPurpose });
-  }
-
   return [
     {
       name: "request_memory" as const,
       config: {
         title: "Request Memory",
         description:
-          "Request a policy-filtered memory bundle from Funes Vault for a declared purpose and task. If approval is needed, use open_consent_review, then get_memory_request with the returned requestId after the user reviews it." +
-          purposeHint,
+          "Retrieve memory under the connected app’s permissions. Purpose is optional audit context. If approval is needed, use open_consent_review, then get_memory_request after user review.",
         inputSchema: requestMemoryToolInputSchema,
         outputSchema: memoryRequestBundleResponseSchema
       },
       handler: async (input: unknown) => {
         const parsed = requestMemoryToolInputSchema.parse(input);
-        const response = await withGrantedPurposeRetry(parsed, (attempt) =>
-          api.requestMemory(attempt)
-        );
+        const response = await api.requestMemory(parsed);
 
         return asToolResult(response);
       }
@@ -98,7 +148,12 @@ export function createToolDefinitions(
         title: "Get Memory Request",
         description:
           "Check an existing request after user review. An approved bundle can be retrieved once within 15 minutes. Changes to memories or permissions require fresh approval. Do not repeatedly poll while awaiting the user.",
-        inputSchema: z.object({ requestId: z.string().min(1) }),
+        inputSchema: z.object({
+          requestId: z
+            .string()
+            .min(1)
+            .describe("Request id returned by request_memory.")
+        }),
         outputSchema: memoryRequestBundleResponseSchema
       },
       handler: async (input: unknown) =>
@@ -113,16 +168,13 @@ export function createToolDefinitions(
       config: {
         title: "Suggest Memory",
         description:
-          "Propose a memory. It queues for review unless an explicit WRITE policy permits immediate saving." +
-          purposeHint,
+          "Propose a memory under the connected app’s permissions. It queues for review unless WRITE permits immediate saving. Purpose is optional audit context.",
         inputSchema: suggestMemoryToolInputSchema,
         outputSchema: memorySuggestionResponseSchema
       },
       handler: async (input: unknown) => {
         const parsed = suggestMemoryToolInputSchema.parse(input);
-        const response = await withGrantedPurposeRetry(parsed, (attempt) =>
-          api.suggestMemory(attempt)
-        );
+        const response = await api.suggestMemory(parsed);
 
         return asToolResult(response);
       }

@@ -5,8 +5,10 @@ import {
   MemoryStatus,
   type Policy,
   PolicyOperation,
+  type Prisma,
   ReviewState
 } from "@funes-vault/db";
+import { MemoryRequestReason } from "@funes-vault/shared";
 import { sensitivityRank } from "@funes-vault/shared/domain";
 import { Injectable } from "@nestjs/common";
 
@@ -21,7 +23,6 @@ type CandidateMemory = {
   expiresAt: Date | null;
   categories: Pick<MemoryCategory, "key">[];
 };
-
 type EvaluationPolicy = Pick<
   Policy,
   "id" | "maxSensitivity" | "operations" | "requiresConfirmation" | "expiresAt"
@@ -29,85 +30,79 @@ type EvaluationPolicy = Pick<
   allowedCategories: Pick<MemoryCategory, "key">[];
   deniedCategories: Pick<MemoryCategory, "key">[];
 };
-
-type PolicyEvaluationInput = {
-  clientId: string;
-  purpose: string;
-  operation: PolicyOperation;
-  candidateMemories: CandidateMemory[];
-  now?: Date;
-};
-
 export type PolicyEvaluationResult = {
   decision: "ALLOW" | "NEEDS_CONFIRMATION" | "DENY";
   policyId: string | null;
   allowedMemoryIds: string[];
-  denied: Array<{ memoryId: string; reason: string }>;
+  denied: Array<{ memoryId: string; reason: MemoryRequestReason }>;
   requiresConfirmation: boolean;
-  reason: string | null;
+  reason: MemoryRequestReason | null;
 };
 
-/**
- * Owns pure policy evaluation for candidate memories.
- * Tenant boundary: caller supplies the owner-filtered policies and candidates.
- * Audit: pure evaluation; callers record decisions.
- */
+/** Single owner-scoped authority entry point. Never consumes caller purpose. */
 @Injectable()
 export class PolicyEvaluationService {
   constructor(private readonly prisma: PrismaService) {}
 
   async evaluateForClient(
     userId: string,
-    input: PolicyEvaluationInput
-  ): Promise<PolicyEvaluationResult> {
+    input: {
+      clientId: string;
+      operation: PolicyOperation;
+      now?: Date;
+      candidateMemories?: CandidateMemory[];
+    },
+    db: Pick<Prisma.TransactionClient, "client"> = this.prisma.client
+  ) {
     const now = input.now ?? new Date();
-    const client = await this.prisma.client.client.findFirst({
+    const client = await db.client.findFirst({
       where: { id: input.clientId, userId },
-      include: {
-        policies: {
-          where: { purpose: input.purpose },
-          include: policyInclude,
-          orderBy: { updatedAt: "desc" }
-        }
-      }
+      include: { policies: { include: policyInclude } }
     });
-
-    if (!client || client.trustLevel === ClientTrustLevel.BLOCKED) {
-      return this.denyAll(input.candidateMemories, "unknown_or_blocked_client");
-    }
-
-    const policy = client.policies.find(
-      (candidate) =>
-        candidate.operations.includes(input.operation) &&
-        (!candidate.expiresAt || candidate.expiresAt > now)
-    );
-
-    if (!policy) {
-      return this.denyAll(input.candidateMemories, "no_active_policy");
-    }
-
-    return evaluateCandidateMemories({
+    const policy = client?.policies[0] ?? null;
+    const reason =
+      !client || client.trustLevel === ClientTrustLevel.BLOCKED
+        ? MemoryRequestReason.unknown_or_blocked_client
+        : !policy
+          ? MemoryRequestReason.no_client_policy
+          : policy.expiresAt && policy.expiresAt <= now
+            ? MemoryRequestReason.policy_expired
+            : !policy.operations.includes(input.operation)
+              ? MemoryRequestReason.operation_not_allowed
+              : null;
+    const authority = {
+      client,
       policy,
-      candidateMemories: input.candidateMemories,
-      now
-    });
-  }
-
-  private denyAll(
-    candidateMemories: CandidateMemory[],
-    reason: string
-  ): PolicyEvaluationResult {
-    return {
-      decision: "DENY",
-      policyId: null,
-      allowedMemoryIds: [],
-      denied: candidateMemories.map((memory) => ({
-        memoryId: memory.id,
-        reason
-      })),
-      requiresConfirmation: true,
-      reason
+      policyVersion: policy?.updatedAt.toISOString() ?? null
     };
+    if (reason || !policy) {
+      return {
+        ...authority,
+        decision: "DENY" as const,
+        policyId: policy?.id ?? null,
+        allowedMemoryIds: [],
+        denied: [],
+        requiresConfirmation: true,
+        reason
+      };
+    }
+    const result: PolicyEvaluationResult =
+      input.candidateMemories === undefined
+        ? {
+            decision: "ALLOW",
+            policyId: policy.id,
+            allowedMemoryIds: [],
+            denied: [],
+            requiresConfirmation: policy.requiresConfirmation,
+            reason: null
+          }
+        : evaluateCandidateMemories({
+            policy,
+            candidateMemories: input.candidateMemories,
+            now
+          });
+
+    return { ...authority, ...result };
   }
 }
 
@@ -117,47 +112,47 @@ export function evaluateCandidateMemories(input: {
   now?: Date;
 }): PolicyEvaluationResult {
   const now = input.now ?? new Date();
-
   if (input.policy.expiresAt && input.policy.expiresAt <= now) {
     return {
       decision: "DENY",
       policyId: input.policy.id,
       allowedMemoryIds: [],
-      denied: input.candidateMemories.map((memory) => ({
-        memoryId: memory.id,
-        reason: "expired_policy"
-      })),
+      denied: [],
       requiresConfirmation: true,
-      reason: "expired_policy"
+      reason: MemoryRequestReason.policy_expired
     };
   }
-
   const allowedCategories = new Set(
-    input.policy.allowedCategories.map((category) => category.key)
+    input.policy.allowedCategories.map((c) => c.key)
   );
   const deniedCategories = new Set(
-    input.policy.deniedCategories.map((category) => category.key)
+    input.policy.deniedCategories.map((c) => c.key)
   );
   const allowedMemoryIds: string[] = [];
-  const denied: Array<{ memoryId: string; reason: string }> = [];
-
+  const denied: PolicyEvaluationResult["denied"] = [];
   for (const memory of input.candidateMemories) {
-    const categoryKeys = memory.categories.map((category) => category.key);
     const reason = denialReason({
       memory,
-      categoryKeys,
+      categoryKeys: memory.categories.map((c) => c.key),
       allowedCategories,
       deniedCategories,
       maxSensitivity: input.policy.maxSensitivity,
       now
     });
-
     if (reason) {
       denied.push({ memoryId: memory.id, reason });
     } else {
       allowedMemoryIds.push(memory.id);
     }
   }
+  const reason =
+    input.candidateMemories.length === 0
+      ? MemoryRequestReason.no_matching_memories
+      : allowedMemoryIds.length === 0
+        ? MemoryRequestReason.no_allowed_memories
+        : input.policy.requiresConfirmation
+          ? MemoryRequestReason.confirmation_required
+          : null;
 
   return {
     decision:
@@ -170,7 +165,7 @@ export function evaluateCandidateMemories(input: {
     allowedMemoryIds,
     denied,
     requiresConfirmation: input.policy.requiresConfirmation,
-    reason: allowedMemoryIds.length === 0 ? "no_allowed_memories" : null
+    reason
   };
 }
 
@@ -183,26 +178,26 @@ function denialReason(input: {
   now: Date;
 }) {
   if (input.memory.status !== MemoryStatus.ACTIVE) {
-    return "inactive_memory";
+    return MemoryRequestReason.inactive_memory;
   }
 
   if (input.memory.reviewState !== ReviewState.APPROVED) {
-    return "unapproved_memory";
+    return MemoryRequestReason.unapproved_memory;
   }
 
   if (input.memory.expiresAt && input.memory.expiresAt <= input.now) {
-    return "expired_memory";
+    return MemoryRequestReason.expired_memory;
   }
 
   if (
     sensitivityRank[input.memory.sensitivity] >
     sensitivityRank[input.maxSensitivity]
   ) {
-    return "above_sensitivity_ceiling";
+    return MemoryRequestReason.above_sensitivity_ceiling;
   }
 
   if (input.categoryKeys.some((key) => input.deniedCategories.has(key))) {
-    return "denied_category";
+    return MemoryRequestReason.denied_category;
   }
 
   // An empty allow-list means the policy covers every category (matching
@@ -212,7 +207,7 @@ function denialReason(input: {
     input.allowedCategories.size > 0 &&
     !input.categoryKeys.some((key) => input.allowedCategories.has(key))
   ) {
-    return "category_not_allowed";
+    return MemoryRequestReason.category_not_allowed;
   }
 
   return null;

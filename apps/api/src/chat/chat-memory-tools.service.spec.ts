@@ -7,6 +7,7 @@ import { MemoriesService } from "../memories/memories.service.js";
 import { MemoryRequestsService } from "../memory-requests/memory-requests.service.js";
 import { SuggestionIntakeService } from "../memory-suggestions/suggestion-intake.service.js";
 import { SuggestionReviewService } from "../memory-suggestions/suggestion-review.service.js";
+import { PolicyEvaluationService } from "../policies/policy-evaluation.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { ChatMemoryToolsService } from "./chat-memory-tools.service.js";
 
@@ -24,10 +25,15 @@ describe("privacy: ChatMemoryToolsService", () => {
   const memorySuggestionsService = {
     createSuggestion: vi.fn()
   };
+  const evaluator = { evaluateForClient: vi.fn() };
   let service: ChatMemoryToolsService;
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    evaluator.evaluateForClient.mockResolvedValue({
+      decision: "ALLOW",
+      policyId: null
+    });
     firstPartyAccess.ensureWebChatAccess.mockResolvedValue({
       clientId: "client_chat"
     });
@@ -46,6 +52,10 @@ describe("privacy: ChatMemoryToolsService", () => {
       denied: []
     });
     service = await createService(ChatMemoryToolsService, [
+      {
+        provide: PolicyEvaluationService,
+        useValue: evaluator
+      },
       { provide: FirstPartyAccessService, useValue: firstPartyAccess },
       { provide: PrismaService, useValue: prisma },
       { provide: MemoryRequestsService, useValue: {} },
@@ -79,6 +89,7 @@ describe("privacy: ChatMemoryToolsService", () => {
       memoryId: "memory_existing",
       status: MemorySuggestionStatus.APPLIED,
       policyId: null,
+      reason: null,
       auditEventId: null,
       decision: "ALLOW",
       denied: [],
@@ -129,6 +140,7 @@ describe("privacy: ChatMemoryToolsService", () => {
     expect(memorySuggestionsService.createSuggestion).toHaveBeenCalledWith({
       userId: "user_1",
       clientId: "client_chat",
+      reviewOnly: false,
       body: expect.objectContaining({
         purpose: "memory_chat",
         title: input.title,
@@ -140,6 +152,30 @@ describe("privacy: ChatMemoryToolsService", () => {
         memoryId: "memory_new",
         deduplicated: false
       })
+    );
+  });
+  it("does not deduplicate before checking removed permissions", async () => {
+    evaluator.evaluateForClient.mockResolvedValue({
+      decision: "DENY",
+      reason: "no_client_policy",
+      policyId: null
+    });
+    memorySuggestionsService.createSuggestion.mockResolvedValue({
+      decision: "DENY",
+      reason: "no_client_policy"
+    });
+    expect(await service.suggestMemory(input)).toMatchObject({
+      decision: "DENY",
+      reason: "no_client_policy"
+    });
+    expect(prisma.client.memory.findFirst).not.toHaveBeenCalled();
+    expect(prisma.client.memorySuggestion.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("keeps voice proposals review-only even when the app has WRITE", async () => {
+    await service.suggestMemory({ ...input, channel: "voice" });
+    expect(memorySuggestionsService.createSuggestion).toHaveBeenCalledWith(
+      expect.objectContaining({ clientId: "client_voice", reviewOnly: true })
     );
   });
 });

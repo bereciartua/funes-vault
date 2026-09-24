@@ -9,7 +9,6 @@ const task =
   "Help the user work on the Funes Vault repository.";
 
 const response = await client.requestMemory({
-  purpose: process.env.FUNES_VAULT_PURPOSE ?? "software_development",
   task,
   requestedCategories: (
     process.env.FUNES_VAULT_CATEGORIES ??

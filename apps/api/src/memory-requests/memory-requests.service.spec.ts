@@ -18,8 +18,11 @@ import { RetrievalService } from "./retrieval.service.js";
 
 function createPrismaMock() {
   const client = mockPrisma({
+    memory: { findMany: vi.fn().mockResolvedValue([createCandidate()]) },
     memoryRequest: {
-      create: vi.fn().mockResolvedValue({ id: "request_1" }),
+      create: vi
+        .fn()
+        .mockImplementation(({ data }) => ({ id: "request_1", ...data })),
       update: vi.fn().mockResolvedValue({})
     },
     memoryRequestItem: {
@@ -133,9 +136,9 @@ describe("privacy: MemoryRequestsService", () => {
       "user_1",
       expect.objectContaining({
         clientId: "client_1",
-        purpose: "software_development",
         candidateMemories: [expect.objectContaining({ id: "memory_1" })]
-      })
+      }),
+      expect.anything()
     );
     expect(prismaClient.memoryRequestItem.createMany).toHaveBeenCalledWith({
       data: [

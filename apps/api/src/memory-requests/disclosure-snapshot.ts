@@ -16,7 +16,10 @@ export function summary(request: MemoryRequest, clientName: string) {
   return {
     id: request.id,
     clientName,
-    purpose: request.purpose,
+    statedPurpose: request.statedPurpose,
+    policyId: request.policyId,
+    policyVersion: request.policyVersion,
+    reason: request.decisionReason,
     task: request.task,
     status: request.status,
     retention: request.retention,

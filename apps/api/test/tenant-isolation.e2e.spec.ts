@@ -93,7 +93,6 @@ describe("privacy: tenant isolation (e2e)", () => {
       data: {
         userId: alice.userId,
         clientId: client.id,
-        purpose: "private",
         operations: ["READ"]
       }
     });
@@ -118,7 +117,7 @@ describe("privacy: tenant isolation (e2e)", () => {
       data: {
         userId: alice.userId,
         clientId: client.id,
-        purpose: "private",
+        statedPurpose: "private",
         task: "Private review",
         status: "NEEDS_USER_APPROVAL",
         requestedCategories: [],
@@ -134,7 +133,7 @@ describe("privacy: tenant isolation (e2e)", () => {
     }
     for (const [path, body] of [
       [`/v1/clients/${client.id}`, { name: "Hijacked" }],
-      [`/v1/policies/${policy.id}`, { purpose: "Hijacked" }],
+      [`/v1/policies/${policy.id}`, { operations: ["EXPORT"] }],
       [`/v1/memory-suggestions/${suggestion.id}/apply`, {}],
       [`/v1/memory-suggestions/${suggestion.id}/reject`, {}]
     ] as const) {

@@ -46,7 +46,6 @@ type FirstPartyAccessTransaction = Pick<
 
 type FirstPartyDefinition = {
   clientName: string;
-  purpose: string;
   firstPartyDefault: string;
   maxSensitivity: MemorySensitivity;
   operations: PolicyOperation[];
@@ -55,7 +54,6 @@ type FirstPartyDefinition = {
 function webChatDefinition(): FirstPartyDefinition {
   return {
     clientName: webChatClientName,
-    purpose: webChatPurpose,
     firstPartyDefault: "web_chat",
     maxSensitivity: MemorySensitivity.SECRET,
     operations: [
@@ -70,7 +68,6 @@ function webChatDefinition(): FirstPartyDefinition {
 function voiceDefinition(): FirstPartyDefinition {
   return {
     clientName: voiceClientName,
-    purpose: voicePurpose,
     firstPartyDefault: "voice",
     maxSensitivity: defaultVoiceMaxSensitivity(),
     operations: [PolicyOperation.READ, PolicyOperation.SUGGEST]
@@ -142,12 +139,13 @@ export class FirstPartyAccessService {
     const client = await this.ensureClient(input);
     const policy = await this.ensurePolicy({
       ...input,
-      clientId: client.id
+      clientId: client.id,
+      createDefault: client.created
     });
 
     return {
       clientId: client.id,
-      policyId: policy.id
+      policyId: policy?.id ?? null
     };
   }
 
@@ -164,7 +162,7 @@ export class FirstPartyAccessService {
     });
 
     if (existing) {
-      return existing;
+      return { ...existing, created: false };
     }
 
     const created = await input.tx.client.create({
@@ -192,13 +190,14 @@ export class FirstPartyAccessService {
       }
     });
 
-    return created;
+    return { ...created, created: true };
   }
 
   private async ensurePolicy(input: {
     actorId: string | null;
     actorType: AuditActorType;
     clientId: string;
+    createDefault: boolean;
     definition: FirstPartyDefinition;
     tx: FirstPartyAccessTransaction;
     userId: string;
@@ -206,14 +205,17 @@ export class FirstPartyAccessService {
     const existing = await input.tx.policy.findFirst({
       where: {
         userId: input.userId,
-        clientId: input.clientId,
-        purpose: input.definition.purpose
+        clientId: input.clientId
       },
       select: { id: true }
     });
 
     if (existing) {
       return existing;
+    }
+
+    if (!input.createDefault) {
+      return null;
     }
 
     const categories = await input.tx.memoryCategory.findMany({
@@ -224,7 +226,6 @@ export class FirstPartyAccessService {
       data: {
         userId: input.userId,
         clientId: input.clientId,
-        purpose: input.definition.purpose,
         maxSensitivity: input.definition.maxSensitivity,
         operations: input.definition.operations,
         requiresConfirmation: false,
@@ -244,7 +245,6 @@ export class FirstPartyAccessService {
       actorId: input.actorId,
       metadata: {
         policyId: created.id,
-        purpose: input.definition.purpose,
         clientId: input.clientId,
         maxSensitivity: input.definition.maxSensitivity,
         operations: input.definition.operations,

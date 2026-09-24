@@ -51,7 +51,6 @@ describe("privacy: MemorySuggestionsService", () => {
       "user_1",
       expect.objectContaining({
         clientId: "client_1",
-        purpose: "software_development",
         candidateMemories: [
           expect.objectContaining({
             id: "proposed_memory",
@@ -59,7 +58,8 @@ describe("privacy: MemorySuggestionsService", () => {
             categories: [{ key: "software_development" }]
           })
         ]
-      })
+      }),
+      expect.anything()
     );
     expect(prismaClient.memorySuggestion.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -80,7 +80,7 @@ describe("privacy: MemorySuggestionsService", () => {
           suggestionId: "suggestion_1",
           transport: "http_api",
           policyId: "policy_1",
-          purpose: "software_development"
+          statedPurpose: "software_development"
         })
       })
     );
@@ -112,9 +112,9 @@ describe("privacy: MemorySuggestionsService", () => {
       decision: "DENY",
       policyId: null,
       allowedMemoryIds: [],
-      denied: [{ memoryId: "proposed_memory", reason: "no_active_policy" }],
+      denied: [{ memoryId: "proposed_memory", reason: "no_client_policy" }],
       requiresConfirmation: true,
-      reason: "no_active_policy"
+      reason: "no_client_policy"
     });
 
     const response = await service.intake.createSuggestion({
@@ -130,7 +130,10 @@ describe("privacy: MemorySuggestionsService", () => {
 
     expect(response.status).toBe("DENIED");
     expect(prismaClient.memorySuggestion.create).not.toHaveBeenCalled();
-    expect(provenance.createAuditEvent).not.toHaveBeenCalled();
+    expect(provenance.createAuditEvent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ type: "MEMORY_SUGGESTION_DENIED" })
+    );
   });
   it("blocks secret-like content before creating a suggestion", async () => {
     await expect(
@@ -227,7 +230,7 @@ describe("privacy: MemorySuggestionsService", () => {
         actorId: "user_1",
         metadata: expect.objectContaining({
           suggestionId: "suggestion_1",
-          purpose: "guided_onboarding"
+          statedPurpose: "guided_onboarding"
         })
       })
     );

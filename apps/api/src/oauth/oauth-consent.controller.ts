@@ -68,10 +68,11 @@ export class OAuthConsentController {
     }
 
     try {
-      const context = await this.grantsService.getConsentContext(
-        parsed.data.request
-      );
       const user = await this.currentUser(req);
+      const context = await this.grantsService.getConsentContext(
+        parsed.data.request,
+        user?.id
+      );
 
       if (!user) {
         this.sendHtml(

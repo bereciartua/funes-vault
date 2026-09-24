@@ -76,10 +76,10 @@ Current implementation note: `MemoryProvenanceEntry` records one lifecycle event
 
 ## Retrieval Pipeline
 
-1. Authenticate the client and read purpose, task, categories and token budget.
+1. Authenticate the client and check its single permission set, expiry and READ operation before retrieval. Purpose is optional audit context. Read task, categories and token budget.
 2. Retrieve owner-scoped active, approved, unexpired keyword and vector candidates.
 3. Rank by weighted keyword overlap (0.45) and vector similarity (0.55), with a keyword-match boost (0.45). Keyword candidates are bounded and read newest first; there is no user pinning or workspace filter.
-4. Apply the client's purpose, category, sensitivity, operation and confirmation policy.
+4. Apply the client's category, sensitivity, operation and confirmation policy.
 5. Compile allowed items within the token budget and audit each disclosure. Approval-gated requests return no items until the selected preview is approved and consumed once.
 
 ## Memory Bundle

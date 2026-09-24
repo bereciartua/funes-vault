@@ -98,7 +98,7 @@ async function seedClientAndPolicy(user: User) {
     data: {
       userId: user.id,
       clientId: client.id,
-      purpose: "software_development",
+
       maxSensitivity: MemorySensitivity.INTERNAL,
       operations: [PolicyOperation.READ, PolicyOperation.SUGGEST],
       requiresConfirmation: false,
@@ -176,7 +176,7 @@ async function seedReviewItems(
     data: {
       userId: user.id,
       clientId: client.id,
-      purpose: "software_development",
+      statedPurpose: "Help with software development",
       task: "Help the user work on the Funes Vault repository.",
       status: MemoryRequestStatus.FULFILLED,
       requestedCategories: ["communication_style", "software_development"],
@@ -277,7 +277,11 @@ async function seedAuditTrail(input: {
       clientId: client.id,
       type: AuditEventType.POLICY_CREATED,
       actorType: AuditActorType.SYSTEM,
-      metadata: { seed: true, policyId: policy.id, purpose: policy.purpose }
+      metadata: {
+        seed: true,
+        policyId: policy.id,
+        purpose: `${client.name} permissions`
+      }
     }
   });
   const suggestionAuditEvent = await prisma.auditEvent.create({
@@ -307,7 +311,7 @@ async function seedAuditTrail(input: {
         clientId: client.id,
         policyId: policy.id,
         memoryIds: [communicationMemory.id],
-        purpose: memoryRequest.purpose
+        statedPurpose: memoryRequest.statedPurpose
       }
     }
   });
@@ -329,7 +333,7 @@ async function seedAuditTrail(input: {
         subjectType: AuditSubjectType.POLICY,
         subjectId: policy.id,
         role: AuditSubjectRole.POLICY,
-        labelSnapshot: policy.purpose,
+        labelSnapshot: `${client.name} permissions`,
         metadata: { seed: true }
       },
       {
@@ -365,7 +369,7 @@ async function seedAuditTrail(input: {
         subjectType: AuditSubjectType.MEMORY_REQUEST,
         subjectId: memoryRequest.id,
         role: AuditSubjectRole.REQUEST,
-        labelSnapshot: memoryRequest.purpose,
+        labelSnapshot: memoryRequest.statedPurpose,
         metadata: { seed: true }
       },
       {
@@ -383,7 +387,7 @@ async function seedAuditTrail(input: {
         subjectType: AuditSubjectType.POLICY,
         subjectId: policy.id,
         role: AuditSubjectRole.POLICY,
-        labelSnapshot: policy.purpose,
+        labelSnapshot: `${client.name} permissions`,
         metadata: { seed: true }
       }
     ],

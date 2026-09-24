@@ -30,6 +30,7 @@ import { MemoryRequestsService } from "../memory-requests/memory-requests.servic
 import { toMemorySuggestionResponse } from "../memory-suggestions/memory-suggestion.mapper.js";
 import { SuggestionIntakeService } from "../memory-suggestions/suggestion-intake.service.js";
 import { SuggestionReviewService } from "../memory-suggestions/suggestion-review.service.js";
+import { PolicyEvaluationService } from "../policies/policy-evaluation.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 const chatTokenBudget = 1200;
@@ -37,6 +38,7 @@ const chatTokenBudget = 1200;
 export type StewardChannel = "chat" | "voice";
 
 export type MemoryToolBundle = {
+  reason: import("@funes-vault/shared").MemoryRequestReason | null;
   requestId: string;
   status: string;
   policyId: string | null;
@@ -61,7 +63,8 @@ export class ChatMemoryToolsService {
     private readonly memoryRequestsService: MemoryRequestsService,
     private readonly suggestionIntakeService: SuggestionIntakeService,
     private readonly suggestionReviewService: SuggestionReviewService,
-    private readonly memoriesService: MemoriesService
+    private readonly memoriesService: MemoriesService,
+    private readonly evaluator: PolicyEvaluationService
   ) {}
 
   async requestMemory(input: {
@@ -92,6 +95,7 @@ export class ChatMemoryToolsService {
       requestId: bundle.requestId,
       status: bundle.status,
       policyId: bundle.policyId,
+      reason: bundle.reason,
       tokenBudget: bundle.tokenBudget,
       estimatedTokens: bundle.estimatedTokens,
       items: bundle.items,
@@ -118,6 +122,32 @@ export class ChatMemoryToolsService {
       input.channel
     );
 
+    const gate = await this.evaluator.evaluateForClient(input.userId, {
+      clientId,
+      operation: "SUGGEST"
+    });
+    const write =
+      gate.decision === "DENY" && input.channel !== "voice"
+        ? await this.evaluator.evaluateForClient(input.userId, {
+            clientId,
+            operation: "WRITE"
+          })
+        : null;
+    if (gate.decision === "DENY" && write?.decision !== "ALLOW") {
+      return {
+        ...(await this.suggestionIntakeService.createSuggestion({
+          userId: input.userId,
+          clientId,
+          reviewOnly: input.channel === "voice",
+          body: parseRequest(createMemorySuggestionRequestSchema, {
+            ...input,
+            purpose: purposeForChannel(input.channel)
+          })
+        })),
+        deduplicated: false
+      };
+    }
+
     // The model can occasionally repeat a tool call for a claim from an
     // earlier turn (for example, after the user replies "awesome"). Keep the
     // chat/voice boundary idempotent even when that happens. This lookup stays
@@ -139,7 +169,8 @@ export class ChatMemoryToolsService {
         suggestionId: null,
         memoryId: existingMemory.id,
         status: MemorySuggestionStatus.APPLIED,
-        policyId: null,
+        policyId: gate.policyId,
+        reason: null,
         auditEventId: null,
         decision: "ALLOW" as const,
         denied: [],
@@ -164,7 +195,8 @@ export class ChatMemoryToolsService {
         suggestionId: existingSuggestion.id,
         memoryId: null,
         status: MemorySuggestionStatus.QUEUED_FOR_REVIEW,
-        policyId: null,
+        policyId: gate.policyId,
+        reason: null,
         auditEventId: null,
         decision: "NEEDS_CONFIRMATION" as const,
         denied: [],
@@ -175,6 +207,7 @@ export class ChatMemoryToolsService {
     const response = await this.suggestionIntakeService.createSuggestion({
       userId: input.userId,
       clientId,
+      reviewOnly: input.channel === "voice",
       body: parseRequest(createMemorySuggestionRequestSchema, {
         purpose: purposeForChannel(input.channel),
         kind: input.kind,

@@ -13,7 +13,8 @@ type SubjectMetadata = {
   clientId?: string | null;
   clientName?: string | null;
   policyId?: string | null;
-  purpose?: string | null;
+  statedPurpose?: string | null;
+  policyLabel?: string | null;
   importedMemoryId?: string | null;
   sourceExportedAt?: string | null;
   type?: string;

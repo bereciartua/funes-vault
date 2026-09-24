@@ -1,7 +1,9 @@
 import { z } from "zod";
 
+import { statedPurposeSchema } from "./common.js";
 import { deniedMemorySchema } from "./common.js";
 import { paginationSchema } from "./common.js";
+import { memoryRequestReasonSchema } from "./enums.js";
 import {
   clientRetentionSchema,
   memoryRequestStatusSchema,
@@ -28,8 +30,13 @@ export const memoryRequestInputPreprocessor = (value: unknown) => {
 export const createMemoryBundleRequestSchema = z.preprocess(
   memoryRequestInputPreprocessor,
   z.object({
-    purpose: z.string().trim().min(1).max(160),
-    task: z.string().trim().min(1).max(1000),
+    purpose: statedPurposeSchema,
+    task: z
+      .string()
+      .trim()
+      .min(1)
+      .max(1000)
+      .describe("Information needed for this task; drives retrieval."),
     requestedCategories: z.array(z.string().trim().min(1)).max(24).default([]),
     retention: clientRetentionSchema.default("UNKNOWN"),
     thirdPartyProcessors: z
@@ -59,6 +66,7 @@ export const memoryRequestBundleResponseSchema = z.object({
   requestId: z.string().min(1),
   status: memoryRequestStatusSchema,
   policyId: z.string().nullable(),
+  reason: memoryRequestReasonSchema.nullable(),
   tokenBudget: z.number().int().min(1),
   estimatedTokens: z.number().int().min(0),
   items: z.array(memoryBundleItemSchema),
@@ -74,7 +82,10 @@ export type MemoryRequestBundleResponse = z.infer<
 export const memoryRequestReviewSummarySchema = z.object({
   id: z.string(),
   clientName: z.string(),
-  purpose: z.string(),
+  statedPurpose: z.string().nullable(),
+  policyId: z.string().nullable(),
+  policyVersion: z.string().nullable(),
+  reason: memoryRequestReasonSchema.nullable(),
   task: z.string(),
   status: memoryRequestStatusSchema,
   retention: clientRetentionSchema,

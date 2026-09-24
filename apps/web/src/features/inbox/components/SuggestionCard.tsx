@@ -128,6 +128,16 @@ export function SuggestionCard({
         <p className="suggestion-source">{suggestionSource(suggestion)}</p>
         <p>{suggestion.body}</p>
         {subjects.length > 0 ? <SubjectChips subjects={subjects} /> : null}
+        {suggestion.source.metadata.caller &&
+        typeof suggestion.source.metadata.caller === "object" &&
+        Object.keys(suggestion.source.metadata.caller).length > 0 ? (
+          <details>
+            <summary>Caller metadata</summary>
+            <pre>
+              {JSON.stringify(suggestion.source.metadata.caller, null, 2)}
+            </pre>
+          </details>
+        ) : null}
         {Array.isArray(suggestion.source.metadata?.processors) ? (
           <p className="suggestion-evidence">
             Processed by{" "}

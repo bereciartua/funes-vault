@@ -39,8 +39,8 @@ class VaultExportFiltersDto {
 }
 
 class VaultExportMetadataDto {
-  @ApiProperty({ example: "funes-vault.export.v1" })
-  schemaVersion!: "funes-vault.export.v1";
+  @ApiProperty({ example: "funes-vault.export.v2" })
+  schemaVersion!: "funes-vault.export.v2";
 
   @ApiProperty({ example: "2026-06-27T00:00:00.000Z" })
   exportedAt!: string;
@@ -102,8 +102,8 @@ class PossibleDuplicateMemoryDto {
 }
 
 class ImportVaultPreviewDto {
-  @ApiProperty({ example: "funes-vault.export.v1" })
-  schemaVersion!: "funes-vault.export.v1";
+  @ApiProperty({ example: "funes-vault.export.v2" })
+  schemaVersion!: "funes-vault.export.v2";
 
   @ApiProperty({ example: "2026-06-27T00:00:00.000Z" })
   exportedAt!: string;

@@ -241,7 +241,7 @@ archive owned memories through their separate authority.
 
 ## OS quick-capture shortcuts
 
-Create a client with a `SUGGEST` policy for purpose `quick_capture` and an `INTERNAL`
+Create a client with a `SUGGEST` permission and an `INTERNAL`
 ceiling. An OS shortcut can post `{ "text": "Your note" }` to
 `https://vault-api.example.com/v1/captures` with its bearer token. It always queues
 review and requires connectivity; it does not use the PWA's device queue.
@@ -260,3 +260,11 @@ and the ARM build cannot complete under emulation. Tag-triggered runs always bui
 both architectures. Only `v*` tag runs move `latest`; a manual dispatch from
 any branch publishes its `sha-<commit>` tag (and version tags if the ref is a
 release tag) without touching `latest`.
+
+### App permissions migration
+
+Deploy API, MCP and web together after the additive migration. Verified locally with
+`DATABASE_URL=postgresql://funes_vault:funes_vault@localhost:5432/funes_permissions_test pnpm --filter @funes-vault/db db:migrate`.
+Production uses the normal `docker compose -f docker-compose.prod.yml run --rm migrate` step.
+The migration keeps the most recently updated policy per client (id breaks ties), deletes surplus policies, and removes policy purpose. Existing requests retain stated purpose but have null policy bindings: they can only be denied, and clients must submit fresh requests. Accounts, sessions, clients and OAuth grants remain valid. Policy deletion similarly prevents old requests from being revived.
+Rollback requires stopping affected services and running the previous images against a disposable reset; do not mix old and new authorization models on the live schema.

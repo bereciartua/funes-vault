@@ -9,13 +9,12 @@ import { describe, expect, it, vi } from "vitest";
 import { createService as resolveService } from "../../test/mocks/create-service.js";
 import { AuditTrailService } from "../audit-trail/audit-trail.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import { mcpConnectorPurpose } from "./oauth.config.js";
 import { hashOAuthCredential } from "./oauth-credentials.js";
+import { OAuthGrantsService } from "./oauth-grants.service.js";
 import {
   defaultConnectorMaxSensitivity,
-  OAuthGrantsService,
   scopesToOperations
-} from "./oauth-grants.service.js";
+} from "./oauth-permissions.js";
 
 const future = new Date(Date.now() + 60_000);
 
@@ -133,7 +132,6 @@ describe("privacy: OAuthGrantsService.approve", () => {
     expect(tx.policy.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          purpose: mcpConnectorPurpose,
           operations: [PolicyOperation.READ, PolicyOperation.SUGGEST],
           maxSensitivity: MemorySensitivity.INTERNAL
         })

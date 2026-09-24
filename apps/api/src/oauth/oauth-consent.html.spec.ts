@@ -13,6 +13,12 @@ describe("privacy: consent HTML", () => {
         redirectOrigin: "https://client.example",
         scopes: [],
         registrationStatus: "APPROVED",
+        operations: ["READ", "SUGGEST"],
+        createsPermissions: true,
+        allowedCategories: [],
+        deniedCategories: [],
+        requiresConfirmation: false,
+        expiresAt: null,
         maxSensitivity: "INTERNAL"
       },
       nonce: '" onmouseover="alert(1)',

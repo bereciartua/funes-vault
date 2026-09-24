@@ -31,6 +31,7 @@ function candidate(overrides: Record<string, unknown> = {}) {
 function policy(overrides: Record<string, unknown> = {}) {
   return {
     id: "policy_1",
+    updatedAt: new Date(),
     maxSensitivity: MemorySensitivity.INTERNAL,
     operations: [PolicyOperation.READ],
     requiresConfirmation: false,
@@ -139,10 +140,8 @@ describe("privacy: PolicyEvaluationService", () => {
     });
 
     expect(result.decision).toBe("DENY");
-    expect(result.reason).toBe("expired_policy");
-    expect(result.denied).toEqual([
-      { memoryId: "memory_1", reason: "expired_policy" }
-    ]);
+    expect(result.reason).toBe("policy_expired");
+    expect(result.denied).toEqual([]);
   });
 
   it("denies unknown clients by default", async () => {
@@ -162,7 +161,6 @@ describe("privacy: PolicyEvaluationService", () => {
 
     const result = await service.evaluateForClient("user_1", {
       clientId: "missing_client",
-      purpose: "software_development",
       operation: PolicyOperation.READ,
       candidateMemories: [candidate()],
       now
@@ -205,7 +203,6 @@ describe("privacy: PolicyEvaluationService", () => {
 
     const result = await service.evaluateForClient("user_1", {
       clientId: "client_1",
-      purpose: "software_development",
       operation: PolicyOperation.READ,
       candidateMemories: [candidate()],
       now

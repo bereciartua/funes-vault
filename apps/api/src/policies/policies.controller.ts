@@ -73,7 +73,7 @@ export class PoliciesController {
   @ApiCreatedResponse({ type: PolicyResponseDto })
   @ApiBadRequestResponse({ description: "Invalid request body." })
   @ApiConflictResponse({
-    description: "A policy already exists for this client and purpose."
+    description: "This app already has permissions"
   })
   @ApiUnauthorizedResponse({ description: "Missing or invalid session." })
   create(
@@ -84,13 +84,23 @@ export class PoliciesController {
     return this.policiesService.createPolicy(user.id, body);
   }
 
+  @Post("defaults/:clientId")
+  @ApiOperation({
+    summary: "Restore default permissions on an existing first-party app"
+  })
+  @ApiCreatedResponse({ type: PolicyResponseDto })
+  @ApiConflictResponse({ description: "This app already has permissions" })
+  restore(@CurrentUser() user: AuthUser, @Param("clientId") clientId: string) {
+    return this.policiesService.restoreDefaults(user.id, clientId);
+  }
+
   @Patch(":id")
   @ApiOperation({ summary: "Update a client access policy" })
   @ApiBody({ type: UpdatePolicyRequestDto })
   @ApiOkResponse({ type: PolicyResponseDto })
   @ApiBadRequestResponse({ description: "Invalid request body." })
   @ApiConflictResponse({
-    description: "A policy already exists for this client and purpose."
+    description: "This app already has permissions"
   })
   @ApiUnauthorizedResponse({ description: "Missing or invalid session." })
   @ApiNotFoundResponse({ description: "Policy not found." })

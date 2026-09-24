@@ -37,6 +37,37 @@ export function AuditEventDetail({ eventId }: { eventId: string }) {
           <SubjectLinks leadingDash={false} subjects={event.subjects} />
         </p>
       ) : null}
+      {"statedPurpose" in event.metadata || event.memoryRequestId ? (
+        <dl>
+          <dt>Stated purpose</dt>
+          <dd>
+            {typeof event.metadata.statedPurpose === "string"
+              ? event.metadata.statedPurpose
+              : "Not provided"}
+          </dd>
+          {(
+            [
+              ["App permissions", "policyId"],
+              ["Permission version", "policyVersion"],
+              ["Operation", "operation"],
+              ["Task", "task"],
+              ["Decision", "decision"],
+              ["Reason", "reason"],
+              ["Confirmation required", "requiresConfirmation"]
+            ] as const
+          ).map(([name, key]) => (
+            <div key={key}>
+              <dt>{name}</dt>
+              <dd>
+                {event.metadata[key] === null ||
+                event.metadata[key] === undefined
+                  ? "Not provided"
+                  : String(event.metadata[key])}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
       {hasMetadata ? (
         <details className="raw-metadata">
           <summary>Raw metadata</summary>

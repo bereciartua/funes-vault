@@ -51,8 +51,8 @@ export class ClientDto {
   @ApiProperty({ example: true })
   hasToken!: boolean;
 
-  @ApiProperty({ example: 1 })
-  policyCount!: number;
+  @ApiProperty({ example: true })
+  hasPolicy!: boolean;
 
   @ApiProperty({
     example: false,

@@ -27,7 +27,10 @@ const request = {
   id: "request-1",
   clientName: "Review agent",
   task: "Help with code",
-  purpose: "coding",
+  statedPurpose: "<b>Coding_Reason</b>",
+  policyId: "policy_1",
+  policyVersion: "2026-09-24",
+  reason: "confirmation_required",
   retention: "NO_STORAGE",
   thirdPartyProcessors: [],
   status: "NEEDS_USER_APPROVAL",
@@ -85,6 +88,7 @@ it("approves only the selected previewed memories with its revision", async () =
   expect(facts.getByText("Task").nextElementSibling?.textContent).toBe(
     "Help with code"
   );
+  expect(facts.getByText("<b>Coding_Reason</b>").tagName).toBe("DD");
   fireEvent.click(
     await screen.findByRole("checkbox", { name: "Second memory" })
   );

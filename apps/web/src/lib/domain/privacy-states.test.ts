@@ -16,7 +16,6 @@ const basePolicy: Policy = {
   id: "policy_1",
   clientId: "client_1",
   clientName: "Local Agent",
-  purpose: "software_development",
   allowedCategoryKeys: ["work"],
   deniedCategoryKeys: [],
   maxSensitivity: "INTERNAL",
@@ -35,7 +34,10 @@ const baseAuditEvent: AuditEvent = {
   clientId: "client_1",
   clientName: "Local Agent",
   memoryRequestId: "request_1",
-  metadata: { memoryId: "memory_123456789" },
+  metadata: {
+    memoryId: "memory_123456789",
+    statedPurpose: "Software_Development"
+  },
   subjects: [],
   createdAt: "2026-01-01T00:00:00.000Z"
 };
@@ -92,7 +94,6 @@ describe("privacy state helpers", () => {
   it("uses memory titles in disclosure summaries when available", () => {
     const disclosureEvent: AuditEvent = {
       ...baseAuditEvent,
-      metadata: { purpose: "software_development" },
       subjects: [
         {
           type: "MEMORY",
@@ -107,7 +108,7 @@ describe("privacy state helpers", () => {
     expect(auditEventSummary(disclosureEvent)).toMatchObject({
       affected: "“Prefers concise implementation help”",
       description:
-        "Local Agent received “Prefers concise implementation help” for software development."
+        "Local Agent received “Prefers concise implementation help” with stated purpose “Software_Development”."
     });
   });
 
@@ -188,7 +189,7 @@ describe("privacy state helpers", () => {
     expect(policySummary(basePolicy)).toBe(
       "Local Agent can read memories up to Internal sensitivity from 1 allowed category. " +
         "Each matching request needs your confirmation. " +
-        `The policy expires on ${new Date("2026-12-31T00:00:00.000Z").toLocaleDateString()}.`
+        `Permissions expire on ${new Date("2026-12-31T00:00:00.000Z").toLocaleDateString()}.`
     );
   });
 
@@ -200,7 +201,7 @@ describe("privacy state helpers", () => {
       trustLevel: "APPROVED",
       declaredRetention: "SESSION",
       hasToken: true,
-      policyCount: 1,
+      hasPolicy: true,
       oauthConnector: false,
       lastUsedAt: null,
       createdAt: "2026-01-01T00:00:00.000Z",
@@ -208,7 +209,7 @@ describe("privacy state helpers", () => {
     };
 
     expect(clientAccessSummary(client, basePolicy)).toBe(
-      "Approved · MCP client · not used yet · reads up to Internal, 1 category, confirmation required above"
+      "Approved · MCP client · not used yet · permissions up to Internal, 1 category, confirmation required"
     );
     expect(
       sensitivityMixSummary([

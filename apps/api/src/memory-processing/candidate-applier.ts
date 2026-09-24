@@ -14,6 +14,7 @@ import {
 } from "../first-party-access/first-party-access.service.js";
 import { SuggestionIntakeService } from "../memory-suggestions/suggestion-intake.service.js";
 import { SuggestionWriterService } from "../memory-suggestions/suggestion-writer.service.js";
+import { PolicyEvaluationService } from "../policies/policy-evaluation.service.js";
 import { type Candidate } from "./contracts.js";
 import { extractionConfidence } from "./extraction.constants.js";
 import { type ProcessingConfiguration } from "./memory-processing-config.service.js";
@@ -27,7 +28,8 @@ import { type ProcessingConfiguration } from "./memory-processing-config.service
 export class CandidateApplier {
   constructor(
     private readonly suggestionIntakeService: SuggestionIntakeService,
-    private readonly suggestionWriterService: SuggestionWriterService
+    private readonly suggestionWriterService: SuggestionWriterService,
+    private readonly evaluator: PolicyEvaluationService
   ) {}
 
   async applyCandidate(
@@ -46,23 +48,54 @@ export class CandidateApplier {
     if (existing) {
       return memoryProcessingOutcomeSchema.parse(existing.result);
     }
-    const memory = await tx.memory.findFirst({
-      where: {
-        userId,
-        status: MemoryStatus.ACTIVE,
-        body: { equals: candidate.body, mode: "insensitive" },
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
-      }
-    });
-    const suggestion = memory
+    const evaluationInput = {
+      clientId,
+      candidateMemories: [
+        {
+          id: candidate.id,
+          sensitivity: candidate.sensitivity,
+          status: "ACTIVE" as const,
+          reviewState: "APPROVED" as const,
+          expiresAt: null,
+          categories: candidate.categoryKeys.map((key) => ({ key }))
+        }
+      ]
+    };
+    const suggest = await this.evaluator.evaluateForClient(
+      userId,
+      { ...evaluationInput, operation: "SUGGEST" },
+      tx
+    );
+    const write =
+      channel === "voice" || configuration.extraction.writeMode === "review"
+        ? null
+        : await this.evaluator.evaluateForClient(
+            userId,
+            { ...evaluationInput, operation: "WRITE" },
+            tx
+          );
+    const authorized =
+      suggest.decision !== "DENY" || write?.decision === "ALLOW";
+    const memory = !authorized
       ? null
-      : await tx.memorySuggestion.findFirst({
+      : await tx.memory.findFirst({
           where: {
             userId,
-            status: MemorySuggestionStatus.QUEUED_FOR_REVIEW,
-            body: { equals: candidate.body, mode: "insensitive" }
+            status: MemoryStatus.ACTIVE,
+            body: { equals: candidate.body, mode: "insensitive" },
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
           }
         });
+    const suggestion =
+      memory || !authorized
+        ? null
+        : await tx.memorySuggestion.findFirst({
+            where: {
+              userId,
+              status: MemorySuggestionStatus.QUEUED_FOR_REVIEW,
+              body: { equals: candidate.body, mode: "insensitive" }
+            }
+          });
     const response =
       memory || suggestion
         ? {
@@ -74,22 +107,25 @@ export class CandidateApplier {
             userId,
             clientId,
             transaction: tx,
-            reviewOnly: configuration.extraction.writeMode === "review",
+            reviewOnly:
+              channel === "voice" ||
+              configuration.extraction.writeMode === "review",
+            serverMetadata: {
+              runId,
+              candidateId: candidate.id,
+              sourceMessageId,
+              evidence: candidate.evidence,
+              fingerprint: configuration.fingerprint,
+              model: configuration.extraction.model,
+              rubric: configuration.rubric,
+              processors: configuration.extraction.processors
+            },
             body: parseRequest(createMemorySuggestionRequestSchema, {
               ...candidate,
               purpose: channel === "voice" ? voicePurpose : webChatPurpose,
               confidence: extractionConfidence,
               evidence: candidate.evidence.map((e) => e.quote).join("\n"),
-              sourceMetadata: {
-                runId,
-                candidateId: candidate.id,
-                sourceMessageId,
-                evidence: candidate.evidence,
-                fingerprint: configuration.fingerprint,
-                model: configuration.extraction.model,
-                rubric: configuration.rubric,
-                processors: configuration.extraction.processors
-              }
+              sourceMetadata: {}
             })
           });
     const result = {

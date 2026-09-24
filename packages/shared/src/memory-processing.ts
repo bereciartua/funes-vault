@@ -39,7 +39,7 @@ export const memoryProcessingOutcomeSchema = z
     title: z.string().optional(),
     categoryKeys: z.array(z.string()).optional(),
     sensitivity: memorySensitivitySchema.optional(),
-    reason: z.string().optional()
+    reason: z.string().nullable().optional()
   })
   .catchall(z.unknown());
 export const memoryProcessingResultSchema = z
@@ -62,7 +62,7 @@ export const memoryProcessingResultSchema = z
     fingerprint: z.string().optional(),
     latencyMs: z.number().nonnegative().optional(),
     diagnostics: jsonRecordSchema.optional(),
-    reason: z.string().optional()
+    reason: z.string().nullable().optional()
   })
   .catchall(z.unknown());
 export const consolidationSemanticMetadataSchema = z
