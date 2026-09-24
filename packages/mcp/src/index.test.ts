@@ -65,11 +65,17 @@ describe("mcp package", () => {
         policyId: null,
         reason: "operation_not_allowed",
         decision: "DENY",
-        denied: [{ memoryId: "proposed", reason: "denied_category" }],
+        denied: [{ memoryId: "proposed", reason: "no_active_policy" as never }],
         auditEventId: "audit"
       };
     };
-    const server = createFunesVaultMcpServer(api);
+    // Reproduce the old retry trigger, including a configured fallback purpose.
+    // Extra legacy options are ignored by the new server.
+    const legacyOptions = {
+      appUrl: "https://vault.example.test",
+      suggestedPurpose: "legacy_scope"
+    };
+    const server = createFunesVaultMcpServer(api, legacyOptions);
     const client = await connectInMemory(server);
     try {
       const { tools } = await client.listTools();
@@ -77,6 +83,7 @@ describe("mcp package", () => {
         Object.fromEntries(tools.map((tool) => [tool.name, tool.inputSchema]))
       ).toMatchSnapshot();
       for (const tool of tools) {
+        expect(tool.description).not.toContain("legacy_scope");
         expect(tool.inputSchema.type).toBe("object");
         if (["request_memory", "suggest_memory"].includes(tool.name)) {
           expect(tool.inputSchema.properties?.purpose).toMatchObject({
