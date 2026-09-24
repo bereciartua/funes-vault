@@ -212,9 +212,12 @@ export class ConsolidationOrchestratorService {
         reason: semantic.reason,
         skippedPairs: semantic.skippedPairs,
         skippedSources: semantic.skippedSources,
+        skippedSourceReasons: semantic.skippedSourceReasons,
+        deferredPairs: semantic.deferredPairs,
         latencyMs: semantic.latencyMs,
         fingerprint: semantic.fingerprint,
         model: semantic.model,
+        maxSensitivity: semantic.maxSensitivity,
         diagnostics: semantic.diagnostics
       },
       jobRunId: data.jobRunId,

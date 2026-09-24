@@ -6,6 +6,7 @@ import {
   JobStatus,
   JobType
 } from "@funes-vault/db";
+import { consolidationFailureMessage } from "@funes-vault/shared";
 import { Injectable, Logger } from "@nestjs/common";
 import type { Job } from "bullmq";
 
@@ -138,14 +139,17 @@ export class ConsolidationJobService {
             error:
               result.semantic.status === "completed"
                 ? null
-                : "Semantic processing incomplete; local maintenance completed. Retry is available.",
+                : consolidationFailureMessage(result.semantic.reason),
             metadata: toJson(result),
             finishedAt: new Date()
           }
         });
         await this.auditTrail.createAuditEvent(tx, {
           userId: data.userId,
-          type: AuditEventType.JOB_COMPLETED,
+          type:
+            result.semantic.status === "completed"
+              ? AuditEventType.JOB_COMPLETED
+              : AuditEventType.JOB_FAILED,
           actorType: AuditActorType.JOB,
           actorId: jobRunId,
           metadata: result,

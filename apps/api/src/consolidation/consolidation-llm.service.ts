@@ -58,10 +58,13 @@ export class ConsolidationLlmService {
       reason: null as string | null,
       skippedPairs: 0,
       skippedSources: 0,
+      skippedSourceReasons: {} as Record<string, number>,
+      deferredPairs: 0,
       latencyMs: 0,
       completedSourceIds: [] as string[],
       fingerprint: configuration.fingerprint,
       model: task.model,
+      maxSensitivity: task.maxSensitivity,
       diagnostics: {} as Record<string, unknown>
     };
     try {
@@ -69,28 +72,52 @@ export class ConsolidationLlmService {
         throw new ProcessingBlocked("provider_not_configured");
       }
       await this.permission.check(userId, "consolidation", task.processors);
+      const exclusionReason = (m: MemoryWithCategories) => {
+        if (m.userId !== userId || m.status !== MemoryStatus.ACTIVE) {
+          return "unavailable";
+        }
+        if (m.reviewState !== ReviewState.APPROVED) {
+          return "not_approved";
+        }
+        if (m.expiresAt && m.expiresAt <= new Date()) {
+          return "expired";
+        }
+        if (!isAtMostSensitivity(m.sensitivity, task.maxSensitivity)) {
+          return "above_sensitivity_limit";
+        }
+        if (
+          detectSecretLikeContent({ body: JSON.stringify(toLlmMemory(m)) })
+            .length
+        ) {
+          return "secret_like_content";
+        }
+
+        return null;
+      };
       const permitted = (m: MemoryWithCategories) =>
-        m.userId === userId &&
-        m.status === MemoryStatus.ACTIVE &&
-        m.reviewState === ReviewState.APPROVED &&
-        (!m.expiresAt || m.expiresAt > new Date()) &&
-        isAtMostSensitivity(m.sensitivity, task.maxSensitivity) &&
-        !detectSecretLikeContent({ body: JSON.stringify(toLlmMemory(m)) })
-          .length;
-      result.skippedSources = memories.filter((m) => !permitted(m)).length;
+        exclusionReason(m) === null;
+      for (const memory of memories) {
+        const reason = exclusionReason(memory);
+        if (reason) {
+          result.skippedSources += 1;
+          result.skippedSourceReasons[reason] =
+            (result.skippedSourceReasons[reason] ?? 0) + 1;
+        }
+      }
       const pairs = await this.candidates.findRecentCandidatePairs(
         userId,
         memories,
         Number.MAX_SAFE_INTEGER
       );
-      const selected = pairs
-        .filter(
-          (p) => permitted(p.recentMemory) && permitted(p.candidateMemory)
-        )
-        .slice(0, 1000);
+      const eligible = pairs.filter(
+        (p) => permitted(p.recentMemory) && permitted(p.candidateMemory)
+      );
+      const selected = eligible.slice(0, 1000);
       result.skippedPairs = pairs.length - selected.length;
-      if (result.skippedPairs || result.skippedSources) {
+      result.deferredPairs = eligible.length - selected.length;
+      if (result.deferredPairs) {
         result.status = "partial";
+        result.reason = "pair_limit_reached";
       }
       const signal = AbortSignal.timeout(task.timeoutMs);
       const input = {
@@ -199,7 +226,8 @@ export class ConsolidationLlmService {
           }
         });
       }
-      // Only fully inspected batches advance source versions; privacy skips and truncation remain retryable.
+      // Only fully inspected batches advance source versions. Excluded sources remain
+      // discoverable if their eligibility changes; exclusions alone are not a failed run.
       result.completedSourceIds = memories
         .filter(
           (m) =>
