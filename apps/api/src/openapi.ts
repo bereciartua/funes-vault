@@ -8,7 +8,7 @@ export function createOpenApiDocument(app: INestApplication) {
     .setDescription(
       "Privacy-first personal memory API for users, LLM clients, and MCP integrations."
     )
-    .setVersion("2.0.0")
+    .setVersion("1.1.0")
     .addCookieAuth(
       "funes_vault_session",
       {

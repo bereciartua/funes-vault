@@ -4,7 +4,7 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
-## [2.0.0] - 2026-09-24
+## [1.1.0] - 2026-09-24
 
 This release uses a minor version by explicit maintainer decision while the vault is not yet in production. It includes the incompatible changes below; the exception applies only to this release.
 
@@ -63,6 +63,6 @@ This is the first public release. The single baseline replaces development migra
 
 See the [testing guide](docs/testing-and-release.md) for verification commands and the [operations guide](docs/deployment-and-operations.md) for deployment prerequisites. Publication and production rollout remain operator actions.
 
-[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v2.0.0...HEAD
-[2.0.0]: https://github.com/bereciartua/funes-vault/compare/v1.0.0...v2.0.0
+[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/bereciartua/funes-vault/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/bereciartua/funes-vault/releases/tag/v1.0.0
