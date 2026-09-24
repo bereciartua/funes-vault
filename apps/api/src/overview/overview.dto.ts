@@ -32,6 +32,11 @@ class CaptureSeriesPointDto {
   count!: number;
 }
 
+class OverviewPolicyDto extends PolicyDto {
+  @ApiProperty()
+  firstParty!: boolean;
+}
+
 export class OverviewResponseDto {
   @ApiProperty({ example: 128 })
   memoryTotal!: number;
@@ -54,8 +59,8 @@ export class OverviewResponseDto {
   @ApiProperty({ example: 12 })
   categoryTotal!: number;
 
-  @ApiPropertyNullable({ type: PolicyDto })
-  broadestPolicy!: PolicyDto | null;
+  @ApiPropertyNullable({ type: OverviewPolicyDto })
+  broadestPolicy!: OverviewPolicyDto | null;
 
   @ApiProperty({ example: 4 })
   suggestionTotal!: number;

@@ -18,8 +18,11 @@ import { RetrievalService } from "./retrieval.service.js";
 
 function createPrismaMock() {
   const client = mockPrisma({
+    memory: { findMany: vi.fn().mockResolvedValue([createCandidate()]) },
     memoryRequest: {
-      create: vi.fn().mockResolvedValue({ id: "request_1" }),
+      create: vi
+        .fn()
+        .mockImplementation(({ data }) => ({ id: "request_1", ...data })),
       update: vi.fn().mockResolvedValue({})
     },
     memoryRequestItem: {
@@ -114,7 +117,7 @@ describe("privacy: MemoryRequestsService", () => {
       userId: "user_1",
       clientId: "client_1",
       body: createMemoryBundleRequestSchema.parse({
-        purpose: "software_development",
+        purpose: "Help review the user’s code",
         task: "Help with a TypeScript repo",
         requestedCategories: ["communication_style"],
         retention: "NO_STORAGE",
@@ -133,9 +136,9 @@ describe("privacy: MemoryRequestsService", () => {
       "user_1",
       expect.objectContaining({
         clientId: "client_1",
-        purpose: "software_development",
         candidateMemories: [expect.objectContaining({ id: "memory_1" })]
-      })
+      }),
+      expect.anything()
     );
     expect(prismaClient.memoryRequestItem.createMany).toHaveBeenCalledWith({
       data: [
@@ -171,7 +174,7 @@ describe("privacy: MemoryRequestsService", () => {
       clientId: "client_1",
       transport: "mcp_http",
       body: createMemoryBundleRequestSchema.parse({
-        purpose: "software_development",
+        purpose: "Help review the user’s code",
         task: "Help with a TypeScript repo"
       })
     });
@@ -198,7 +201,7 @@ describe("privacy: MemoryRequestsService", () => {
       userId: "user_1",
       clientId: "client_1",
       body: createMemoryBundleRequestSchema.parse({
-        purpose: "software_development",
+        purpose: "Help review the user’s code",
         task: "Help with a TypeScript repo"
       })
     });
@@ -207,5 +210,80 @@ describe("privacy: MemoryRequestsService", () => {
     expect(response.items).toEqual([]);
     expect(prismaClient.memoryRequestItem.createMany).not.toHaveBeenCalled();
     expect(provenance.createAuditEvent).not.toHaveBeenCalled();
+  });
+  it("preserves ranked retrieval order when the database returns three live rows in another order", async () => {
+    const candidates = [0.9, 0.7, 0.2].map((score, index) => ({
+      ...createCandidate(),
+      id: `m${index}`,
+      body: "x".repeat(210),
+      relevanceScore: score
+    }));
+    retrievalService.retrieve.mockResolvedValue(candidates);
+    prismaClient.memory.findMany.mockResolvedValue([
+      candidates[2],
+      candidates[0],
+      candidates[1]
+    ]);
+    policyEvaluationService.evaluateForClient.mockResolvedValue({
+      decision: "ALLOW",
+      policyId: "policy_1",
+      allowedMemoryIds: candidates.map((c) => c.id),
+      denied: [],
+      reason: null
+    });
+    bundleCompiler.compile.mockImplementation((input) =>
+      new BundleCompilerService().compile(input)
+    );
+    const response = await service.createBundleRequest({
+      userId: "user_1",
+      clientId: "client_1",
+      body: createMemoryBundleRequestSchema.parse({
+        task: "preferences",
+        tokenBudget: 100
+      })
+    });
+    expect(response.items.map((item) => item.memoryId)).toEqual(["m0"]);
+    expect(prismaClient.memory.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: {
+          categories: {
+            select: { key: true, name: true },
+            orderBy: { name: "asc" }
+          }
+        }
+      })
+    );
+  });
+
+  it("creates no request row when retrieval throws", async () => {
+    retrievalService.retrieve.mockRejectedValue(
+      new Error("retrieval unavailable")
+    );
+    await expect(
+      service.createBundleRequest({
+        userId: "user_1",
+        clientId: "client_1",
+        body: createMemoryBundleRequestSchema.parse({ task: "preferences" })
+      })
+    ).rejects.toThrow("retrieval unavailable");
+    expect(prismaClient.memoryRequest.create).not.toHaveBeenCalled();
+  });
+
+  it("keeps a pre-retrieval denial when permissions are created during the request", async () => {
+    policyEvaluationService.evaluateForClient.mockResolvedValueOnce({
+      decision: "DENY",
+      policyId: null,
+      policyVersion: null,
+      reason: "no_client_policy",
+      denied: []
+    });
+    const response = await service.createBundleRequest({
+      userId: "user_1",
+      clientId: "client_1",
+      body: createMemoryBundleRequestSchema.parse({ task: "preferences" })
+    });
+    expect(response.reason).toBe("no_client_policy");
+    expect(retrievalService.retrieve).not.toHaveBeenCalled();
+    expect(policyEvaluationService.evaluateForClient).toHaveBeenCalledTimes(1);
   });
 });

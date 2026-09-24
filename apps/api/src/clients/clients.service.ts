@@ -28,7 +28,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 import { createClientToken, hashToken } from "./client-token.js";
 
 export function toClientResponse(
-  client: Client & { _count?: { policies: number } }
+  client: Client & { _count: { policies: number } }
 ) {
   return {
     id: client.id,
@@ -37,7 +37,7 @@ export function toClientResponse(
     trustLevel: client.trustLevel,
     declaredRetention: client.declaredRetention,
     hasToken: Boolean(client.tokenHash),
-    policyCount: client._count?.policies ?? 0,
+    hasPolicy: client._count.policies > 0,
     oauthConnector: Boolean(client.oauthRegistrationId),
     lastUsedAt: toIsoString(client.lastUsedAt),
     createdAt: client.createdAt.toISOString(),
@@ -89,13 +89,11 @@ export class ClientsService {
               ...policyCountInclude,
               policies: {
                 where: {
-                  userId,
-                  OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
+                  userId
                 },
-                orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
-                take: 1,
                 select: {
                   maxSensitivity: true,
+                  expiresAt: true,
                   requiresConfirmation: true,
                   allowedCategories: { select: { key: true } }
                 }
@@ -112,6 +110,7 @@ export class ClientsService {
         policySummary: client.policies?.[0]
           ? {
               maxSensitivity: client.policies[0].maxSensitivity,
+              expiresAt: toIsoString(client.policies[0].expiresAt),
               requiresConfirmation: client.policies[0].requiresConfirmation,
               allowedCategoryKeys: client.policies[0].allowedCategories.map(
                 (category) => category.key
@@ -179,7 +178,10 @@ export class ClientsService {
         return created;
       });
 
-      return { client: toClientResponse(client), token };
+      return {
+        client: toClientResponse({ ...client, _count: { policies: 0 } }),
+        token
+      };
     } catch (error) {
       if (this.isUniqueConstraintError(error)) {
         throw new ConflictException("A client with this name already exists");
@@ -291,7 +293,13 @@ export class ClientsService {
       });
     });
 
-    return { client: toClientResponse({ ...existing, tokenHash: null }) };
+    return {
+      client: toClientResponse({
+        ...existing,
+        tokenHash: null,
+        _count: { policies: 0 }
+      })
+    };
   }
 
   private toUpdateData(

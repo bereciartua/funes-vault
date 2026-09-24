@@ -3,6 +3,7 @@ import {
   MemoryRequestStatus,
   MemorySensitivity
 } from "@funes-vault/db";
+import { memoryRequestReasonSchema } from "@funes-vault/shared";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 const memoryRequestStatuses = Object.values(MemoryRequestStatus);
@@ -12,8 +13,14 @@ const memorySensitivities = Object.values(MemorySensitivity);
 const clientRetentions = Object.values(ClientRetention);
 
 export class CreateMemoryBundleRequestDto {
-  @ApiProperty({ example: "software_development" })
-  purpose!: string;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    maxLength: 160,
+    description:
+      "Caller-declared audit reason; does not affect permissions or retrieval."
+  })
+  purpose?: string | null;
 
   @ApiProperty({ example: "Help the user modify a local repository" })
   task!: string;
@@ -75,6 +82,9 @@ export class MemoryBundleResponseDto {
   @ApiProperty({ example: "cmqvt0v580000xeg7jgy7v1u3", nullable: true })
   policyId!: string | null;
 
+  @ApiProperty({ enum: memoryRequestReasonSchema.options, nullable: true })
+  reason!: string | null;
+
   @ApiProperty({ example: 1200 })
   tokenBudget!: number;
 
@@ -97,7 +107,12 @@ export class MemoryBundleResponseDto {
 class DisclosureSummaryDto {
   @ApiProperty() id!: string;
   @ApiProperty() clientName!: string;
-  @ApiProperty() purpose!: string;
+  @ApiProperty({ type: String, nullable: true }) statedPurpose!: string | null;
+  @ApiProperty({ type: String, nullable: true }) policyId!: string | null;
+  @ApiProperty({ type: String, nullable: true }) policyVersion!: string | null;
+  @ApiProperty({ enum: memoryRequestReasonSchema.options, nullable: true })
+  reason!: string | null;
+
   @ApiProperty() task!: string;
   @ApiProperty({ enum: memoryRequestStatuses }) status!: string;
   @ApiProperty({ enum: clientRetentions }) retention!: string;
@@ -109,6 +124,7 @@ export class DisclosureReviewListDto {
   @ApiProperty({ type: Object }) pagination!: object;
 }
 export class DisclosurePreviewDto {
+  @ApiPropertyOptional() approvalExpired?: boolean;
   @ApiProperty({ type: DisclosureSummaryDto }) request!: DisclosureSummaryDto;
   @ApiProperty() revision!: string;
   @ApiProperty({ type: [MemoryBundleItemDto] }) items!: MemoryBundleItemDto[];

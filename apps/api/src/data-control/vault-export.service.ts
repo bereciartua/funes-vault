@@ -49,6 +49,7 @@ export class VaultExportService {
         }),
         this.prisma.client.client.findMany({
           where: { userId },
+          include: { _count: { select: { policies: true } } },
           orderBy: { updatedAt: "desc" }
         }),
         this.prisma.client.policy.findMany({

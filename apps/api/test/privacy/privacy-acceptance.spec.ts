@@ -200,6 +200,7 @@ describe("privacy: privacy acceptance tests", () => {
 
   it("creates an audit event for an MCP memory request path", async () => {
     const prismaClient = {
+      memory: { findMany: vi.fn().mockResolvedValue([embeddableMemory()]) },
       memoryRequest: {
         create: vi.fn().mockResolvedValue({ id: "request_1" }),
         update: vi.fn().mockResolvedValue({})
@@ -257,7 +258,7 @@ describe("privacy: privacy acceptance tests", () => {
       userId: "user_1",
       clientId: "client_1",
       body: createMemoryBundleRequestSchema.parse({
-        purpose: "software_development",
+        purpose: "Help review the repository",
         task: "Help with this repository"
       })
     });

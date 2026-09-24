@@ -27,7 +27,10 @@ const request = {
   id: "request-1",
   clientName: "Review agent",
   task: "Help with code",
-  purpose: "coding",
+  statedPurpose: "<b>Coding_Reason</b>",
+  policyId: "policy_1",
+  policyVersion: "2026-09-24",
+  reason: "confirmation_required",
   retention: "NO_STORAGE",
   thirdPartyProcessors: [],
   status: "NEEDS_USER_APPROVAL",
@@ -85,6 +88,7 @@ it("approves only the selected previewed memories with its revision", async () =
   expect(facts.getByText("Task").nextElementSibling?.textContent).toBe(
     "Help with code"
   );
+  expect(facts.getByText("<b>Coding_Reason</b>").tagName).toBe("DD");
   fireEvent.click(
     await screen.findByRole("checkbox", { name: "Second memory" })
   );
@@ -160,4 +164,38 @@ it("requires explicit refresh when a changed revision would reset an edited sele
   );
   await act(() => result.current.refresh());
   expect(result.current.preview?.revision).toBe("revision-2");
+});
+
+it("shows an orphaned request as not evaluated, with separate facts", async () => {
+  vi.mocked(apiFetch).mockImplementation(async (input) =>
+    input.path.includes("?")
+      ? {
+          items: [request],
+          pagination: { page: 1, limit: 20, total: 1, totalPages: 1 }
+        }
+      : {
+          ...preview,
+          canApprove: false,
+          request: {
+            ...request,
+            statedPurpose: null,
+            policyId: null,
+            policyVersion: null,
+            reason: null
+          }
+        }
+  );
+  const { container } = render(
+    <ApiProvider apiUrl="http://server">
+      <DisclosureReviews />
+    </ApiProvider>
+  );
+  expect(await screen.findByText("Not provided")).toBeTruthy();
+  expect(screen.getByText("Reason").nextElementSibling?.textContent).toBe(
+    "Not evaluated"
+  );
+  expect(screen.queryByText("Allowed")).toBeNull();
+  for (const fact of container.querySelectorAll("dl.memory-facts > div")) {
+    expect(fact.querySelectorAll("dt")).toHaveLength(1);
+  }
 });

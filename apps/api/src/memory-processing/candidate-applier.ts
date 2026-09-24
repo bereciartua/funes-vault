@@ -1,17 +1,14 @@
-import { MemorySuggestionStatus } from "@funes-vault/db";
-import { MemoryStatus, Prisma } from "@funes-vault/db";
+import { MemoryStatus, MemorySuggestionStatus, Prisma } from "@funes-vault/db";
 import {
   createMemorySuggestionRequestSchema,
-  memoryProcessingOutcomeSchema
+  memoryProcessingOutcomeSchema,
+  voicePurpose,
+  webChatPurpose
 } from "@funes-vault/shared";
 import { Injectable } from "@nestjs/common";
 
 import { toJson } from "../common/serialization.js";
 import { parseRequest } from "../common/zod.js";
-import {
-  voicePurpose,
-  webChatPurpose
-} from "../first-party-access/first-party-access.service.js";
 import { SuggestionIntakeService } from "../memory-suggestions/suggestion-intake.service.js";
 import { SuggestionWriterService } from "../memory-suggestions/suggestion-writer.service.js";
 import { type Candidate } from "./contracts.js";
@@ -46,23 +43,52 @@ export class CandidateApplier {
     if (existing) {
       return memoryProcessingOutcomeSchema.parse(existing.result);
     }
-    const memory = await tx.memory.findFirst({
-      where: {
-        userId,
-        status: MemoryStatus.ACTIVE,
-        body: { equals: candidate.body, mode: "insensitive" },
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
+    const body = parseRequest(createMemorySuggestionRequestSchema, {
+      ...candidate,
+      purpose: channel === "voice" ? voicePurpose : webChatPurpose,
+      confidence: extractionConfidence,
+      evidence: candidate.evidence.map((e) => e.quote).join("\n"),
+      sourceMetadata: {}
+    });
+    // Validate before deduplication too: malformed provider output is never a usable proposal.
+    const prepared = await this.suggestionIntakeService.prepareSuggestion({
+      userId,
+      clientId,
+      transaction: tx,
+      body,
+      reviewOnly: configuration.extraction.writeMode === "review",
+      serverMetadata: {
+        runId,
+        candidateId: candidate.id,
+        sourceMessageId,
+        evidence: candidate.evidence,
+        fingerprint: configuration.fingerprint,
+        model: configuration.extraction.model,
+        rubric: configuration.rubric,
+        processors: configuration.extraction.processors
       }
     });
-    const suggestion = memory
+    const authorized = prepared.decision !== "DENY";
+    const memory = !authorized
       ? null
-      : await tx.memorySuggestion.findFirst({
+      : await tx.memory.findFirst({
           where: {
             userId,
-            status: MemorySuggestionStatus.QUEUED_FOR_REVIEW,
-            body: { equals: candidate.body, mode: "insensitive" }
+            status: MemoryStatus.ACTIVE,
+            body: { equals: body.body, mode: "insensitive" },
+            OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
           }
         });
+    const suggestion =
+      memory || !authorized
+        ? null
+        : await tx.memorySuggestion.findFirst({
+            where: {
+              userId,
+              status: MemorySuggestionStatus.QUEUED_FOR_REVIEW,
+              body: { equals: body.body, mode: "insensitive" }
+            }
+          });
     const response =
       memory || suggestion
         ? {
@@ -70,33 +96,12 @@ export class CandidateApplier {
             memoryId: memory?.id ?? null,
             suggestionId: suggestion?.id ?? null
           }
-        : await this.suggestionIntakeService.createSuggestion({
-            userId,
-            clientId,
-            transaction: tx,
-            reviewOnly: configuration.extraction.writeMode === "review",
-            body: parseRequest(createMemorySuggestionRequestSchema, {
-              ...candidate,
-              purpose: channel === "voice" ? voicePurpose : webChatPurpose,
-              confidence: extractionConfidence,
-              evidence: candidate.evidence.map((e) => e.quote).join("\n"),
-              sourceMetadata: {
-                runId,
-                candidateId: candidate.id,
-                sourceMessageId,
-                evidence: candidate.evidence,
-                fingerprint: configuration.fingerprint,
-                model: configuration.extraction.model,
-                rubric: configuration.rubric,
-                processors: configuration.extraction.processors
-              }
-            })
-          });
+        : await prepared.apply();
     const result = {
       candidateId: candidate.id,
-      title: candidate.title,
-      categoryKeys: candidate.categoryKeys,
-      sensitivity: candidate.sensitivity,
+      title: body.title,
+      categoryKeys: body.categoryKeys,
+      sensitivity: body.sensitivity,
       ...response
     };
     await tx.memoryCandidateApplication.create({

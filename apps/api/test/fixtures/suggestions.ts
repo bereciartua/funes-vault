@@ -106,9 +106,11 @@ export async function createSuggestionsHarness() {
           decision: "DENY",
           policyId: null,
           allowedMemoryIds: [],
-          denied: [{ memoryId: "proposed_memory", reason: "no_active_policy" }],
+          denied: [
+            { memoryId: "proposed_memory", reason: "operation_not_allowed" }
+          ],
           requiresConfirmation: true,
-          reason: "no_active_policy"
+          reason: "operation_not_allowed"
         });
       }
 

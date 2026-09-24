@@ -151,8 +151,8 @@ export function ConnectAgentGuideView({
       <summary>How do I connect Claude, ChatGPT, or a coding agent?</summary>
       <p className="muted">
         A connected app never browses your vault. It asks for memories for a
-        declared purpose and receives only what its policy allows, anything it
-        wants to remember follows its saving policy, and every disclosure is
+        task and receives only what its app permissions allow, anything it wants
+        to remember follows its App permissions, and every disclosure is
         recorded in the audit log. You can cut any app off from the list below
         at any moment.
       </p>
@@ -215,13 +215,13 @@ export function ConnectAgentGuideView({
             <li>
               Review what the app is requesting and choose{" "}
               <strong>Approve</strong>. Connectors can only ever request two
-              things: reading policy-filtered memories and suggesting new ones
-              for your review.
+              things: reading memories within their permissions and suggesting
+              new ones according to your App permissions.
             </li>
             <li>
               Done. The app appears in the list below with an{" "}
               <strong>OAuth connector</strong> badge, and you can tighten its
-              policy there whenever you like.
+              permissions there whenever you like.
             </li>
           </ol>
           <p className="muted">
@@ -242,9 +242,9 @@ export function ConnectAgentGuideView({
               once.
             </li>
             <li>
-              Give it a policy: which operations it may use (read, suggest), up
-              to which sensitivity, and which categories. Without a policy the
-              tool gets nothing.
+              Give it app permissions: which operations it may use (read,
+              suggest), up to which sensitivity, and which categories. Without
+              app permissions the tool gets nothing.
             </li>
             <li>
               Point the tool at your vault&apos;s MCP address with the token.

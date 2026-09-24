@@ -13,7 +13,7 @@ const approvedClient: Client = {
   trustLevel: "APPROVED",
   declaredRetention: "NO_STORAGE",
   hasToken: true,
-  policyCount: 0,
+  hasPolicy: false,
   oauthConnector: false,
   lastUsedAt: null,
   createdAt: "2026-07-09T12:00:00.000Z",
@@ -159,8 +159,9 @@ it("renders list policy summaries without requesting policies for each row", asy
   installFetch([
     {
       ...approvedClient,
-      policyCount: 1,
+      hasPolicy: true,
       policySummary: {
+        expiresAt: null,
         maxSensitivity: "LOW",
         allowedCategoryKeys: ["work"],
         requiresConfirmation: true
@@ -173,7 +174,9 @@ it("renders list policy summaries without requesting policies for each row", asy
       <AppsAccessPanel categories={[]} />
     </ApiProvider>
   );
-  expect(await screen.findByText(/reads up to Low, 1 category/)).toBeTruthy();
+  expect(
+    await screen.findByText(/permissions up to Low, 1 category/)
+  ).toBeTruthy();
   expect(
     vi
       .mocked(fetch)

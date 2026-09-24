@@ -94,14 +94,13 @@ export class VaultImportWriterService {
     for (const policy of input.exportFile.policies) {
       const clientId = input.clientIdMap.get(policy.clientId);
       if (!clientId) {
-        continue;
+        throw new Error("Policy client is missing from validated export");
       }
 
       const created = await tx.policy.create({
         data: {
           userId: input.userId,
           clientId,
-          purpose: policy.purpose,
           maxSensitivity: policy.maxSensitivity,
           operations: policy.operations,
           requiresConfirmation: policy.requiresConfirmation,

@@ -1,15 +1,14 @@
-import { createHash } from "node:crypto";
-
-import { AuditSubjectRole } from "@funes-vault/db";
-import { AuditSubjectType } from "@funes-vault/db";
-import { MemoryRequestStatus } from "@funes-vault/db";
 import {
   AuditActorType,
   AuditEventType,
+  AuditSubjectRole,
+  AuditSubjectType,
   type MemoryRequest,
+  MemoryRequestStatus,
   Prisma
 } from "@funes-vault/db";
 import {
+  appPermissionsLabel,
   type AuditTransport,
   type PaginationQuery,
   type ReviewDisclosureRequest
@@ -22,14 +21,19 @@ import {
 
 import { AuditTrailService } from "../audit-trail/audit-trail.service.js";
 import { buildPagination, paginationSkip } from "../common/pagination.js";
-import { policyInclude } from "../policies/policy.types.js";
-import { evaluateCandidateMemories } from "../policies/policy-evaluation.service.js";
+import { PolicyEvaluationService } from "../policies/policy-evaluation.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { BundleCompilerService } from "./bundle-compiler.service.js";
 import { recordDisclosureDecision } from "./disclosure-audit.js";
 import {
-  clientRevision,
+  disclosureContext,
+  lockDisclosureRequest
+} from "./disclosure-context.js";
+import { disclosureMetadata } from "./disclosure-metadata.js";
+import { previewDisclosure } from "./disclosure-preview.js";
+import {
   disclosureApprovalTtlMs,
+  snapshotIsCurrent,
   snapshotSchema,
   summary
 } from "./disclosure-snapshot.js";
@@ -47,7 +51,8 @@ export class DisclosureReviewService {
     private readonly prisma: PrismaService,
     private readonly retrieval: RetrievalService,
     private readonly compiler: BundleCompilerService,
-    private readonly auditTrail: AuditTrailService
+    private readonly auditTrail: AuditTrailService,
+    private readonly evaluator: PolicyEvaluationService
   ) {}
 
   async list(userId: string, input: PaginationQuery) {
@@ -76,6 +81,18 @@ export class DisclosureReviewService {
       throw new NotFoundException("Memory request not found.");
     }
 
+    const gate = await this.evaluator.evaluateForClient(userId, {
+      clientId: request.clientId,
+      operation: "READ"
+    });
+    if (
+      request.status !== MemoryRequestStatus.NEEDS_USER_APPROVAL ||
+      !request.policyId ||
+      gate.decision === "DENY"
+    ) {
+      return [];
+    }
+
     return this.retrieval.retrieve({
       userId,
       task: request.task,
@@ -83,112 +100,27 @@ export class DisclosureReviewService {
     });
   }
 
-  private async locked(
-    tx: Prisma.TransactionClient,
-    userId: string,
-    id: string,
-    clientId?: string
-  ) {
-    // Serialize decisions and consumption of this one-time grant. Every lookup
-    // is scoped to its owner, and result retrieval also checks the exact client.
-    await tx.$queryRaw`SELECT id FROM "MemoryRequest" WHERE id = ${id} AND "userId" = ${userId} FOR UPDATE`;
-    const request = await tx.memoryRequest.findFirst({
-      where: { id, userId, ...(clientId ? { clientId } : {}) }
-    });
-    if (!request) {
-      throw new NotFoundException("Memory request not found.");
-    }
-
-    return request;
-  }
-
-  private async context(
-    tx: Prisma.TransactionClient,
-    request: MemoryRequest,
-    ids: string[]
-  ) {
-    const client = await tx.client.findFirstOrThrow({
-      where: { id: request.clientId, userId: request.userId },
-      include: {
-        policies: {
-          where: { purpose: request.purpose },
-          include: policyInclude
-        }
-      }
-    });
-    const memories = await tx.memory.findMany({
-      where: { id: { in: ids }, userId: request.userId },
-      include: { categories: true }
-    });
-    const policy = client.policies.find(
-      (p) =>
-        p.operations.includes("READ") &&
-        (!p.expiresAt || p.expiresAt > new Date())
-    );
-    const evaluation =
-      policy && client.trustLevel !== "BLOCKED"
-        ? evaluateCandidateMemories({ policy, candidateMemories: memories })
-        : null;
-    const allowed = new Set(evaluation?.allowedMemoryIds ?? []);
-
-    return { client, policy, memories, allowed };
-  }
-
-  private async previewInTransaction(
+  private previewInTransaction(
     tx: Prisma.TransactionClient,
     request: MemoryRequest,
     candidates: Array<{ id: string; relevanceScore: number }>
   ) {
-    const context = await this.context(
+    return previewDisclosure({
       tx,
       request,
-      candidates.map((c) => c.id)
-    );
-    const byId = new Map(context.memories.map((m) => [m.id, m]));
-    const approved = candidates.flatMap((c) => {
-      const memory = byId.get(c.id);
-
-      return memory && context.allowed.has(c.id)
-        ? [{ ...memory, relevanceScore: c.relevanceScore }]
-        : [];
+      candidates,
+      evaluator: this.evaluator,
+      compiler: this.compiler,
+      invalidate: (tx, request, context) =>
+        this.invalidate(tx, request, context)
     });
-    const bundle = this.compiler.compile({
-      candidates: approved,
-      tokenBudget: request.tokenBudget
-    });
-    const versions = Object.fromEntries(
-      approved.map((m) => [m.id, m.updatedAt.toISOString()])
-    );
-    const snapshot = {
-      items: bundle.items,
-      versions,
-      instructions: bundle.instructions,
-      policyId: context.policy?.id ?? "",
-      policyVersion: context.policy?.updatedAt.toISOString() ?? "",
-      clientVersion: clientRevision(context.client)
-    };
-    const revision = createHash("sha256")
-      .update(JSON.stringify({ requestId: request.id, ...snapshot }))
-      .digest("hex");
-
-    return {
-      snapshot,
-      preview: {
-        request: summary(request, context.client.name),
-        revision,
-        items: bundle.items,
-        canApprove:
-          request.status === MemoryRequestStatus.NEEDS_USER_APPROVAL &&
-          bundle.items.length > 0
-      }
-    };
   }
 
   async preview(userId: string, id: string) {
     const candidates = await this.candidates(userId, id);
 
     return this.prisma.client.$transaction(async (tx) => {
-      const request = await this.locked(tx, userId, id);
+      const request = await lockDisclosureRequest(tx, userId, id);
 
       return (await this.previewInTransaction(tx, request, candidates)).preview;
     });
@@ -200,7 +132,7 @@ export class DisclosureReviewService {
       decision.action === "approve" ? await this.candidates(userId, id) : [];
 
     return this.prisma.client.$transaction(async (tx) => {
-      const request = await this.locked(tx, userId, id);
+      const request = await lockDisclosureRequest(tx, userId, id);
       if (request.status !== MemoryRequestStatus.NEEDS_USER_APPROVAL) {
         throw new ConflictException("This request has already been reviewed.");
       }
@@ -228,7 +160,7 @@ export class DisclosureReviewService {
         );
         if (!preview.canApprove || preview.revision !== decision.revision) {
           throw new ConflictException(
-            "The memories or access rules changed. Refresh the preview before approving."
+            "The preview changed. Refresh it before approving."
           );
         }
         const ids = new Set(decision.memoryIds);
@@ -276,11 +208,12 @@ export class DisclosureReviewService {
     transport: AuditTransport
   ) {
     return this.prisma.client.$transaction(async (tx) => {
-      const request = await this.locked(tx, userId, id, clientId);
+      const request = await lockDisclosureRequest(tx, userId, id, clientId);
       const empty = {
         requestId: id,
         status: request.status,
-        policyId: null,
+        policyId: request.policyId,
+        reason: request.decisionReason,
         tokenBudget: request.tokenBudget,
         estimatedTokens: 0,
         items: [],
@@ -297,32 +230,30 @@ export class DisclosureReviewService {
         !request.approvalExpiresAt ||
         request.approvalExpiresAt <= new Date()
       ) {
-        await requireFreshReview(tx, id);
+        await requireFreshReview(tx, request.id, "confirmation_required");
 
-        return { ...empty, status: MemoryRequestStatus.NEEDS_USER_APPROVAL };
+        return {
+          ...empty,
+          status: MemoryRequestStatus.NEEDS_USER_APPROVAL,
+          reason: "confirmation_required" as const
+        };
       }
       const snapshot = parsed.data;
-      const context = await this.context(
+      const context = await disclosureContext(
+        this.evaluator,
         tx,
         request,
         snapshot.items.map((item) => item.memoryId)
       );
-      const versions = new Map(
-        context.memories.map((m) => [m.id, m.updatedAt.toISOString()])
-      );
-      const unchanged =
-        context.policy?.id === snapshot.policyId &&
-        context.policy.updatedAt.toISOString() === snapshot.policyVersion &&
-        clientRevision(context.client) === snapshot.clientVersion &&
-        snapshot.items.every(
-          (item) =>
-            context.allowed.has(item.memoryId) &&
-            versions.get(item.memoryId) === snapshot.versions[item.memoryId]
-        );
+      const unchanged = snapshotIsCurrent(request, snapshot, context);
       if (!unchanged) {
-        await requireFreshReview(tx, id);
+        await this.invalidate(tx, request, context);
 
-        return { ...empty, status: MemoryRequestStatus.NEEDS_USER_APPROVAL };
+        return {
+          ...empty,
+          status: MemoryRequestStatus.NEEDS_USER_APPROVAL,
+          reason: "policy_changed" as const
+        };
       }
       await tx.memoryRequestItem.createMany({
         data: snapshot.items.map((item) => ({
@@ -341,14 +272,24 @@ export class DisclosureReviewService {
         type: AuditEventType.MEMORY_DISCLOSURE,
         actorType: AuditActorType.CLIENT,
         actorId: clientId,
-        metadata: {
+        metadata: disclosureMetadata({
+          request,
           transport,
-          purpose: request.purpose,
-          policyId: snapshot.policyId,
           memoryIds: snapshot.items.map((item) => item.memoryId),
+          estimatedTokens: snapshot.items.reduce(
+            (sum, item) => sum + item.estimatedTokens,
+            0
+          ),
+          denied: [],
           oneTimeApproval: true
-        },
+        }),
         subjects: [
+          {
+            type: AuditSubjectType.POLICY,
+            id: request.policyId,
+            role: AuditSubjectRole.POLICY,
+            label: appPermissionsLabel(context.client.name)
+          },
           ...snapshot.items.map((item) => ({
             type: AuditSubjectType.MEMORY,
             id: item.memoryId,
@@ -371,6 +312,7 @@ export class DisclosureReviewService {
         data: {
           status: MemoryRequestStatus.FULFILLED,
           fulfilledAt: new Date(),
+          decisionReason: null,
           reviewSnapshot: {}
         }
       });
@@ -379,6 +321,7 @@ export class DisclosureReviewService {
         ...empty,
         status: MemoryRequestStatus.FULFILLED,
         policyId: snapshot.policyId,
+        reason: null,
         items: snapshot.items,
         instructions: snapshot.instructions,
         estimatedTokens: snapshot.items.reduce(
@@ -388,5 +331,34 @@ export class DisclosureReviewService {
         auditEventId: event.id
       };
     });
+  }
+
+  private async invalidate(
+    tx: Prisma.TransactionClient,
+    request: MemoryRequest,
+    context: Awaited<ReturnType<typeof disclosureContext>>
+  ) {
+    const updated = await requireFreshReview(
+      tx,
+      request.id,
+      "policy_changed",
+      context.bound ? context.policyVersion : undefined
+    );
+    await recordDisclosureDecision(
+      this.auditTrail,
+      tx,
+      updated,
+      AuditEventType.MEMORY_REQUEST_DENIED,
+      [],
+      {
+        actorType: AuditActorType.SYSTEM,
+        reason: "policy_changed",
+        clientName: context.client.name,
+        requiresConfirmation: context.policy?.requiresConfirmation ?? false,
+        previousPolicyVersion: request.policyVersion
+      }
+    );
+
+    return updated;
   }
 }

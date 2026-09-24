@@ -22,11 +22,11 @@ const workflowSteps = [
   ],
   [
     "Approve clients",
-    "Give each app a narrow policy by purpose, category, operation, and sensitivity."
+    "Give each app narrow permissions by category, operation, and sensitivity."
   ],
   [
     "Audit disclosure",
-    "See what was shared, who received it, and which policy allowed it."
+    "See what was shared, who received it, and which permissions allowed it."
   ]
 ] as const;
 
@@ -37,7 +37,7 @@ const trustPoints = [
   ],
   [
     "Least privilege for each client",
-    "Apps request memory for a declared purpose; policies filter what actually leaves."
+    "Apps request memory for a task; app permissions filter what actually leaves."
   ],
   [
     "Sensitive data is deliberate",
@@ -167,7 +167,7 @@ export function PublicHome({
           <p className="eyebrow">How it works</p>
           <h2 id="how-title">A small consent loop before memory leaves.</h2>
           <p className="public-section-lede">
-            Nothing is shared by accident. Memory moves only through policies
+            Nothing is shared by accident. Memory moves only through permissions
             you wrote, at sensitivities you chose, to clients you approved.
           </p>
           <div className="public-steps">
@@ -218,8 +218,9 @@ export function PublicHome({
               </h2>
               <p className="public-section-lede">
                 Agents and apps request compact memory bundles over MCP or HTTP,
-                scoped by purpose. The vault answers with exactly what policy
-                allows, with an audit entry for each disclosure.
+                under their app permissions. The vault answers with exactly what
+                their permissions allow, with an audit entry for each
+                disclosure.
               </p>
             </div>
             <pre className="public-code" aria-label="MCP configuration example">
@@ -250,7 +251,9 @@ function DisclosurePreview() {
     >
       <div className="disclosure-preview-header">
         <p className="eyebrow">Disclosure preview</p>
-        <p className="eyebrow">purpose: software development</p>
+        <p className="eyebrow">
+          stated purpose: help with software development
+        </p>
       </div>
       <h2 id="disclosure-preview-title">A coding agent asks for memory</h2>
       <div className="disclosure-request" aria-label="Requested context">
@@ -262,7 +265,7 @@ function DisclosurePreview() {
         <i aria-hidden="true" />
         <p>
           <strong>Shared</strong> — coding preferences and project context, 4
-          memories within policy.
+          memories allowed by app permissions.
         </p>
       </div>
       <div className="disclosure-decision" data-tone="warn">
@@ -276,7 +279,7 @@ function DisclosurePreview() {
         <i aria-hidden="true" />
         <p>
           <strong>Denied</strong> — personal context is outside this
-          agent&apos;s policy.
+          agent&apos;s permissions.
         </p>
       </div>
       <p className="disclosure-preview-footer">

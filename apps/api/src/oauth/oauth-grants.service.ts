@@ -4,12 +4,10 @@ import {
   ClientRetention,
   ClientTrustLevel,
   ClientType,
-  MemorySensitivity,
   OAuthRegistrationStatus,
-  PolicyOperation,
   type Prisma
 } from "@funes-vault/db";
-import { oauthScopeRead, oauthScopeSuggest } from "@funes-vault/shared";
+import { appPermissionsLabel } from "@funes-vault/shared";
 import {
   BadRequestException,
   ConflictException,
@@ -18,60 +16,23 @@ import {
 } from "@nestjs/common";
 
 import { AuditTrailService } from "../audit-trail/audit-trail.service.js";
-import { apiEnv } from "../config.js";
+import { isPrismaError } from "../common/prisma-errors.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-import {
-  mcpConnectorPurpose,
-  oauthAuthorizationCodeTtlMs
-} from "./oauth.config.js";
+import { oauthAuthorizationCodeTtlMs } from "./oauth.config.js";
+import type { ConsentContext } from "./oauth-consent.types.js";
 import {
   createOAuthAuthorizationCode,
   credentialMatchesHash,
   hashOAuthCredential
 } from "./oauth-credentials.js";
+import {
+  consentClient,
+  defaultConnectorMaxSensitivity,
+  resultingOperations,
+  scopesToOperations
+} from "./oauth-permissions.js";
 
-const connectorSensitivityValues = Object.values(MemorySensitivity);
-
-// Third-party connectors get a conservative default disclosure ceiling; the
-// user can raise or lower it afterwards in Apps & access like any policy.
-export function defaultConnectorMaxSensitivity(): MemorySensitivity {
-  const configured = apiEnv().MCP_CONNECTOR_MAX_SENSITIVITY;
-
-  if (
-    configured &&
-    connectorSensitivityValues.includes(configured as MemorySensitivity)
-  ) {
-    return configured as MemorySensitivity;
-  }
-
-  return MemorySensitivity.INTERNAL;
-}
-
-export function scopesToOperations(scopes: string[]): PolicyOperation[] {
-  const operations: PolicyOperation[] = [];
-
-  if (scopes.includes(oauthScopeRead)) {
-    operations.push(PolicyOperation.READ);
-  }
-
-  if (scopes.includes(oauthScopeSuggest)) {
-    operations.push(PolicyOperation.SUGGEST);
-  }
-
-  return operations;
-}
-
-export type ConsentContext = {
-  requestId: string;
-  clientName: string;
-  clientUri: string | null;
-  logoUri: string | null;
-  redirectHost: string;
-  redirectOrigin: string;
-  scopes: string[];
-  registrationStatus: OAuthRegistrationStatus;
-  maxSensitivity: MemorySensitivity;
-};
+export type { ConsentContext } from "./oauth-consent.types.js";
 
 type ConsentDecisionInput = {
   userId: string;
@@ -91,8 +52,15 @@ export class OAuthGrantsService {
     private readonly auditService: AuditTrailService
   ) {}
 
-  async getConsentContext(requestId: string): Promise<ConsentContext> {
+  async getConsentContext(
+    requestId: string,
+    userId?: string
+  ): Promise<ConsentContext> {
     const request = await this.loadPendingRequest(requestId);
+    const client = userId
+      ? await consentClient(this.prisma.client, userId, request.registrationId)
+      : null;
+    const policy = client?.policies[0];
 
     return {
       requestId: request.id,
@@ -103,7 +71,25 @@ export class OAuthGrantsService {
       redirectOrigin: new URL(request.redirectUri).origin,
       scopes: request.scopes,
       registrationStatus: request.registration.status,
-      maxSensitivity: defaultConnectorMaxSensitivity()
+      operations: resultingOperations(policy?.operations ?? [], request.scopes),
+      addedOperations: scopesToOperations(request.scopes).filter(
+        (operation) => !policy?.operations.includes(operation)
+      ),
+      recreating: Boolean(client && !policy),
+      createsPermissions: !policy,
+      allowedCategories:
+        policy?.allowedCategories.map((c) => c.key) ??
+        (userId
+          ? (
+              await this.prisma.client.memoryCategory.findMany({
+                select: { key: true }
+              })
+            ).map((category) => category.key)
+          : []),
+      deniedCategories: policy?.deniedCategories.map((c) => c.key) ?? [],
+      requiresConfirmation: policy?.requiresConfirmation ?? false,
+      expiresAt: policy?.expiresAt?.toISOString() ?? null,
+      maxSensitivity: policy?.maxSensitivity ?? defaultConnectorMaxSensitivity()
     };
   }
 
@@ -111,60 +97,70 @@ export class OAuthGrantsService {
     const request = await this.loadPendingRequest(input.requestId, input.nonce);
     const code = createOAuthAuthorizationCode();
 
-    await this.prisma.client.$transaction(async (tx) => {
-      const client = await this.ensureGrantClient(tx, {
-        userId: input.userId,
-        registrationId: request.registrationId,
-        registrationName: request.registration.name,
-        registrationClientId: request.registration.clientId
-      });
-
-      await this.ensureGrantPolicy(tx, {
-        userId: input.userId,
-        clientId: client.id,
-        scopes: request.scopes
-      });
-
-      if (request.registration.status === OAuthRegistrationStatus.PENDING) {
-        await tx.oAuthClientRegistration.update({
-          where: { id: request.registrationId },
-          data: { status: OAuthRegistrationStatus.APPROVED }
-        });
-      }
-
-      await tx.oAuthAuthorizationCode.create({
-        data: {
+    await this.prisma.client
+      .$transaction(async (tx) => {
+        const client = await this.ensureGrantClient(tx, {
+          userId: input.userId,
           registrationId: request.registrationId,
+          registrationName: request.registration.name,
+          registrationClientId: request.registration.clientId
+        });
+
+        await this.ensureGrantPolicy(tx, {
           userId: input.userId,
           clientId: client.id,
-          codeHash: hashOAuthCredential(code),
-          redirectUri: request.redirectUri,
-          codeChallenge: request.codeChallenge,
-          scopes: request.scopes,
-          resource: request.resource,
-          expiresAt: new Date(Date.now() + oauthAuthorizationCodeTtlMs())
-        }
-      });
+          clientName: client.name,
+          scopes: request.scopes
+        });
 
-      await tx.oAuthAuthorizationRequest.update({
-        where: { id: request.id },
-        data: { decidedAt: new Date() }
-      });
-
-      await this.auditService.createAuditEvent(tx, {
-        userId: input.userId,
-        clientId: client.id,
-        type: AuditEventType.OAUTH_GRANT_APPROVED,
-        actorType: AuditActorType.USER,
-        actorId: input.userId,
-        metadata: {
-          oauthClientId: request.registration.clientId,
-          clientName: request.registration.name,
-          scopes: request.scopes,
-          redirectHost: new URL(request.redirectUri).host
+        if (request.registration.status === OAuthRegistrationStatus.PENDING) {
+          await tx.oAuthClientRegistration.update({
+            where: { id: request.registrationId },
+            data: { status: OAuthRegistrationStatus.APPROVED }
+          });
         }
+
+        await tx.oAuthAuthorizationCode.create({
+          data: {
+            registrationId: request.registrationId,
+            userId: input.userId,
+            clientId: client.id,
+            codeHash: hashOAuthCredential(code),
+            redirectUri: request.redirectUri,
+            codeChallenge: request.codeChallenge,
+            scopes: request.scopes,
+            resource: request.resource,
+            expiresAt: new Date(Date.now() + oauthAuthorizationCodeTtlMs())
+          }
+        });
+
+        await tx.oAuthAuthorizationRequest.update({
+          where: { id: request.id },
+          data: { decidedAt: new Date() }
+        });
+
+        await this.auditService.createAuditEvent(tx, {
+          userId: input.userId,
+          clientId: client.id,
+          type: AuditEventType.OAUTH_GRANT_APPROVED,
+          actorType: AuditActorType.USER,
+          actorId: input.userId,
+          metadata: {
+            oauthClientId: request.registration.clientId,
+            clientName: request.registration.name,
+            scopes: request.scopes,
+            redirectHost: new URL(request.redirectUri).host
+          }
+        });
+      })
+      .catch((error) => {
+        if (isPrismaError(error, "P2002")) {
+          throw new ConflictException(
+            "This app’s permissions changed during approval. Start the connection again."
+          );
+        }
+        throw error;
       });
-    });
 
     const redirect = new URL(request.redirectUri);
     redirect.searchParams.set("code", code);
@@ -253,13 +249,11 @@ export class OAuthGrantsService {
       registrationClientId: string;
     }
   ) {
-    const existing = await tx.client.findFirst({
-      where: {
-        userId: input.userId,
-        oauthRegistrationId: input.registrationId
-      }
-    });
-
+    const existing = await consentClient(
+      tx,
+      input.userId,
+      input.registrationId
+    );
     if (existing) {
       if (existing.trustLevel !== ClientTrustLevel.APPROVED) {
         return tx.client.update({
@@ -310,25 +304,44 @@ export class OAuthGrantsService {
 
   private async ensureGrantPolicy(
     tx: Prisma.TransactionClient,
-    input: { userId: string; clientId: string; scopes: string[] }
+    input: {
+      userId: string;
+      clientId: string;
+      clientName: string;
+      scopes: string[];
+    }
   ) {
     const operations = scopesToOperations(input.scopes);
-    const existing = await tx.policy.findFirst({
+    const existing = await tx.policy.findUnique({
       where: {
         userId: input.userId,
-        clientId: input.clientId,
-        purpose: mcpConnectorPurpose
+        clientId: input.clientId
       },
       select: { id: true, operations: true }
     });
 
     if (existing) {
-      const merged = [...new Set([...existing.operations, ...operations])];
+      const merged = resultingOperations(existing.operations, input.scopes);
 
       if (merged.length !== existing.operations.length) {
         await tx.policy.update({
           where: { id: existing.id },
           data: { operations: merged }
+        });
+        await this.auditService.createAuditEvent(tx, {
+          userId: input.userId,
+          clientId: input.clientId,
+          type: AuditEventType.POLICY_UPDATED,
+          actorType: AuditActorType.USER,
+          actorId: input.userId,
+          metadata: {
+            policyId: existing.id,
+            policyLabel: appPermissionsLabel(input.clientName),
+            changedFields: ["operations"],
+            previousOperations: existing.operations,
+            operations: merged,
+            oauthConsent: true
+          }
         });
       }
 
@@ -343,7 +356,6 @@ export class OAuthGrantsService {
       data: {
         userId: input.userId,
         clientId: input.clientId,
-        purpose: mcpConnectorPurpose,
         maxSensitivity: defaultConnectorMaxSensitivity(),
         operations,
         requiresConfirmation: false,
@@ -363,12 +375,12 @@ export class OAuthGrantsService {
       actorId: input.userId,
       metadata: {
         policyId: created.id,
-        purpose: mcpConnectorPurpose,
         clientId: input.clientId,
         maxSensitivity: defaultConnectorMaxSensitivity(),
         operations,
         requiresConfirmation: false,
         allowedCategoryCount: categories.length,
+        policyLabel: appPermissionsLabel(input.clientName),
         oauthGrant: true
       }
     });

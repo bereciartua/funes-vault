@@ -19,6 +19,7 @@ const bundleResponse = {
   requestId: "request_1",
   status: "FULFILLED",
   policyId: "policy_1",
+  reason: null,
   tokenBudget: 1200,
   estimatedTokens: 42,
   items: [],
@@ -86,7 +87,7 @@ function startFakeApi() {
 }
 
 const requestMemoryArgs = {
-  purpose: "software_development",
+  purpose: "Help with this repository",
   task: "Help with a repository"
 };
 

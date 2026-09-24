@@ -44,7 +44,10 @@ export class SuggestionWriterService {
     transport: AuditTransport;
     request: CreateMemorySuggestionRequest;
     policyId: string | null;
-    transaction?: Prisma.TransactionClient;
+    policyVersion: string | null;
+    policyLabel: string;
+    serverMetadata?: Record<string, unknown>;
+    transaction: Prisma.TransactionClient;
   }) {
     const { suggestion, memory, auditEvent } = await this.inTransaction(
       input.transaction,
@@ -54,6 +57,8 @@ export class SuggestionWriterService {
           sourceType: SourceType.CLIENT_SUGGESTION,
           sourceClientId: input.clientId,
           request: input.request,
+          policyId: input.policyId,
+          serverMetadata: { ...input.serverMetadata, directWrite: true },
           status: MemorySuggestionStatus.APPLIED
         });
         const createdMemory = await createMemoryFromSuggestion(
@@ -75,13 +80,15 @@ export class SuggestionWriterService {
               clientId: input.clientId,
               transport: input.transport,
               policyId: input.policyId,
-              purpose: input.request.purpose,
+              policyVersion: input.policyVersion,
+              reason: null,
+              statedPurpose: input.request.purpose,
               kind: input.request.kind,
               sensitivity: input.request.sensitivity,
               categoryKeys: input.request.categoryKeys,
               confidence: input.request.confidence,
               expiresAt: input.request.expiresAt,
-              sourceMetadata: input.request.sourceMetadata,
+              caller: input.request.sourceMetadata,
               directWrite: true
             },
             subjects: [
@@ -89,7 +96,7 @@ export class SuggestionWriterService {
                 suggestion: createdSuggestion,
                 clientId: input.clientId,
                 policyId: input.policyId,
-                policyLabel: input.request.purpose
+                policyLabel: input.policyLabel
               }),
               this.auditTrail.auditMemorySubject(
                 createdMemory,
@@ -111,6 +118,9 @@ export class SuggestionWriterService {
             clientId: input.clientId,
             transport: input.transport,
             policyId: input.policyId,
+            policyVersion: input.policyVersion,
+            statedPurpose: input.request.purpose,
+            reason: null,
             directWrite: true
           },
           subjects: [
@@ -122,7 +132,7 @@ export class SuggestionWriterService {
               suggestion: createdSuggestion,
               clientId: input.clientId,
               policyId: input.policyId,
-              policyLabel: input.request.purpose
+              policyLabel: input.policyLabel
             })
           ]
         });
@@ -161,16 +171,13 @@ export class SuggestionWriterService {
       }
     );
 
-    if (!input.transaction) {
-      await this.enqueueEmbeddingGeneration(input.userId, memory.id);
-    }
-
     return {
       suggestionId: suggestion.id,
       memoryId: memory.id,
       status: suggestion.status,
       policyId: input.policyId,
       auditEventId: auditEvent.id,
+      reason: null,
       decision: "ALLOW" as const,
       denied: []
     };

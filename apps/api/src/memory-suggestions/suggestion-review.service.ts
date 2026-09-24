@@ -5,7 +5,8 @@ import {
   MemoryProvenanceEntryType,
   type MemorySuggestion,
   MemorySuggestionStatus,
-  type Prisma
+  type Prisma,
+  SourceType
 } from "@funes-vault/db";
 import { type ListMemorySuggestionsQuery } from "@funes-vault/shared";
 import {
@@ -100,7 +101,10 @@ export class SuggestionReviewService {
 
   async applyLoadedUserSuggestion(userId: string, existing: MemorySuggestion) {
     const sourceMetadata = getObjectMetadata(existing.sourceMetadata);
-    if (sourceMetadata.action === "archive_memory") {
+    if (
+      existing.sourceType === SourceType.CONSOLIDATION &&
+      sourceMetadata.action === "archive_memory"
+    ) {
       return this.archive.applyArchiveSuggestion(
         userId,
         existing,

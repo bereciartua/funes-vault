@@ -7,6 +7,7 @@ import {
   MemorySensitivity,
   PolicyOperation
 } from "@funes-vault/db";
+import { voiceClientName, webChatClientName } from "@funes-vault/shared";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createService } from "../../test/mocks/create-service.js";
@@ -14,11 +15,7 @@ import { AuditTrailService } from "../audit-trail/audit-trail.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import {
   defaultVoiceMaxSensitivity,
-  FirstPartyAccessService,
-  voiceClientName,
-  voicePurpose,
-  webChatClientName,
-  webChatPurpose
+  FirstPartyAccessService
 } from "./first-party-access.service.js";
 
 describe("privacy: FirstPartyAccessService", () => {
@@ -66,6 +63,15 @@ describe("privacy: FirstPartyAccessService", () => {
       clientId: "client_1",
       policyId: "policy_1"
     });
+    expect(tx.client.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: "user_1",
+          name: webChatClientName,
+          type: ClientType.WEB_APP
+        }
+      })
+    );
     expect(tx.client.create).toHaveBeenCalledWith({
       data: {
         userId: "user_1",
@@ -80,7 +86,6 @@ describe("privacy: FirstPartyAccessService", () => {
       data: {
         userId: "user_1",
         clientId: "client_1",
-        purpose: webChatPurpose,
         maxSensitivity: MemorySensitivity.SECRET,
         operations: [
           PolicyOperation.READ,
@@ -199,7 +204,6 @@ describe("privacy: FirstPartyAccessService", () => {
     });
     expect(tx.policy.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        purpose: voicePurpose,
         maxSensitivity: MemorySensitivity.SENSITIVE,
         operations: [PolicyOperation.READ, PolicyOperation.SUGGEST]
       }),

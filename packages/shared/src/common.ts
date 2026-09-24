@@ -1,5 +1,19 @@
 import { z } from "zod";
 
+import { memoryRequestReasonSchema } from "./enums.js";
+import { memoryInputLimits } from "./memory-input-limits.js";
+
+export const statedPurposeSchema = z
+  .string()
+  .trim()
+  .max(memoryInputLimits.purpose)
+  .nullable()
+  .optional()
+  .transform((value) => value || null)
+  .describe(
+    "Optional caller-declared audit reason; does not affect permissions or retrieval."
+  );
+
 export const nullableDatetimeSchema = z.iso.datetime().nullable().optional();
 
 export const queryStringOrArraySchema = z.preprocess(
@@ -36,7 +50,7 @@ export type Pagination = z.infer<typeof paginationSchema>;
 export const jsonRecordSchema = z.record(z.string(), z.unknown());
 export const deniedMemorySchema = z.object({
   memoryId: z.string().min(1),
-  reason: z.string().min(1)
+  reason: memoryRequestReasonSchema
 });
 export function requireAtLeastOneField(value: object) {
   return Object.keys(value).length > 0;

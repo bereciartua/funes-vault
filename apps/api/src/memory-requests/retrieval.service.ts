@@ -35,7 +35,7 @@ type KeywordResult = {
   exactMatch: boolean;
 };
 
-const retrievalInclude = {
+export const retrievalInclude = {
   categories: {
     select: { key: true, name: true },
     orderBy: { name: "asc" }

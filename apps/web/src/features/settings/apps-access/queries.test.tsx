@@ -21,7 +21,7 @@ const client: Client = {
   trustLevel: "APPROVED",
   declaredRetention: "NO_STORAGE",
   hasToken: true,
-  policyCount: 1,
+  hasPolicy: true,
   oauthConnector: false,
   lastUsedAt: null,
   createdAt: "2026-09-22T00:00:00.000Z",
@@ -31,7 +31,6 @@ const policy: Policy = {
   id: "policy-a",
   clientId: client.id,
   clientName: client.name,
-  purpose: "coding",
   allowedCategoryKeys: [],
   deniedCategoryKeys: [],
   maxSensitivity: "INTERNAL",
@@ -124,8 +123,7 @@ describe("client and policy queries", () => {
     await act(async () => {
       await result.current.mutations.create.mutateAsync(
         createPolicyRequestSchema.parse({
-          clientId: client.id,
-          purpose: "coding"
+          clientId: client.id
         })
       );
     });

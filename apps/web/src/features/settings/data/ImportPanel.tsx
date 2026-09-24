@@ -127,7 +127,7 @@ export function ImportPanel() {
         body:
           importMode === "ACTIVE_MEMORIES"
             ? "Active-memory import writes directly into your vault instead of creating review suggestions."
-            : "This import includes client or policy records that can affect future disclosure behavior.",
+            : "This import includes client or app permission records that can affect future disclosure behavior.",
         confirmLabel: "Apply import",
         tone: "danger"
       });
@@ -264,7 +264,7 @@ export function ImportPanel() {
                 <dd>{preview.clients}</dd>
               </div>
               <div>
-                <dt>Policies</dt>
+                <dt>App permissions</dt>
                 <dd>{preview.policies}</dd>
               </div>
               <div>

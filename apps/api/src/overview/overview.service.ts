@@ -5,7 +5,7 @@ import {
   MemorySuggestionStatus,
   Prisma
 } from "@funes-vault/db";
-import { policyRiskFactors } from "@funes-vault/shared";
+import { isFirstPartyClient, policyRiskFactors } from "@funes-vault/shared";
 import { Injectable } from "@nestjs/common";
 
 import { AuditService } from "../audit/audit.service.js";
@@ -17,7 +17,7 @@ import { PrismaService } from "../prisma/prisma.service.js";
 const overviewPolicyInclude = {
   allowedCategories: { orderBy: { name: "asc" } },
   deniedCategories: { orderBy: { name: "asc" } },
-  client: { select: { name: true } }
+  client: { select: { name: true, type: true } }
 } satisfies Prisma.PolicyInclude;
 
 type PolicyWithRelations = Prisma.PolicyGetPayload<{
@@ -165,7 +165,12 @@ export class OverviewService {
       })),
       policyTotal: policies.length,
       categoryTotal,
-      broadestPolicy: broadestPolicy ? toPolicyResponse(broadestPolicy) : null,
+      broadestPolicy: broadestPolicy
+        ? {
+            ...toPolicyResponse(broadestPolicy),
+            firstParty: isFirstPartyClient(broadestPolicy.client)
+          }
+        : null,
       suggestionTotal,
       oldestPendingSuggestionAt:
         oldestPendingSuggestion?.createdAt.toISOString() ?? null,

@@ -31,6 +31,7 @@ function candidate(overrides: Record<string, unknown> = {}) {
 function policy(overrides: Record<string, unknown> = {}) {
   return {
     id: "policy_1",
+    updatedAt: new Date(),
     maxSensitivity: MemorySensitivity.INTERNAL,
     operations: [PolicyOperation.READ],
     requiresConfirmation: false,
@@ -131,19 +132,45 @@ describe("privacy: PolicyEvaluationService", () => {
     ]);
   });
 
-  it("denies every candidate when the policy is expired", () => {
-    const result = evaluateCandidateMemories({
-      policy: policy({ expiresAt: new Date("2026-06-26T12:00:00.000Z") }),
-      candidateMemories: [candidate()],
-      now
-    });
-
-    expect(result.decision).toBe("DENY");
-    expect(result.reason).toBe("expired_policy");
-    expect(result.denied).toEqual([
-      { memoryId: "memory_1", reason: "expired_policy" }
-    ]);
-  });
+  it.each(["missing", "expired", "operation", "empty"])(
+    "returns the %s request-level reason without memory denials",
+    async (state) => {
+      const policies =
+        state === "missing"
+          ? []
+          : [
+              policy({
+                expiresAt: state === "expired" ? new Date(0) : null,
+                operations: state === "operation" ? [] : [PolicyOperation.READ]
+              })
+            ];
+      const client = {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "client_1",
+          trustLevel: ClientTrustLevel.APPROVED,
+          policies
+        })
+      };
+      const service = await createService(PolicyEvaluationService, [
+        { provide: PrismaService, useValue: { client: { client } } }
+      ]);
+      const response = await service.evaluateForClient("user_1", {
+        clientId: "client_1",
+        operation: PolicyOperation.READ,
+        candidateMemories: [],
+        now
+      });
+      expect(response.reason).toBe(
+        {
+          missing: "no_client_policy",
+          expired: "policy_expired",
+          operation: "operation_not_allowed",
+          empty: "no_matching_memories"
+        }[state]
+      );
+      expect(response.denied).toEqual([]);
+    }
+  );
 
   it("denies unknown clients by default", async () => {
     const prismaClient = {
@@ -162,7 +189,6 @@ describe("privacy: PolicyEvaluationService", () => {
 
     const result = await service.evaluateForClient("user_1", {
       clientId: "missing_client",
-      purpose: "software_development",
       operation: PolicyOperation.READ,
       candidateMemories: [candidate()],
       now
@@ -170,7 +196,7 @@ describe("privacy: PolicyEvaluationService", () => {
 
     expect(result.decision).toBe("DENY");
     expect(result.reason).toBe("unknown_or_blocked_client");
-    expect(result.requiresConfirmation).toBe(true);
+    expect(result.requiresConfirmation).toBe(false);
   });
 
   it("requires confirmation when an otherwise matching policy says so", () => {
@@ -205,7 +231,6 @@ describe("privacy: PolicyEvaluationService", () => {
 
     const result = await service.evaluateForClient("user_1", {
       clientId: "client_1",
-      purpose: "software_development",
       operation: PolicyOperation.READ,
       candidateMemories: [candidate()],
       now

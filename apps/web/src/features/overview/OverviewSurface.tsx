@@ -126,7 +126,7 @@ export function PrivacyOverview({
 
         <Link className="signal-card" href="/settings/clients">
           <div className="signal-head">
-            <p className="eyebrow">Broadest policy</p>
+            <p className="eyebrow">Apps with permissions</p>
             <strong className="signal-value">{overview.policyTotal}</strong>
           </div>
           {highestRiskPolicy ? (
@@ -139,10 +139,14 @@ export function PrivacyOverview({
                   ).label
                 }
               </p>
-              <p className="signal-sub">{policySummary(highestRiskPolicy)}</p>
+              <p className="signal-sub">
+                {policySummary(highestRiskPolicy, highestRiskPolicy.firstParty)}
+              </p>
             </>
           ) : (
-            <p className="signal-sub">No client policy has been created yet.</p>
+            <p className="signal-sub">
+              No app permissions have been created yet.
+            </p>
           )}
         </Link>
 
@@ -178,7 +182,7 @@ export function PrivacyOverview({
           </div>
           <p className="signal-sub">
             {providerNotice ??
-              "Chat uses your vault. Memories may be saved directly when your policy allows it."}
+              "Chat uses your vault. Memories may be saved directly when your app permissions allow it."}
           </p>
         </Link>
       </section>

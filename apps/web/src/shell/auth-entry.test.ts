@@ -25,7 +25,7 @@ describe("auth", () => {
     expect(html).toContain("<strong>Shared</strong>");
     expect(html).toContain("<strong>Denied</strong>");
     expect(html).toContain("<strong>Held for you</strong>");
-    expect(html).toContain("4 memories within policy");
+    expect(html).toContain("4 memories allowed by app permissions");
     expect(html).toContain("approval decisions are recorded");
     expect(html).toContain("How it works");
     expect(html).toContain(

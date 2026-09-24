@@ -44,6 +44,11 @@ export class ArchiveSuggestionApplier {
     existing: MemorySuggestion,
     sourceMetadata: Record<string, unknown>
   ) {
+    if (existing.sourceType !== SourceType.CONSOLIDATION) {
+      throw new BadRequestException(
+        "Only consolidation suggestions can archive memories"
+      );
+    }
     const targetMemoryId = sourceMetadata.targetMemoryId;
 
     if (typeof targetMemoryId !== "string" || targetMemoryId.length === 0) {

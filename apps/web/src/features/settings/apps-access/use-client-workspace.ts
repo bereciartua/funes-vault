@@ -5,7 +5,6 @@ import { type FormEvent, useState } from "react";
 import { useConfirm } from "../../../components/ui/confirmation-dialog";
 import { emptyPagination } from "../../../components/ui/pagination";
 import { apiErrorMessage } from "../../../lib/api/api-client";
-import { pluralize } from "../../../lib/text";
 import {
   type ClientDraft,
   type EditorMode,
@@ -125,10 +124,9 @@ export function useClientWorkspace() {
     if (!selectedClient) {
       return;
     }
-    const policyNote =
-      selectedClient.policyCount > 0
-        ? ` Its ${pluralize(selectedClient.policyCount, "access policy", "access policies")} will be removed too.`
-        : "";
+    const policyNote = selectedClient.hasPolicy
+      ? " Its app permissions will be removed too."
+      : "";
     if (
       !(await confirm({
         title: "Delete app?",

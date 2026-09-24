@@ -57,7 +57,7 @@ Funes Vault should make a first interaction with a new LLM feel like it already 
 ## Early Success Criteria
 
 - A user can create and manage structured personal memories.
-- A user can define sharing policies by category, client, purpose, and sensitivity.
+- A user can define sharing policies by category, client, operation, and sensitivity.
 - An LLM client can request relevant memory through an API.
 - An MCP-compatible agent can request relevant memory through approved tools.
 - A user can create useful first memories through guided questions and memory chat.

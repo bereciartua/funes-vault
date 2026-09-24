@@ -35,7 +35,7 @@ export const settingsMenuItems: Array<{
   {
     section: "clients",
     title: settingsSectionTitles.clients,
-    description: "Connected apps, tokens, and disclosure policies."
+    description: "Connected apps, tokens, and app permissions."
   },
   {
     section: "requests",

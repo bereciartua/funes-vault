@@ -58,7 +58,6 @@ test("reviews a server disclosure, excludes a memory, and consumes only the appr
   const policy = await page.request.post(`${api}/v1/policies`, {
     data: {
       clientId: client.client.id,
-      purpose: "coding assistance",
       operations: ["READ"],
       maxSensitivity: "LOW",
       requiresConfirmation: true,
@@ -71,7 +70,6 @@ test("reviews a server disclosure, excludes a memory, and consumes only the appr
   const requested = await page.request.post(`${api}/v1/memory-requests`, {
     headers,
     data: {
-      purpose: "coding assistance",
       task: subject,
       retention: "NO_STORAGE"
     }
@@ -200,7 +198,7 @@ test("exports and previews a portable vault without restoring credentials", asyn
   );
   expect(response.ok()).toBeTruthy();
   const payload = await response.json();
-  expect(payload.export.metadata.schemaVersion).toBe("funes-vault.export.v1");
+  expect(payload.export.metadata.schemaVersion).toBe("funes-vault.export.v2");
   expect(JSON.stringify(payload)).not.toContain('"tokenHash"');
   const preview = await page.request.post(`${api}/v1/data/import/preview`, {
     data: payload

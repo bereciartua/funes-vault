@@ -14,6 +14,9 @@ const trustLevels = Object.values(ClientTrustLevel);
 const retentionLevels = Object.values(ClientRetention);
 
 export class ClientPolicySummaryDto {
+  @ApiProperty({ type: String, nullable: true })
+  expiresAt!: string | null;
+
   @ApiProperty({ enum: Object.values(MemorySensitivity) })
   maxSensitivity!: MemorySensitivity;
 
@@ -29,7 +32,7 @@ export class ClientDto {
     type: ClientPolicySummaryDto,
     nullable: true,
     description:
-      "Most recently updated unexpired policy, included in client lists."
+      "The app’s single permission set, including expired permissions, in client lists."
   })
   policySummary?: ClientPolicySummaryDto | null;
 
@@ -51,8 +54,8 @@ export class ClientDto {
   @ApiProperty({ example: true })
   hasToken!: boolean;
 
-  @ApiProperty({ example: 1 })
-  policyCount!: number;
+  @ApiProperty({ example: true })
+  hasPolicy!: boolean;
 
   @ApiProperty({
     example: false,

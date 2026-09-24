@@ -1,7 +1,6 @@
 import {
   AuditActorType,
   AuditEventType,
-  MemoryKind,
   MemoryStatus,
   PolicyOperation,
   type Prisma,
@@ -9,9 +8,11 @@ import {
   SourceType
 } from "@funes-vault/db";
 import {
+  appPermissionsLabel,
   type AuditTransport,
   type CreateCaptureRequest,
-  type CreateMemorySuggestionRequest
+  type CreateMemorySuggestionRequest,
+  type MemorySuggestionResponse
 } from "@funes-vault/shared";
 import { Injectable } from "@nestjs/common";
 
@@ -21,17 +22,25 @@ import { toDateOrNull } from "../common/serialization.js";
 import { CategoriesService } from "../memories/categories.service.js";
 import { PolicyEvaluationService } from "../policies/policy-evaluation.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
+import { captureNote } from "./capture-intake.js";
 import { toMemorySuggestionResponse } from "./memory-suggestion.mapper.js";
 import {
-  quickCapturePurpose,
-  quickCaptureSensitivity,
-  quickCaptureTitle
-} from "./quick-capture.js";
-import { quickCaptureConfidence } from "./suggestion.constants.js";
+  proposedMemoryId,
+  recordSuggestionDenial
+} from "./suggestion-denial.js";
 import { createSuggestionRecord } from "./suggestion-records.js";
 import { suggestionAuditSubjects } from "./suggestion-subjects.js";
 import { SuggestionWriterService } from "./suggestion-writer.service.js";
-const proposedMemoryId = "proposed_memory";
+
+type ClientSuggestionInput = {
+  userId: string;
+  clientId: string;
+  transport?: AuditTransport;
+  transaction?: Prisma.TransactionClient;
+  reviewOnly?: boolean;
+  serverMetadata?: Record<string, unknown>;
+  body: CreateMemorySuggestionRequest;
+};
 
 /**
  * Normalizes owner/client suggestion and capture intake, checks category and secret rules, and
@@ -48,14 +57,32 @@ export class SuggestionIntakeService {
     private readonly writer: SuggestionWriterService
   ) {}
 
-  async createSuggestion(input: {
-    userId: string;
-    clientId: string;
-    transport?: AuditTransport;
-    transaction?: Prisma.TransactionClient;
-    reviewOnly?: boolean;
-    body: CreateMemorySuggestionRequest;
-  }) {
+  async createSuggestion(
+    input: ClientSuggestionInput
+  ): Promise<MemorySuggestionResponse> {
+    if (!input.transaction) {
+      const response = await this.writer.inTransaction(undefined, (tx) =>
+        this.createSuggestion({ ...input, transaction: tx })
+      );
+      if (response.memoryId) {
+        await this.writer.enqueueEmbeddingGeneration(
+          input.userId,
+          response.memoryId
+        );
+      }
+
+      return response;
+    }
+
+    return (
+      await this.prepareSuggestion({ ...input, transaction: input.transaction })
+    ).apply();
+  }
+
+  /** Prepare and consume once inside the same caller-owned transaction; never cache this decision. */
+  async prepareSuggestion(
+    input: ClientSuggestionInput & { transaction: Prisma.TransactionClient }
+  ) {
     const request = input.body;
     assertNoSecretLikeContent(request);
     await this.categories.assertExist(request.categoryKeys);
@@ -67,44 +94,76 @@ export class SuggestionIntakeService {
       expiresAt: toDateOrNull(request.expiresAt),
       categories: request.categoryKeys.map((key) => ({ key }))
     };
-    const writePolicy = await this.policyEvaluationService.evaluateForClient(
-      input.userId,
-      {
-        clientId: input.clientId,
-        purpose: request.purpose,
-        operation: PolicyOperation.WRITE,
-        candidateMemories: [proposedMemory]
-      }
-    );
+    const writePolicy = input.reviewOnly
+      ? null
+      : await this.policyEvaluationService.evaluateForClient(
+          input.userId,
+          {
+            clientId: input.clientId,
+            operation: PolicyOperation.WRITE,
+            candidateMemories: [proposedMemory]
+          },
+          input.transaction
+        );
 
-    if (writePolicy.decision === "ALLOW" && !input.reviewOnly) {
-      return this.writer.createDirectMemoryFromSuggestion({
-        userId: input.userId,
-        clientId: input.clientId,
-        transport: input.transport ?? "http_api",
-        request,
-        transaction: input.transaction,
-        policyId: writePolicy.policyId
-      });
+    if (writePolicy?.decision === "ALLOW") {
+      return {
+        decision: writePolicy.decision,
+        apply: () =>
+          this.writer.createDirectMemoryFromSuggestion({
+            userId: input.userId,
+            clientId: input.clientId,
+            transport: input.transport ?? "http_api",
+            request,
+            transaction: input.transaction,
+            policyVersion: writePolicy.policyVersion,
+            policyLabel: appPermissionsLabel(writePolicy.client?.name),
+            serverMetadata: input.serverMetadata,
+            policyId: writePolicy.policyId
+          })
+      };
     }
 
     const policy = await this.policyEvaluationService.evaluateForClient(
       input.userId,
       {
         clientId: input.clientId,
-        purpose: request.purpose,
         operation: PolicyOperation.SUGGEST,
         candidateMemories: [proposedMemory]
-      }
+      },
+      input.transaction
     );
 
+    return {
+      decision: policy.decision,
+      apply: () => this.createEvaluatedSuggestion(input, policy)
+    };
+  }
+
+  private async createEvaluatedSuggestion(
+    input: ClientSuggestionInput & { transaction: Prisma.TransactionClient },
+    policy: Awaited<ReturnType<PolicyEvaluationService["evaluateForClient"]>>
+  ): Promise<MemorySuggestionResponse> {
+    const request = input.body;
     if (policy.decision === "DENY") {
+      const event = await recordSuggestionDenial(
+        input.transaction,
+        this.auditTrail,
+        {
+          userId: input.userId,
+          clientId: input.clientId,
+          statedPurpose: request.purpose,
+          policy
+        }
+      );
+
       return {
         suggestionId: null,
         memoryId: null,
         status: "DENIED" as const,
         policyId: policy.policyId,
-        auditEventId: null,
+        auditEventId: event.id,
+        reason: policy.reason,
         decision: policy.decision,
         denied: policy.denied
       };
@@ -115,6 +174,8 @@ export class SuggestionIntakeService {
         userId: input.userId,
         sourceType: SourceType.CLIENT_SUGGESTION,
         sourceClientId: input.clientId,
+        policyId: policy.policyId,
+        serverMetadata: input.serverMetadata,
         request
       });
       const auditEvent = await this.auditTrail.createAuditEvent(tx, {
@@ -128,20 +189,22 @@ export class SuggestionIntakeService {
           clientId: input.clientId,
           transport: input.transport ?? "http_api",
           policyId: policy.policyId,
-          purpose: request.purpose,
+          policyVersion: policy.policyVersion,
+          statedPurpose: request.purpose,
+          reason: policy.reason,
           kind: request.kind,
           sensitivity: request.sensitivity,
           categoryKeys: request.categoryKeys,
           confidence: request.confidence,
           expiresAt: request.expiresAt,
-          sourceMetadata: request.sourceMetadata,
+          caller: request.sourceMetadata,
           requiresConfirmation: policy.requiresConfirmation
         },
         subjects: suggestionAuditSubjects({
           suggestion,
           clientId: input.clientId,
           policyId: policy.policyId,
-          policyLabel: request.purpose
+          policyLabel: appPermissionsLabel(policy.client?.name)
         })
       });
 
@@ -151,6 +214,7 @@ export class SuggestionIntakeService {
         status: suggestion.status,
         policyId: policy.policyId,
         auditEventId: auditEvent.id,
+        reason: policy.reason,
         decision: policy.decision,
         denied: policy.denied
       };
@@ -180,19 +244,22 @@ export class SuggestionIntakeService {
         actorId: input.userId,
         metadata: {
           suggestionId: created.id,
-          purpose: request.purpose,
+          statedPurpose: request.purpose,
+          policyId: null,
+          policyVersion: null,
+          reason: null,
           kind: request.kind,
           sensitivity: request.sensitivity,
           categoryKeys: request.categoryKeys,
           confidence: request.confidence,
           expiresAt: request.expiresAt,
-          sourceMetadata: request.sourceMetadata
+          caller: request.sourceMetadata
         },
         subjects: suggestionAuditSubjects({
           suggestion: created,
           clientId: null,
           policyId: null,
-          policyLabel: request.purpose
+          policyLabel: null
         })
       });
 
@@ -202,122 +269,13 @@ export class SuggestionIntakeService {
     return { suggestion: toMemorySuggestionResponse(suggestion) };
   }
 
-  async createCapture(input: {
+  createCapture(input: {
     userId: string;
     clientId?: string | null;
     body: CreateCaptureRequest;
   }) {
-    const capture = input.body;
-    const request: CreateMemorySuggestionRequest = {
-      purpose: quickCapturePurpose,
-      kind: MemoryKind.FACT,
-      title: quickCaptureTitle(capture.text),
-      body: capture.text,
-      categoryKeys: [],
-      sensitivity: quickCaptureSensitivity,
-      evidence: null,
-      confidence: quickCaptureConfidence,
-      expiresAt: null,
-      sourceMetadata: {
-        channel: quickCapturePurpose,
-        ...(capture.captureId ? { captureId: capture.captureId } : {}),
-        ...(capture.capturedAt ? { capturedAt: capture.capturedAt } : {})
-      }
-    };
-    assertNoSecretLikeContent(request);
-
-    if (capture.captureId) {
-      const existing = await this.prisma.client.memorySuggestion.findFirst({
-        where: {
-          userId: input.userId,
-          sourceMetadata: {
-            path: ["captureId"],
-            equals: capture.captureId
-          }
-        }
-      });
-
-      if (existing) {
-        return {
-          suggestionId: existing.id,
-          status: existing.status,
-          auditEventId: null,
-          deduplicated: true
-        };
-      }
-    }
-
-    if (input.clientId) {
-      const policy = await this.policyEvaluationService.evaluateForClient(
-        input.userId,
-        {
-          clientId: input.clientId,
-          purpose: quickCapturePurpose,
-          operation: PolicyOperation.SUGGEST,
-          candidateMemories: [
-            {
-              id: proposedMemoryId,
-              sensitivity: quickCaptureSensitivity,
-              status: MemoryStatus.ACTIVE,
-              reviewState: ReviewState.APPROVED,
-              expiresAt: null,
-              categories: []
-            }
-          ]
-        }
-      );
-
-      if (policy.decision === "DENY") {
-        return {
-          suggestionId: null,
-          status: "DENIED" as const,
-          auditEventId: null,
-          deduplicated: false
-        };
-      }
-    }
-
-    const actor = input.clientId
-      ? { type: AuditActorType.CLIENT, id: input.clientId }
-      : { type: AuditActorType.USER, id: input.userId };
-
-    return this.prisma.client.$transaction(async (tx) => {
-      const suggestion = await createSuggestionRecord(tx, {
-        userId: input.userId,
-        sourceType: input.clientId
-          ? SourceType.CLIENT_SUGGESTION
-          : SourceType.MANUAL,
-        sourceClientId: input.clientId ?? null,
-        request
-      });
-      const auditEvent = await this.auditTrail.createAuditEvent(tx, {
-        userId: input.userId,
-        clientId: input.clientId ?? undefined,
-        type: AuditEventType.MEMORY_SUGGESTION_CREATED,
-        actorType: actor.type,
-        actorId: actor.id,
-        metadata: {
-          suggestionId: suggestion.id,
-          channel: quickCapturePurpose,
-          captureId: capture.captureId ?? null,
-          capturedAt: capture.capturedAt ?? null,
-          clientId: input.clientId ?? null,
-          sensitivity: quickCaptureSensitivity
-        },
-        subjects: suggestionAuditSubjects({
-          suggestion,
-          clientId: input.clientId ?? null,
-          policyId: null,
-          policyLabel: quickCapturePurpose
-        })
-      });
-
-      return {
-        suggestionId: suggestion.id,
-        status: suggestion.status,
-        auditEventId: auditEvent.id,
-        deduplicated: false
-      };
-    });
+    return this.prisma.client.$transaction((tx) =>
+      captureNote(tx, this.auditTrail, this.policyEvaluationService, input)
+    );
   }
 }

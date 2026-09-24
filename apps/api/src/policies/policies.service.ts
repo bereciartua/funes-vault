@@ -5,10 +5,13 @@ import {
   type Prisma
 } from "@funes-vault/db";
 import {
+  appPermissionsLabel,
   type CreatePolicyRequest,
+  isFirstPartyClient,
   type ListPoliciesQuery,
   listPoliciesQuerySchema,
-  type UpdatePolicyRequest
+  type UpdatePolicyRequest,
+  voiceClientName
 } from "@funes-vault/shared";
 import {
   BadRequestException,
@@ -21,6 +24,13 @@ import { AuditTrailService } from "../audit-trail/audit-trail.service.js";
 import { buildPagination, paginationSkip } from "../common/pagination.js";
 import { isPrismaError } from "../common/prisma-errors.js";
 import { toIsoString } from "../common/serialization.js";
+import {
+  firstPartyCategories,
+  type FirstPartyDefinition,
+  firstPartyPolicyFacts,
+  voiceDefinition,
+  webChatDefinition
+} from "../first-party-access/first-party-access.service.js";
 import { CategoriesService } from "../memories/categories.service.js";
 import { toCategoryConnect } from "../memories/memory-update.js";
 import { PrismaService } from "../prisma/prisma.service.js";
@@ -37,7 +47,6 @@ export function toPolicyResponse(policy: PolicyWithRelations) {
     id: policy.id,
     clientId: policy.clientId,
     clientName: policy.client?.name ?? null,
-    purpose: policy.purpose,
     allowedCategoryKeys: policy.allowedCategories.map(
       (category) => category.key
     ),
@@ -63,6 +72,36 @@ export class PoliciesService {
     private readonly auditService: AuditTrailService,
     private readonly categories: CategoriesService
   ) {}
+
+  async restoreDefaults(userId: string, clientId: string) {
+    const client = await this.prisma.client.client.findFirst({
+      where: { id: clientId, userId }
+    });
+    if (!client) {
+      throw new NotFoundException("App not found");
+    }
+    if (!isFirstPartyClient(client)) {
+      throw new BadRequestException("This app has no first-party defaults");
+    }
+    const definition =
+      client.name === voiceClientName ? voiceDefinition() : webChatDefinition();
+
+    return this.createPolicy(
+      userId,
+      {
+        clientId,
+        allowedCategoryKeys: (
+          await firstPartyCategories(this.prisma.client)
+        ).map((category) => category.key),
+        deniedCategoryKeys: [],
+        maxSensitivity: definition.maxSensitivity,
+        operations: definition.operations,
+        requiresConfirmation: definition.requiresConfirmation,
+        expiresAt: null
+      },
+      definition
+    );
+  }
 
   async listPolicies(
     userId: string,
@@ -91,7 +130,11 @@ export class PoliciesService {
     };
   }
 
-  async createPolicy(userId: string, input: CreatePolicyRequest) {
+  async createPolicy(
+    userId: string,
+    input: CreatePolicyRequest,
+    firstPartyDefault?: FirstPartyDefinition
+  ) {
     await this.ensureClientBelongsToUser(userId, input.clientId);
     await this.categories.assertExist([
       ...input.allowedCategoryKeys,
@@ -104,7 +147,6 @@ export class PoliciesService {
           data: {
             userId,
             clientId: input.clientId,
-            purpose: input.purpose,
             maxSensitivity: input.maxSensitivity,
             operations: input.operations,
             requiresConfirmation: input.requiresConfirmation,
@@ -123,7 +165,16 @@ export class PoliciesService {
           actorId: userId,
           metadata: {
             policyId: created.id,
-            purpose: created.purpose
+            ...(firstPartyDefault
+              ? {
+                  clientId: created.clientId,
+                  ...firstPartyPolicyFacts(
+                    firstPartyDefault,
+                    input.allowedCategoryKeys.length
+                  )
+                }
+              : {}),
+            policyLabel: appPermissionsLabel(created.client?.name)
           }
         });
 
@@ -132,7 +183,7 @@ export class PoliciesService {
 
       return { policy: toPolicyResponse(policy) };
     } catch (error) {
-      throw this.toDuplicatePurposeError(error);
+      throw this.toDuplicatePermissionsError(error);
     }
   }
 
@@ -146,41 +197,35 @@ export class PoliciesService {
       throw new NotFoundException("Policy not found");
     }
 
-    if (input.clientId) {
-      await this.ensureClientBelongsToUser(userId, input.clientId);
-    }
     await this.categories.assertExist([
       ...(input.allowedCategoryKeys ?? []),
       ...(input.deniedCategoryKeys ?? [])
     ]);
 
-    try {
-      const policy = await this.prisma.client.$transaction(async (tx) => {
-        const updated = await tx.policy.update({
-          where: { id: existing.id },
-          data: this.toUpdateData(input),
-          include: policyInclude
-        });
-
-        await this.auditService.createAuditEvent(tx, {
-          userId,
-          clientId: updated.clientId,
-          type: AuditEventType.POLICY_UPDATED,
-          actorType: AuditActorType.USER,
-          actorId: userId,
-          metadata: {
-            policyId: updated.id,
-            changedFields: Object.keys(input)
-          }
-        });
-
-        return updated;
+    const policy = await this.prisma.client.$transaction(async (tx) => {
+      const updated = await tx.policy.update({
+        where: { id: existing.id },
+        data: this.toUpdateData(input),
+        include: policyInclude
       });
 
-      return { policy: toPolicyResponse(policy) };
-    } catch (error) {
-      throw this.toDuplicatePurposeError(error);
-    }
+      await this.auditService.createAuditEvent(tx, {
+        userId,
+        clientId: updated.clientId,
+        type: AuditEventType.POLICY_UPDATED,
+        actorType: AuditActorType.USER,
+        actorId: userId,
+        metadata: {
+          policyId: updated.id,
+          policyLabel: appPermissionsLabel(updated.client?.name),
+          changedFields: Object.keys(input)
+        }
+      });
+
+      return updated;
+    });
+
+    return { policy: toPolicyResponse(policy) };
   }
 
   async deletePolicy(userId: string, id: string) {
@@ -203,7 +248,7 @@ export class PoliciesService {
         actorId: userId,
         metadata: {
           policyId: existing.id,
-          purpose: existing.purpose
+          policyLabel: appPermissionsLabel(existing.client?.name)
         }
       });
     });
@@ -211,11 +256,9 @@ export class PoliciesService {
     return { policy: toPolicyResponse(existing) };
   }
 
-  private toDuplicatePurposeError(error: unknown) {
+  private toDuplicatePermissionsError(error: unknown) {
     if (isPrismaError(error, "P2002")) {
-      return new ConflictException(
-        "A policy with this purpose already exists for this client"
-      );
+      return new ConflictException("This app already has permissions");
     }
 
     return error;
@@ -235,12 +278,6 @@ export class PoliciesService {
   private toUpdateData(request: UpdatePolicyRequest) {
     const data: Prisma.PolicyUpdateInput = {};
 
-    if (request.clientId !== undefined) {
-      data.client = { connect: { id: request.clientId } };
-    }
-    if (request.purpose !== undefined) {
-      data.purpose = request.purpose;
-    }
     if (request.maxSensitivity !== undefined) {
       data.maxSensitivity = request.maxSensitivity;
     }

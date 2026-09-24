@@ -55,7 +55,7 @@ export function auditEventSummary(event: AuditEvent) {
     : memoryId
       ? `Memory ${shortId(memoryId)}`
       : policyId
-        ? `Policy ${shortId(policyId)}`
+        ? "App permissions"
         : clientId
           ? `Client ${shortId(clientId)}`
           : event.memoryRequestId
@@ -115,8 +115,10 @@ function auditEventDescription(
   }
 
   if (event.type === "MEMORY_DISCLOSURE") {
-    const purpose = metadataString(event.metadata, "purpose");
-    const purposeText = purpose ? ` for ${label(purpose).toLowerCase()}` : "";
+    const purpose =
+      metadataString(event.metadata, "statedPurpose") ??
+      metadataString(event.metadata, "purpose");
+    const purposeText = purpose ? ` with stated purpose “${purpose}”` : "";
 
     return `${actor} received ${affected}${purposeText}.`;
   }
@@ -140,7 +142,7 @@ function auditEventDescription(
           ? "updated"
           : "deleted";
 
-    return `${actor} ${verb} a disclosure policy.`;
+    return `${actor} ${verb} app permissions.`;
   }
 
   const memoryVerb = memoryEventVerbs[event.type];

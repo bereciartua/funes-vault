@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./http": {
+      "types": "./dist/http-server.d.ts",
+      "default": "./dist/http-server.js"
     }
   },
   "bin": {
