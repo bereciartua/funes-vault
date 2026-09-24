@@ -6,6 +6,7 @@ import {
   ProvenanceSubjectType,
   SourceType
 } from "@funes-vault/db";
+import { memoryRequestReasonSchema } from "@funes-vault/shared";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 import { PaginationDto } from "../common/pagination.dto.js";
@@ -60,8 +61,14 @@ class ProvenanceSubjectDto {
 }
 
 export class CreateMemorySuggestionDto {
-  @ApiProperty({ example: "software_development" })
-  purpose!: string;
+  @ApiPropertyOptional({
+    type: String,
+    nullable: true,
+    maxLength: 160,
+    description:
+      "Caller-declared audit reason; does not affect permissions or retrieval."
+  })
+  purpose?: string | null;
 
   @ApiProperty({ enum: memoryKinds, example: "PREFERENCE" })
   kind!: (typeof memoryKinds)[number];
@@ -124,6 +131,9 @@ export class MemorySuggestionResponseDto {
   @ApiProperty({ example: "cmqvt0v580000xeg7jgy7v1u3", nullable: true })
   policyId!: string | null;
 
+  @ApiProperty({ enum: memoryRequestReasonSchema.options, nullable: true })
+  reason!: string | null;
+
   @ApiProperty({ example: "cmqvt0v580000xeg7jgy7v1u3", nullable: true })
   auditEventId!: string | null;
 
@@ -149,6 +159,16 @@ class ReviewableMemorySuggestionSourceDto {
 }
 
 class ReviewableMemorySuggestionDto {
+  @ApiProperty({
+    type: String,
+    nullable: true,
+    description: "Caller-declared audit reason; does not grant permissions."
+  })
+  statedPurpose!: string | null;
+
+  @ApiProperty({ type: String, nullable: true })
+  policyId!: string | null;
+
   @ApiProperty({ example: "cmqvt0v580000xeg7jgy7v1u3" })
   id!: string;
 

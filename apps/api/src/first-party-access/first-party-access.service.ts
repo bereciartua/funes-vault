@@ -8,17 +8,13 @@ import {
   PolicyOperation,
   type Prisma
 } from "@funes-vault/db";
-import { Injectable } from "@nestjs/common";
+import { voiceClientName, webChatClientName } from "@funes-vault/shared";
+import { ConflictException, Injectable } from "@nestjs/common";
 
 import { AuditTrailService } from "../audit-trail/audit-trail.service.js";
+import { isPrismaError } from "../common/prisma-errors.js";
 import { apiEnv } from "../config.js";
 import { PrismaService } from "../prisma/prisma.service.js";
-
-export const webChatClientName = "Funes Vault Web Chat";
-export const webChatPurpose = "memory_chat";
-
-export const voiceClientName = "Funes Vault Voice";
-export const voicePurpose = "memory_voice";
 
 const voiceSensitivityValues = Object.values(MemorySensitivity);
 
@@ -44,19 +40,19 @@ type FirstPartyAccessTransaction = Pick<
   "auditEvent" | "auditEventSubject" | "client" | "memoryCategory" | "policy"
 >;
 
-type FirstPartyDefinition = {
+export type FirstPartyDefinition = {
   clientName: string;
-  purpose: string;
   firstPartyDefault: string;
   maxSensitivity: MemorySensitivity;
   operations: PolicyOperation[];
+  requiresConfirmation: boolean;
 };
 
-function webChatDefinition(): FirstPartyDefinition {
+export function webChatDefinition(): FirstPartyDefinition {
   return {
     clientName: webChatClientName,
-    purpose: webChatPurpose,
     firstPartyDefault: "web_chat",
+    requiresConfirmation: false,
     maxSensitivity: MemorySensitivity.SECRET,
     operations: [
       PolicyOperation.READ,
@@ -66,14 +62,35 @@ function webChatDefinition(): FirstPartyDefinition {
   };
 }
 
-// No WRITE: memory writes from a voice session always queue for review.
-function voiceDefinition(): FirstPartyDefinition {
+// No WRITE by default: voice proposals queue until the owner grants WRITE.
+export function voiceDefinition(): FirstPartyDefinition {
   return {
     clientName: voiceClientName,
-    purpose: voicePurpose,
     firstPartyDefault: "voice",
+    requiresConfirmation: false,
     maxSensitivity: defaultVoiceMaxSensitivity(),
     operations: [PolicyOperation.READ, PolicyOperation.SUGGEST]
+  };
+}
+
+export function firstPartyCategories(
+  db: Pick<Prisma.TransactionClient, "memoryCategory">
+) {
+  return db.memoryCategory.findMany({
+    select: { id: true, key: true },
+    orderBy: { name: "asc" }
+  });
+}
+export function firstPartyPolicyFacts(
+  definition: FirstPartyDefinition,
+  categoryCount: number
+) {
+  return {
+    firstPartyDefault: definition.firstPartyDefault,
+    operations: definition.operations,
+    maxSensitivity: definition.maxSensitivity,
+    requiresConfirmation: definition.requiresConfirmation,
+    allowedCategoryCount: categoryCount
   };
 }
 
@@ -142,12 +159,13 @@ export class FirstPartyAccessService {
     const client = await this.ensureClient(input);
     const policy = await this.ensurePolicy({
       ...input,
-      clientId: client.id
+      clientId: client.id,
+      createDefault: client.created
     });
 
     return {
       clientId: client.id,
-      policyId: policy.id
+      policyId: policy?.id ?? null
     };
   }
 
@@ -159,24 +177,37 @@ export class FirstPartyAccessService {
     userId: string;
   }) {
     const existing = await input.tx.client.findFirst({
-      where: { userId: input.userId, name: input.definition.clientName },
+      where: {
+        userId: input.userId,
+        name: input.definition.clientName,
+        type: ClientType.WEB_APP
+      },
       select: { id: true, name: true, trustLevel: true }
     });
 
     if (existing) {
-      return existing;
+      return { ...existing, created: false };
     }
 
-    const created = await input.tx.client.create({
-      data: {
-        userId: input.userId,
-        name: input.definition.clientName,
-        type: ClientType.WEB_APP,
-        trustLevel: ClientTrustLevel.APPROVED,
-        declaredRetention: ClientRetention.NO_STORAGE
-      },
-      select: { id: true, name: true, trustLevel: true }
-    });
+    const created = await input.tx.client
+      .create({
+        data: {
+          userId: input.userId,
+          name: input.definition.clientName,
+          type: ClientType.WEB_APP,
+          trustLevel: ClientTrustLevel.APPROVED,
+          declaredRetention: ClientRetention.NO_STORAGE
+        },
+        select: { id: true, name: true, trustLevel: true }
+      })
+      .catch((error) => {
+        if (isPrismaError(error, "P2002")) {
+          throw new ConflictException(
+            "A connected app uses this first-party name. Rename it in Apps & access before continuing."
+          );
+        }
+        throw error;
+      });
 
     await this.auditService.createAuditEvent(input.tx, {
       userId: input.userId,
@@ -192,13 +223,14 @@ export class FirstPartyAccessService {
       }
     });
 
-    return created;
+    return { ...created, created: true };
   }
 
   private async ensurePolicy(input: {
     actorId: string | null;
     actorType: AuditActorType;
     clientId: string;
+    createDefault: boolean;
     definition: FirstPartyDefinition;
     tx: FirstPartyAccessTransaction;
     userId: string;
@@ -206,8 +238,7 @@ export class FirstPartyAccessService {
     const existing = await input.tx.policy.findFirst({
       where: {
         userId: input.userId,
-        clientId: input.clientId,
-        purpose: input.definition.purpose
+        clientId: input.clientId
       },
       select: { id: true }
     });
@@ -216,18 +247,18 @@ export class FirstPartyAccessService {
       return existing;
     }
 
-    const categories = await input.tx.memoryCategory.findMany({
-      select: { id: true },
-      orderBy: { name: "asc" }
-    });
+    if (!input.createDefault) {
+      return null;
+    }
+
+    const categories = await firstPartyCategories(input.tx);
     const created = await input.tx.policy.create({
       data: {
         userId: input.userId,
         clientId: input.clientId,
-        purpose: input.definition.purpose,
         maxSensitivity: input.definition.maxSensitivity,
         operations: input.definition.operations,
-        requiresConfirmation: false,
+        requiresConfirmation: input.definition.requiresConfirmation,
         expiresAt: null,
         allowedCategories: {
           connect: categories.map((category) => ({ id: category.id }))
@@ -244,13 +275,8 @@ export class FirstPartyAccessService {
       actorId: input.actorId,
       metadata: {
         policyId: created.id,
-        purpose: input.definition.purpose,
         clientId: input.clientId,
-        maxSensitivity: input.definition.maxSensitivity,
-        operations: input.definition.operations,
-        requiresConfirmation: false,
-        allowedCategoryCount: categories.length,
-        firstPartyDefault: input.definition.firstPartyDefault
+        ...firstPartyPolicyFacts(input.definition, categories.length)
       }
     });
 

@@ -1,3 +1,4 @@
+import { memoryRequestReasonSchema } from "@funes-vault/shared";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
 const captureStatuses = [
@@ -42,6 +43,9 @@ export class CaptureResponseDto {
 
   @ApiProperty({ example: "cmqvt0v580000xeg7jgy7v1u3", nullable: true })
   auditEventId!: string | null;
+
+  @ApiProperty({ enum: memoryRequestReasonSchema.options, nullable: true })
+  reason!: string | null;
 
   @ApiProperty({
     description:

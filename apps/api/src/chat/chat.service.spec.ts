@@ -53,7 +53,6 @@ describe("privacy: ChatService", () => {
     });
 
     expect(chatMemoryTools.requestMemory).not.toHaveBeenCalled();
-    expect(chatMemoryTools.suggestMemory).not.toHaveBeenCalled();
   });
   it("does not use regex fallbacks for misspelled remember requests", async () => {
     await expect(
@@ -66,8 +65,6 @@ describe("privacy: ChatService", () => {
     ).rejects.toMatchObject({
       status: 503
     });
-
-    expect(chatMemoryTools.suggestMemory).not.toHaveBeenCalled();
   });
   it("does not retrieve or cite memories for ordinary small talk without a provider", async () => {
     await expect(

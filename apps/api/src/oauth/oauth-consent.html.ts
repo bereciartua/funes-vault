@@ -15,7 +15,7 @@ const scopeDescriptions: Record<string, string> = {
   [oauthScopeRead]:
     "Request policy-filtered memory bundles (never memories above the grant's sensitivity ceiling)",
   [oauthScopeSuggest]:
-    "Suggest new memories, which always queue for your review before becoming durable"
+    "Propose memories; App permissions determine whether they queue for review or apply immediately"
 };
 
 function pageShell(title: string, body: string) {
@@ -99,7 +99,13 @@ export function renderConsentPage(input: {
       : ""
   } will be able to:</p>
   <ul>${scopeItems}</ul>
-  <p class="muted">Approving creates a client grant with a disclosure ceiling of
+  <p><strong>App permissions after approval:</strong> ${escapeHtml(context.operations.join(", "))}</p>
+  <p>${context.recreating ? "You removed this app’s permissions. Approving will restore default permissions." : context.createsPermissions ? "Approving creates permissions for this app." : "Existing category, sensitivity, confirmation and expiration settings are preserved."}</p>
+  ${context.addedOperations.length ? `<p>Operations added by approving: ${escapeHtml(context.addedOperations.join(", "))}.</p>` : ""}
+  <p>Allowed categories: ${escapeHtml(context.allowedCategories.join(", ") || "All categories")}. Denied categories: ${escapeHtml(context.deniedCategories.join(", ") || "None")}.</p>
+  <p>Confirmation: ${context.requiresConfirmation ? "Required" : "Not required"}. Expiration: ${context.expiresAt ? (new Date(context.expiresAt) <= new Date() ? "Expired — update the expiration in Apps &amp; access before using this app" : escapeHtml(new Date(context.expiresAt).toLocaleString("en-US", { timeZone: "UTC", dateStyle: "medium", timeStyle: "short" }) + " UTC")) : "None"}.</p>
+  ${context.operations.includes("WRITE") && !context.requiresConfirmation && context.scopes.includes(oauthScopeSuggest) ? "<p>Proposals from this app are applied immediately without review when permitted by these limits.</p>" : ""}
+  <p class="muted">The disclosure ceiling is
   <strong>${escapeHtml(context.maxSensitivity.toLowerCase())}</strong> sensitivity.
   Every disclosure is audited, and you can revoke this grant at any time in
   Apps &amp; access. After approval, the app redirects to
@@ -118,12 +124,12 @@ created by the requesting application and is not vetted by Funes Vault.</p>`
   );
 }
 
-export function renderErrorPage(message: string) {
+export function renderErrorPage(message: string, retry = true) {
   return pageShell(
     "Request problem",
     `
 <h1>This request cannot continue</h1>
 <div class="card"><p>${escapeHtml(message)}</p>
-<p class="muted">Return to the application and start the connection again.</p></div>`
+${retry ? '<p class="muted">Return to the application and start the connection again.</p>' : "<p>Open Apps &amp; access in Funes Vault to manage this app.</p>"}</div>`
   );
 }

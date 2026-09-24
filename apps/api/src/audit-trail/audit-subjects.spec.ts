@@ -77,4 +77,34 @@ describe("privacy: audit subjects", () => {
       )
     ).toEqual([{ type: AuditSubjectType.MEMORY, id: "memory", role }]);
   });
+  it("labels permission subjects from server context and ignores caller purpose", () => {
+    const event = {
+      userId: "owner",
+      type: AuditEventType.POLICY_UPDATED,
+      actorType: AuditActorType.USER
+    };
+    for (const [metadata, expected] of [
+      [
+        {
+          policyId: "policy",
+          clientName: "My app",
+          statedPurpose: "<b>Caller</b>",
+          caller: { policyLabel: "Fake" }
+        },
+        "My app permissions"
+      ],
+      [{ policyId: "policy" }, "App permissions"],
+      [
+        { policyId: "policy", policyLabel: "Explicit permissions" },
+        "Explicit permissions"
+      ]
+    ] as const) {
+      expect(inferAuditSubjects(event, metadata)).toContainEqual(
+        expect.objectContaining({
+          type: AuditSubjectType.POLICY,
+          label: expected
+        })
+      );
+    }
+  });
 });

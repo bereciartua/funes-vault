@@ -4,6 +4,11 @@ import * as db from "@funes-vault/db";
 import * as shared from "@funes-vault/shared";
 import { describe, expect, it } from "vitest";
 const publicEnums = [
+  [
+    "MemoryRequestReason",
+    shared.memoryRequestReasonSchema.options,
+    db.MemoryRequestReason
+  ],
   ["MemoryKind", shared.memoryKindSchema.options, db.MemoryKind],
   [
     "MemorySensitivity",

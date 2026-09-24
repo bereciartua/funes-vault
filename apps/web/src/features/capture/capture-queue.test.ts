@@ -85,6 +85,7 @@ describe("capture queue", () => {
     const fetchImpl = vi.fn().mockResolvedValue(
       jsonResponse(201, {
         suggestionId: "suggestion_1",
+        reason: null,
         status: "QUEUED_FOR_REVIEW",
         auditEventId: "audit_1",
         deduplicated: false

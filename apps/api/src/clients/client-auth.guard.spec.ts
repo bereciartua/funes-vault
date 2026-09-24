@@ -17,6 +17,7 @@ const now = new Date("2026-07-04T12:00:00.000Z");
 function createClientRow(overrides: Record<string, unknown> = {}) {
   return {
     id: "client_1",
+    _count: { policies: 1 },
     userId: "user_1",
     name: "Claude",
     type: "MCP_CLIENT",

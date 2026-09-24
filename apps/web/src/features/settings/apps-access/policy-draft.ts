@@ -10,7 +10,6 @@ export type ClientDraft = {
 };
 
 export type PolicyDraft = {
-  purpose: string;
   allowedCategoryKeys: string[];
   deniedCategoryKeys: string[];
   maxSensitivity: Policy["maxSensitivity"];
@@ -55,15 +54,6 @@ export const operations: Policy["operations"][number][] = [
   "EXPORT"
 ];
 
-export const purposeSuggestions = [
-  "software_development",
-  "personal_assistant",
-  "research",
-  "scheduling",
-  "communication",
-  "health"
-];
-
 export const emptyClientDraft: ClientDraft = {
   name: "",
   type: "MCP_CLIENT",
@@ -72,7 +62,6 @@ export const emptyClientDraft: ClientDraft = {
 };
 
 export const emptyPolicyDraft: PolicyDraft = {
-  purpose: "software_development",
   allowedCategoryKeys: [],
   deniedCategoryKeys: [],
   maxSensitivity: "INTERNAL",
@@ -92,7 +81,6 @@ export function toClientDraft(client: Client): ClientDraft {
 
 export function toPolicyDraft(policy: Policy): PolicyDraft {
   return {
-    purpose: policy.purpose,
     allowedCategoryKeys: policy.allowedCategoryKeys,
     deniedCategoryKeys: policy.deniedCategoryKeys,
     maxSensitivity: policy.maxSensitivity,

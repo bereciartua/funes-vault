@@ -241,21 +241,36 @@ archive owned memories through their separate authority.
 
 ## OS quick-capture shortcuts
 
-Create a client with a `SUGGEST` policy for purpose `quick_capture` and an `INTERNAL`
+Create a client with a `SUGGEST` permission and an `INTERNAL`
 ceiling. An OS shortcut can post `{ "text": "Your note" }` to
 `https://vault-api.example.com/v1/captures` with its bearer token. It always queues
 review and requires connectivity; it does not use the PWA's device queue.
 
 ## Publishing images (maintainers)
 
-The pinned Publish Images workflow publishes all three multi-architecture targets
-on `v*` tags or explicit workflow dispatch. Local `pnpm publish:images [version]`
-is available for authorized maintainers with GHCR write access. Review the tree,
-changelog, test evidence and package visibility before publication. A source PR
-alone does not publish a release or change repository visibility.
+Follow the [release runbook](releasing.md) to assess compatibility and prepare the
+version, changelog and release plan. After a release PR merges into `main` and its
+push CI succeeds, the Release workflow creates the version tag, calls Publish
+Images for all three multi-architecture targets, then creates the GitHub Release.
+Tag pushes alone no longer publish. A source PR into `develop` does not publish or
+deploy a release or change repository visibility.
 
-A manual dispatch accepts a target-platform choice. Keep the multi-architecture
-default for releases, or select `linux/amd64` when publishing for an x86 server
-and the ARM build cannot complete under emulation. Tag-triggered runs always build
-both architectures. Runs dispatched from a non-default branch publish their
-`sha-<commit>` tag without replacing `latest`.
+Manual Publish Images dispatch accepts a target-platform choice and publishes only
+the selected commit's SHA tag. Stable version and `latest` aliases belong to the
+verified release workflow. Local `pnpm publish:images` is a maintainer diagnostic
+command with GHCR write access: it accepts no tag argument and publishes only the
+checkout's SHA tag. Check package visibility before deployment.
+
+## App permissions migration
+
+Deploy API, MCP and web as one coordinated breaking release. Take and verify a database backup, stop the old services, then run the migration before starting the new images:
+
+```sh
+docker compose --env-file .env.production -f docker-compose.prod.yml run --rm migrate
+```
+
+The migration removes invalid cross-owner policies first, then keeps the newest valid policy for each client (`updatedAt`, with id breaking ties). Surplus policies and policy purpose are removed. Old requests retain stated purpose but have null policy bindings; they can only be denied, and apps must submit fresh requests. Accounts, sessions, clients and OAuth grants remain valid.
+
+Legacy CLIENT_SUGGESTION metadata is wrapped under `caller` because its top-level keys cannot be trusted. Manual captures, chat and consolidation metadata retain their server-owned shape. Old bearer captures are indistinguishable from other client suggestions, so their old capture ids no longer deduplicate; drain device capture queues before upgrading to avoid retry duplicates. Newly recorded captures retain server-owned capture ids.
+
+Do not run old and new authorization models against the same schema. Roll back by stopping services and restoring a pre-upgrade backup before restarting the previous images. A disposable test vault may instead be reset. Never reset a personal or deployed vault as a rollback procedure.

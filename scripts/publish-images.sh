@@ -4,9 +4,10 @@ set -euo pipefail
 # Builds the Funes Vault API, web, and MCP images from the local working tree and
 # pushes them to GHCR. Run it from anywhere inside the repository:
 #
-#   scripts/publish-images.sh [tag]     # or: pnpm publish:images [tag]
+#   scripts/publish-images.sh           # or: pnpm publish:images
 #
-# Images are tagged with [tag] (default: latest) plus sha-<short-commit>.
+# Diagnostic images are tagged only sha-<short-commit>. Stable aliases belong to
+# the verified Release workflow; this command does not accept a custom tag.
 # Set PLATFORMS to override the default linux/amd64,linux/arm64, for example:
 #
 #   PLATFORMS=linux/amd64 scripts/publish-images.sh
@@ -16,7 +17,10 @@ set -euo pipefail
 #
 #   echo "$GHCR_TOKEN" | docker login ghcr.io -u <github-username> --password-stdin
 
-TAG="${1:-latest}"
+if [[ "$#" -ne 0 ]]; then
+  echo "Usage: scripts/publish-images.sh (SHA tags only; stable aliases belong to the Release workflow)" >&2
+  exit 1
+fi
 PLATFORMS="${PLATFORMS:-linux/amd64,linux/arm64}"
 BUILDER="funes-vault"
 
@@ -37,7 +41,8 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
-GIT_SHA="$(git rev-parse --short HEAD)"
+GIT_SHA="$(git rev-parse --short=7 HEAD)"
+TAG="sha-$GIT_SHA"
 
 # Multi-platform pushes need a docker-container builder; the default docker
 # driver cannot assemble multi-arch manifests.
@@ -55,7 +60,6 @@ publish() {
     --file Dockerfile \
     --target "$name" \
     --tag "$REGISTRY_BASE-$name:$TAG" \
-    --tag "$REGISTRY_BASE-$name:sha-$GIT_SHA" \
     --push \
     .
 }
@@ -64,4 +68,4 @@ publish api
 publish web
 publish mcp
 
-echo "==> Published api, web, and mcp images as :$TAG and :sha-$GIT_SHA"
+echo "==> Published api, web, and mcp images as :$TAG"

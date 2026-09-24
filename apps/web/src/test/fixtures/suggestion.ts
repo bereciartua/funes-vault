@@ -6,6 +6,8 @@ export function suggestionFixture(
 ): ReviewableMemorySuggestion {
   return {
     id,
+    statedPurpose: null,
+    policyId: null,
     title,
     body: `${title} body`,
     kind: "FACT",

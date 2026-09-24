@@ -47,6 +47,8 @@ describe("privacy: VoiceSessionsService.executeToolCall", () => {
     expect(eventTypes).toContain("policy-decision");
     expect(eventTypes).toContain("audit-event");
     expect(response.output).toEqual({
+      explanation: null,
+      reason: undefined,
       items: [
         expect.objectContaining({
           memoryId: "memory_1",

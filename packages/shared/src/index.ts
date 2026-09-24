@@ -1,3 +1,4 @@
+export * from "./app-permissions.js";
 export * from "./audit.js";
 export * from "./auth.js";
 export * from "./chat.js";
@@ -9,6 +10,7 @@ export * from "./enums.js";
 export * from "./jobs.js";
 export * from "./mcp.js";
 export * from "./memories.js";
+export * from "./memory-input-limits.js";
 export * from "./memory-processing.js";
 export * from "./memory-requests.js";
 export * from "./memory-suggestions.js";

@@ -86,7 +86,7 @@ scripts/        Build, migration, icon and publishing helpers
 
 - Categorized memories with sensitivity, expiration, review state and provenance.
 - Quick capture, suggestions inbox and reversible review workflows.
-- Purpose-scoped client policies, selected disclosure approval and one-time retrieval.
+- App permissions per authenticated client, selected disclosure approval and one-time retrieval.
 - Revocable client tokens and OAuth connectors, with five MCP tools.
 - Chat and voice with citations, visible processing permissions and persisted transcripts.
 - Optional extraction and consolidation, disabled or review-first by default.
@@ -107,7 +107,7 @@ Read the [privacy model](docs/privacy-and-trust-model.md) and [threat model](doc
 
 ## Status and limitations
 
-Version **1.0.0** targets a self-hosted, single-instance deployment. Data is server-readable; this is not end-to-end encryption. OpenAI is the default chat, embedding and voice provider, with pluggable memory-extraction adapters and explicit processing settings. Already-disclosed text is beyond the vault's control. Browser checks do not replace physical-device microphone/PWA validation. See [release notes](CHANGELOG.md).
+Version **1.1.0** targets a self-hosted, single-instance deployment. Data is server-readable; this is not end-to-end encryption. OpenAI is the default chat, embedding and voice provider, with pluggable memory-extraction adapters and explicit processing settings. Already-disclosed text is beyond the vault's control. Browser checks do not replace physical-device microphone/PWA validation. See [release notes](CHANGELOG.md).
 
 ## Deploying
 
@@ -115,7 +115,7 @@ Use the canonical production Compose file with pinned image tags and three HTTPS
 
 ## Connecting an AI tool
 
-Create a client and purpose-scoped policy under **Settings → Apps & access**, or authorize an OAuth connector. Follow [MCP integration](docs/mcp-integration.md); HTTP consumers can use the [API guide](docs/api-guide.md) and [OpenAPI specification](docs/openapi.json).
+Create a client and App permissions under **Settings → Apps & access**, or authorize an OAuth connector. Follow [MCP integration](docs/mcp-integration.md); HTTP consumers can use the [API guide](docs/api-guide.md) and [OpenAPI specification](docs/openapi.json).
 
 ## Contributing, security and license
 

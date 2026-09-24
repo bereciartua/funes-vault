@@ -36,7 +36,7 @@ export function DeleteAccountPanel() {
 
     const confirmed = await confirm({
       title: "Delete your account?",
-      body: "This permanently removes your account, all memories, clients, policies, and audit history. There is no way to recover them afterwards.",
+      body: "This permanently removes your account, all memories, clients, app permissions, and audit history. There is no way to recover them afterwards.",
       confirmLabel: "Delete everything",
       tone: "danger"
     });
@@ -74,9 +74,9 @@ export function DeleteAccountPanel() {
           </div>
         </div>
         <p className="muted">
-          Permanently deletes your account, every memory, all clients and
-          policies, and the audit trail. Export your vault first if you want a
-          copy. This cannot be undone.
+          Permanently deletes your account, every memory, all clients and app
+          permissions, and the audit trail. Export your vault first if you want
+          a copy. This cannot be undone.
         </p>
         <p>
           First verify your Google account, then return here to confirm deletion

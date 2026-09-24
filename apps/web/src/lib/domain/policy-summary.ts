@@ -10,27 +10,24 @@ import { pluralize } from "../text";
 import { clientTypeLabel, joinWithAnd, label } from "./labels";
 export function clientAccessSummary(
   client: Client,
-  policy: Pick<
-    Policy,
-    "maxSensitivity" | "allowedCategoryKeys" | "requiresConfirmation"
-  > | null
+  policy:
+    | (Pick<
+        Policy,
+        "maxSensitivity" | "allowedCategoryKeys" | "requiresConfirmation"
+      > & { expiresAt?: string | null })
+    | null
 ) {
   const lastSeen = client.lastUsedAt
     ? `last seen ${formatRelative(client.lastUsedAt)}`
     : "not used yet";
-  const access = policy
-    ? `reads up to ${label(policy.maxSensitivity)}, ${pluralize(
-        policy.allowedCategoryKeys.length,
-        "category",
-        "categories"
-      )}${policy.requiresConfirmation ? ", confirmation required above" : ""}`
-    : client.policyCount > 0
-      ? pluralize(
-          client.policyCount,
-          "disclosure policy",
-          "disclosure policies"
-        )
-      : "no disclosure policy";
+  const access =
+    policy?.expiresAt && new Date(policy.expiresAt) <= new Date()
+      ? "App permissions expired"
+      : policy
+        ? `permissions up to ${label(policy.maxSensitivity)}, ${policy.allowedCategoryKeys.length ? pluralize(policy.allowedCategoryKeys.length, "category", "categories") : "all categories"}${policy.requiresConfirmation ? ", confirmation required" : ""}`
+        : client.hasPolicy
+          ? "App permissions configured"
+          : "no app permissions";
 
   return `${label(client.trustLevel)} · ${clientTypeLabel(
     client.type
@@ -55,20 +52,24 @@ export function policyRiskDescriptor(
   const factors = policyRiskFactors(policy, categoryCount);
 
   if (factors.some((factor) => factor.tone === "danger")) {
-    return { icon: "OctagonAlert", label: "High-risk policy", tone: "danger" };
+    return {
+      icon: "OctagonAlert",
+      label: "High-risk permissions",
+      tone: "danger"
+    };
   }
 
   if (factors.some((factor) => factor.tone === "risk")) {
-    return { icon: "ShieldAlert", label: "Broad policy", tone: "risk" };
+    return { icon: "ShieldAlert", label: "Broad permissions", tone: "risk" };
   }
 
   if (factors.length > 0) {
     return { icon: "TriangleAlert", label: "Needs review", tone: "attention" };
   }
 
-  return { icon: "ShieldCheck", label: "Narrow policy", tone: "safe" };
+  return { icon: "ShieldCheck", label: "Narrow permissions", tone: "safe" };
 }
-export function policySummary(policy: Policy) {
+export function policySummary(policy: Policy, isFirstParty = false) {
   const client = policy.clientName ?? "An unknown client";
   const operations = joinWithAnd(
     policy.operations.map((operation) => label(operation).toLowerCase())
@@ -85,10 +86,17 @@ export function policySummary(policy: Policy) {
     ? "Each matching request needs your confirmation."
     : "Matching requests are shared automatically, without asking you first.";
   const expiration = policy.expiresAt
-    ? `The policy expires on ${new Date(policy.expiresAt).toLocaleDateString()}.`
-    : "The policy never expires.";
+    ? `Permissions expire on ${new Date(policy.expiresAt).toLocaleDateString()}.`
+    : "Permissions never expire.";
 
-  return `${client} can ${operations} memories up to ${label(policy.maxSensitivity)} sensitivity ${categories}${denied}. ${confirmation} ${expiration}`;
+  const write =
+    policy.operations.includes("WRITE") &&
+    !policy.requiresConfirmation &&
+    !isFirstParty
+      ? " Proposals from this app are applied immediately without review when permitted by these limits."
+      : "";
+
+  return `${client} can ${operations} memories up to ${label(policy.maxSensitivity)} sensitivity ${categories}${denied}. ${confirmation} ${expiration}${write}`;
 }
 type PolicyRiskFactor = {
   label: string;

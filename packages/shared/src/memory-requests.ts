@@ -1,12 +1,17 @@
 import { z } from "zod";
 
-import { deniedMemorySchema } from "./common.js";
-import { paginationSchema } from "./common.js";
+import {
+  deniedMemorySchema,
+  paginationSchema,
+  statedPurposeSchema
+} from "./common.js";
 import {
   clientRetentionSchema,
+  memoryRequestReasonSchema,
   memoryRequestStatusSchema,
   memorySensitivitySchema
 } from "./enums.js";
+import { memoryInputLimits } from "./memory-input-limits.js";
 
 export const memoryRequestInputPreprocessor = (value: unknown) => {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
@@ -28,15 +33,28 @@ export const memoryRequestInputPreprocessor = (value: unknown) => {
 export const createMemoryBundleRequestSchema = z.preprocess(
   memoryRequestInputPreprocessor,
   z.object({
-    purpose: z.string().trim().min(1).max(160),
-    task: z.string().trim().min(1).max(1000),
-    requestedCategories: z.array(z.string().trim().min(1)).max(24).default([]),
+    purpose: statedPurposeSchema,
+    task: z
+      .string()
+      .trim()
+      .min(1)
+      .max(memoryInputLimits.task)
+      .describe("Information needed for this task; drives retrieval."),
+    requestedCategories: z
+      .array(z.string().trim().min(1))
+      .max(memoryInputLimits.requestedCategories)
+      .default([]),
     retention: clientRetentionSchema.default("UNKNOWN"),
     thirdPartyProcessors: z
-      .array(z.string().trim().min(1).max(120))
-      .max(12)
+      .array(z.string().trim().min(1).max(memoryInputLimits.processorName))
+      .max(memoryInputLimits.processors)
       .default([]),
-    tokenBudget: z.number().int().min(100).max(8000).default(1200)
+    tokenBudget: z
+      .number()
+      .int()
+      .min(memoryInputLimits.tokenBudgetMin)
+      .max(memoryInputLimits.tokenBudgetMax)
+      .default(memoryInputLimits.tokenBudgetDefault)
   })
 );
 
@@ -59,6 +77,7 @@ export const memoryRequestBundleResponseSchema = z.object({
   requestId: z.string().min(1),
   status: memoryRequestStatusSchema,
   policyId: z.string().nullable(),
+  reason: memoryRequestReasonSchema.nullable(),
   tokenBudget: z.number().int().min(1),
   estimatedTokens: z.number().int().min(0),
   items: z.array(memoryBundleItemSchema),
@@ -74,7 +93,10 @@ export type MemoryRequestBundleResponse = z.infer<
 export const memoryRequestReviewSummarySchema = z.object({
   id: z.string(),
   clientName: z.string(),
-  purpose: z.string(),
+  statedPurpose: z.string().nullable(),
+  policyId: z.string().nullable(),
+  policyVersion: z.string().nullable(),
+  reason: memoryRequestReasonSchema.nullable(),
   task: z.string(),
   status: memoryRequestStatusSchema,
   retention: clientRetentionSchema,
@@ -88,6 +110,7 @@ export const memoryRequestReviewsResponseSchema = z.object({
 });
 
 export const memoryRequestPreviewSchema = z.object({
+  approvalExpired: z.boolean().optional(),
   request: memoryRequestReviewSummarySchema,
   revision: z.string(),
   items: z.array(memoryBundleItemSchema),

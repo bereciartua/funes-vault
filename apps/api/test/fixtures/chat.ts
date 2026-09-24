@@ -56,7 +56,6 @@ export async function createChatHarness() {
   } as never);
   const chatMemoryTools: {
     requestMemory: ReturnType<typeof vi.fn>;
-    suggestMemory: ReturnType<typeof vi.fn>;
   } = {
     requestMemory: vi.fn().mockResolvedValue({
       items: [
@@ -78,12 +77,6 @@ export async function createChatHarness() {
           relevanceScore: 0.91
         }
       ]
-    }),
-    suggestMemory: vi.fn().mockResolvedValue({
-      suggestionId: "suggestion_1",
-      status: "QUEUED_FOR_REVIEW",
-      decision: "ALLOW",
-      denied: []
     })
   };
   const memorySuggestionsService: {

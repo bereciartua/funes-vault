@@ -15,7 +15,7 @@ import { requiredClientScopeKey } from "./client-scope.decorator.js";
 import { hashToken } from "./client-token.js";
 import { toClientResponse } from "./clients.service.js";
 
-/** Authenticates client bearer tokens and attaches their owner to the request. Domain services still enforce purpose, scope and disclosure policy. */
+/** Authenticates client bearer tokens and attaches their owner to the request. Enforces token scopes; domain services enforce app permissions. */
 @Injectable()
 export class ClientAuthGuard implements CanActivate {
   constructor(
@@ -64,7 +64,8 @@ export class ClientAuthGuard implements CanActivate {
   private async attachClient(request: FunesRequest, clientId: string) {
     const client = await this.prisma.client.client.update({
       where: { id: clientId },
-      data: { lastUsedAt: new Date() }
+      data: { lastUsedAt: new Date() },
+      include: { _count: { select: { policies: true } } }
     });
 
     request.client = clientSchema.parse(toClientResponse(client));

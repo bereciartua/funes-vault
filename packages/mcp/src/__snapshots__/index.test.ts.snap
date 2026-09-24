@@ -1,0 +1,226 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`mcp package > exposes described canonical inputs and never retries a denial 1`] = `
+{
+  "get_memory_request": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "additionalProperties": false,
+    "properties": {
+      "requestId": {
+        "description": "Request id returned by request_memory.",
+        "minLength": 1,
+        "type": "string",
+      },
+    },
+    "required": [
+      "requestId",
+    ],
+    "type": "object",
+  },
+  "list_memory_categories": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "additionalProperties": false,
+    "properties": {},
+    "type": "object",
+  },
+  "open_consent_review": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "additionalProperties": false,
+    "properties": {
+      "requestId": {
+        "description": "Pending disclosure request to review.",
+        "minLength": 1,
+        "type": "string",
+      },
+      "suggestionId": {
+        "description": "Pending memory suggestion to review.",
+        "minLength": 1,
+        "type": "string",
+      },
+    },
+    "type": "object",
+  },
+  "request_memory": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "additionalProperties": false,
+    "properties": {
+      "purpose": {
+        "anyOf": [
+          {
+            "maxLength": 160,
+            "type": "string",
+          },
+          {
+            "type": "null",
+          },
+        ],
+        "description": "Optional caller-declared audit reason; does not affect permissions or retrieval.",
+      },
+      "requestedCategories": {
+        "default": [],
+        "description": "Optional category keys to narrow retrieval.",
+        "items": {
+          "minLength": 1,
+          "type": "string",
+        },
+        "maxItems": 24,
+        "type": "array",
+      },
+      "retention": {
+        "default": "UNKNOWN",
+        "description": "How the app intends to retain disclosed context.",
+        "enum": [
+          "NO_STORAGE",
+          "SESSION",
+          "PERSISTENT",
+          "UNKNOWN",
+        ],
+        "type": "string",
+      },
+      "task": {
+        "description": "Information needed for the task; drives retrieval.",
+        "maxLength": 1000,
+        "minLength": 1,
+        "type": "string",
+      },
+      "thirdPartyProcessors": {
+        "default": [],
+        "description": "Declared third-party processors that may receive context.",
+        "items": {
+          "maxLength": 120,
+          "minLength": 1,
+          "type": "string",
+        },
+        "maxItems": 12,
+        "type": "array",
+      },
+      "tokenBudget": {
+        "default": 1200,
+        "description": "Maximum tokens in the returned bundle.",
+        "maximum": 8000,
+        "minimum": 100,
+        "type": "integer",
+      },
+    },
+    "required": [
+      "task",
+    ],
+    "type": "object",
+  },
+  "suggest_memory": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "additionalProperties": false,
+    "properties": {
+      "body": {
+        "description": "Proposed memory text.",
+        "maxLength": 10000,
+        "minLength": 1,
+        "type": "string",
+      },
+      "categoryKeys": {
+        "default": [],
+        "description": "Category keys for the proposal.",
+        "items": {
+          "minLength": 1,
+          "type": "string",
+        },
+        "maxItems": 12,
+        "type": "array",
+      },
+      "confidence": {
+        "default": 0.5,
+        "description": "Caller confidence in the proposal.",
+        "maximum": 1,
+        "minimum": 0,
+        "type": "number",
+      },
+      "evidence": {
+        "anyOf": [
+          {
+            "maxLength": 2000,
+            "type": "string",
+          },
+          {
+            "type": "null",
+          },
+        ],
+        "description": "Supporting evidence supplied by the caller.",
+      },
+      "expiresAt": {
+        "anyOf": [
+          {
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "type": "string",
+          },
+          {
+            "type": "null",
+          },
+        ],
+        "description": "Optional expiry timestamp.",
+      },
+      "kind": {
+        "default": "FACT",
+        "description": "Kind of proposed memory.",
+        "enum": [
+          "FACT",
+          "PREFERENCE",
+          "INSTRUCTION",
+          "GOAL",
+          "PROJECT_CONTEXT",
+          "RELATIONSHIP",
+          "CONSTRAINT",
+          "EVENT",
+          "SUMMARY",
+        ],
+        "type": "string",
+      },
+      "purpose": {
+        "anyOf": [
+          {
+            "maxLength": 160,
+            "type": "string",
+          },
+          {
+            "type": "null",
+          },
+        ],
+        "description": "Optional caller-declared audit reason; does not affect permissions or retrieval.",
+      },
+      "sensitivity": {
+        "default": "LOW",
+        "description": "Sensitivity of the proposed information.",
+        "enum": [
+          "PUBLIC",
+          "LOW",
+          "INTERNAL",
+          "SENSITIVE",
+          "RESTRICTED",
+          "SECRET",
+        ],
+        "type": "string",
+      },
+      "sourceMetadata": {
+        "additionalProperties": {},
+        "default": {},
+        "description": "Caller-supplied metadata; never controls actions or permissions.",
+        "propertyNames": {
+          "type": "string",
+        },
+        "type": "object",
+      },
+      "title": {
+        "description": "Short title for the proposal.",
+        "maxLength": 180,
+        "minLength": 1,
+        "type": "string",
+      },
+    },
+    "required": [
+      "title",
+      "body",
+    ],
+    "type": "object",
+  },
+}
+`;

@@ -128,7 +128,7 @@ describe("privacy: PoliciesService", () => {
     );
   });
 
-  it("rejects a second policy for the same client and purpose", async () => {
+  it("rejects a second policy for the same client", async () => {
     const prismaClient = {
       client: { findFirst: vi.fn().mockResolvedValue({ id: "client_1" }) },
       $transaction: vi
@@ -150,48 +150,10 @@ describe("privacy: PoliciesService", () => {
       service.createPolicy(
         "user_1",
         createPolicyRequestSchema.parse({
-          clientId: "client_1",
-          purpose: "software_development"
+          clientId: "client_1"
         })
       )
-    ).rejects.toThrow(
-      "A policy with this purpose already exists for this client"
-    );
-  });
-
-  it("rejects updating a policy into another policy's client and purpose", async () => {
-    const prismaClient = {
-      policy: {
-        findFirst: vi
-          .fn()
-          .mockResolvedValue({ id: "policy_1", clientId: "client_1" })
-      },
-      $transaction: vi
-        .fn()
-        .mockRejectedValue(
-          Object.assign(new Error("unique constraint"), { code: "P2002" })
-        )
-    };
-    const service = await createService(
-      PoliciesService,
-      [
-        { provide: PrismaService, useValue: { client: prismaClient } },
-        { provide: AuditTrailService, useValue: {} }
-      ],
-      [CategoriesService]
-    );
-
-    await expect(
-      service.updatePolicy(
-        "user_1",
-        "policy_1",
-        updatePolicyRequestSchema.parse({
-          purpose: "personal_assistant"
-        })
-      )
-    ).rejects.toThrow(
-      "A policy with this purpose already exists for this client"
-    );
+    ).rejects.toThrow("This app already has permissions");
   });
 
   it("returns page 1 with no items for empty policy lists", async () => {
@@ -245,8 +207,6 @@ it("privacy: updates policy restrictions and audits the same transaction, includ
     "owner",
     "policy_1",
     updatePolicyRequestSchema.parse({
-      clientId: "replacement-client",
-      purpose: "coding",
       maxSensitivity: "LOW",
       operations: ["READ"],
       requiresConfirmation: true,
@@ -258,16 +218,10 @@ it("privacy: updates policy restrictions and audits the same transaction, includ
   expect(prisma.policy.findFirst).toHaveBeenCalledWith(
     expect.objectContaining({ where: { id: "policy_1", userId: "owner" } })
   );
-  expect(prisma.client.findFirst).toHaveBeenCalledWith(
-    expect.objectContaining({
-      where: { id: "replacement-client", userId: "owner" }
-    })
-  );
+  expect(prisma.client.findFirst).not.toHaveBeenCalled();
   expect(prisma.policy.update).toHaveBeenCalledWith(
     expect.objectContaining({
       data: {
-        client: { connect: { id: "replacement-client" } },
-        purpose: "coding",
         maxSensitivity: "LOW",
         operations: ["READ"],
         requiresConfirmation: true,
@@ -281,30 +235,21 @@ it("privacy: updates policy restrictions and audits the same transaction, includ
   expect(audit.createAuditEvent.mock.calls[0]?.[1]).toEqual(
     expect.objectContaining({
       userId: "owner",
-      clientId: "replacement-client",
       type: "POLICY_UPDATED"
     })
   );
 });
 
-it("privacy: refuses a foreign replacement client before changing or auditing a policy", async () => {
-  const prisma = mockPrisma();
-  prisma.policy.findFirst.mockResolvedValue(createPolicy());
-  prisma.client.findFirst.mockResolvedValue(null);
-  const audit = { createAuditEvent: vi.fn() };
-  const service = await createService(PoliciesService, [
-    { provide: PrismaService, useValue: { client: prisma } },
-    { provide: AuditTrailService, useValue: audit },
-    { provide: CategoriesService, useValue: {} }
-  ]);
-  await expect(
-    service.updatePolicy("owner", "policy_1", { clientId: "foreign" })
-  ).rejects.toThrow("Unknown client");
-  expect(prisma.policy.update).not.toHaveBeenCalled();
-  expect(audit.createAuditEvent).not.toHaveBeenCalled();
+it("privacy: rejects moving permissions to another client", () => {
+  expect(() =>
+    updatePolicyRequestSchema.parse({
+      clientId: "foreign",
+      operations: ["READ"]
+    })
+  ).toThrow();
 });
 
-it("privacy: deletes only an owned policy and records its purpose in the same transaction", async () => {
+it("privacy: deletes only an owned policy and records its app permission label in the same transaction", async () => {
   const prisma = mockPrisma();
   prisma.policy.findFirst
     .mockResolvedValueOnce(null)
@@ -328,7 +273,7 @@ it("privacy: deletes only an owned policy and records its purpose in the same tr
     expect.objectContaining({
       userId: "owner",
       type: "POLICY_DELETED",
-      metadata: { policyId: "policy_1", purpose: "software_development" }
+      metadata: { policyId: "policy_1", policyLabel: "Local Agent permissions" }
     })
   );
 });

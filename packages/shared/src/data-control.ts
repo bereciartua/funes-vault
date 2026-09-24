@@ -8,7 +8,7 @@ import { memorySensitivitySchema } from "./enums.js";
 import { memoryCategorySchema, memorySchema } from "./memories.js";
 import { policySchema } from "./policies.js";
 
-export const exportSchemaVersion = "funes-vault.export.v1" as const;
+export const exportSchemaVersion = "funes-vault.export.v2" as const;
 
 export const optionalDateQuerySchema = z
   .string()
@@ -30,7 +30,10 @@ export const exportVaultQuerySchema = z.object({
 export type ExportVaultQuery = z.infer<typeof exportVaultQuerySchema>;
 
 export const vaultExportMetadataSchema = z.object({
-  schemaVersion: z.literal(exportSchemaVersion),
+  schemaVersion: z.literal(exportSchemaVersion, {
+    error: (issue) =>
+      `Unsupported export version ${typeof issue.input === "string" && /^funes-vault\.export\.v[0-9]+$/.test(issue.input) ? issue.input : "(invalid version)"}; expected ${exportSchemaVersion}`
+  }),
   exportedAt: z.iso.datetime(),
   source: z.object({
     app: z.literal("funes-vault"),
@@ -47,20 +50,36 @@ export const vaultExportMetadataSchema = z.object({
   })
 });
 
-export const vaultExportSchema = z.object({
-  processing: z
-    .object({
-      runs: z.array(jsonRecordSchema),
-      consents: z.array(jsonRecordSchema)
-    })
-    .optional(),
-  metadata: vaultExportMetadataSchema,
-  categories: z.array(memoryCategorySchema),
-  memories: z.array(memorySchema),
-  clients: z.array(clientSchema),
-  policies: z.array(policySchema),
-  auditEvents: z.array(auditEventSchema).optional()
-});
+export const vaultExportSchema = z
+  .object({
+    processing: z
+      .object({
+        runs: z.array(jsonRecordSchema),
+        consents: z.array(jsonRecordSchema)
+      })
+      .optional(),
+    metadata: vaultExportMetadataSchema,
+    categories: z.array(memoryCategorySchema),
+    memories: z.array(memorySchema),
+    clients: z.array(clientSchema),
+    policies: z.array(policySchema),
+    auditEvents: z.array(auditEventSchema).optional()
+  })
+  .superRefine((value, ctx) => {
+    const clients = new Set(value.clients.map((client) => client.id));
+    const seen = new Set<string>();
+    value.policies.forEach((policy, index) => {
+      if (!clients.has(policy.clientId) || seen.has(policy.clientId)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["policies", index, "clientId"],
+          message:
+            "Each policy must reference a client in this export, with at most one policy per client"
+        });
+      }
+      seen.add(policy.clientId);
+    });
+  });
 
 export type VaultExport = z.infer<typeof vaultExportSchema>;
 

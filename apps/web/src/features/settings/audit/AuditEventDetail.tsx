@@ -1,7 +1,10 @@
 "use client";
+import Link from "next/link";
+
 import { FeedbackMessages } from "../../../components/ui/feedback-messages";
 import { formatDateTime } from "../../../lib/dates";
 import { auditEventSummary } from "../../../lib/domain/audit-summary";
+import { auditFacts } from "./audit-facts";
 import { SubjectLinks } from "./SubjectLinks";
 import { useAuditDetail } from "./use-audit";
 export function AuditEventDetail({ eventId }: { eventId: string }) {
@@ -15,6 +18,7 @@ export function AuditEventDetail({ eventId }: { eventId: string }) {
   const event = query.data.auditEvent;
   const hasMetadata = Object.keys(event.metadata).length > 0;
   const summary = auditEventSummary(event);
+  const facts = auditFacts(event);
 
   return (
     <div className="audit-inline-detail">
@@ -29,13 +33,29 @@ export function AuditEventDetail({ eventId }: { eventId: string }) {
       {event.actorType === "USER" ? <p>Performed by you.</p> : null}
       {event.clientName ? <p>Disclosed to {event.clientName}.</p> : null}
       {event.memoryRequestId ? (
-        <p>Disclosure request {event.memoryRequestId}.</p>
+        <p>
+          <Link
+            href={`/settings/requests?requestId=${encodeURIComponent(event.memoryRequestId)}`}
+          >
+            Disclosure request
+          </Link>
+        </p>
       ) : null}
       {event.subjects.length > 0 ? (
         <p>
           Subjects:{" "}
           <SubjectLinks leadingDash={false} subjects={event.subjects} />
         </p>
+      ) : null}
+      {facts.length ? (
+        <dl>
+          {facts.map(([name, value]) => (
+            <div key={name}>
+              <dt>{name}</dt>
+              <dd>{value}</dd>
+            </div>
+          ))}
+        </dl>
       ) : null}
       {hasMetadata ? (
         <details className="raw-metadata">

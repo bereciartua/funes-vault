@@ -23,7 +23,7 @@ export const overviewResponseSchema = z.object({
   ),
   policyTotal: z.number().int().min(0),
   categoryTotal: z.number().int().min(0),
-  broadestPolicy: policySchema.nullable(),
+  broadestPolicy: policySchema.extend({ firstParty: z.boolean() }).nullable(),
   suggestionTotal: z.number().int().min(0),
   oldestPendingSuggestionAt: z.iso.datetime().nullable(),
   captureSeries: z

@@ -15,6 +15,8 @@ export function toMemorySuggestionResponse(
 ) {
   return {
     id: suggestion.id,
+    statedPurpose: suggestion.statedPurpose,
+    policyId: suggestion.policyId,
     title: suggestion.title,
     body: suggestion.body,
     kind: suggestion.suggestedKind,

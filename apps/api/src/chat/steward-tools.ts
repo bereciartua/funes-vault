@@ -1,6 +1,8 @@
-import { AuditEventType } from "@funes-vault/db";
-import { MemoryRequestStatus } from "@funes-vault/db";
-import type { FunesDataParts } from "@funes-vault/shared";
+import { AuditEventType, MemoryRequestStatus } from "@funes-vault/db";
+import {
+  type FunesDataParts,
+  memoryRequestReasonLabel
+} from "@funes-vault/shared";
 import { zodSchema } from "ai";
 import { z } from "zod";
 
@@ -19,15 +21,11 @@ import { StewardToolDefinition } from "./steward-tool.types.js";
 function policyDecisionForMemoryRequestStatus(
   status: string
 ): FunesDataParts["policy-decision"]["decision"] {
-  if (status === MemoryRequestStatus.FULFILLED) {
-    return "ALLOW";
-  }
-
-  if (status === MemoryRequestStatus.NEEDS_USER_APPROVAL) {
-    return "REQUIRE_CONFIRMATION";
-  }
-
-  return "DENY";
+  return status === MemoryRequestStatus.FULFILLED
+    ? "ALLOW"
+    : status === MemoryRequestStatus.NEEDS_USER_APPROVAL
+      ? "REQUIRE_CONFIRMATION"
+      : "DENY";
 }
 
 export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
@@ -84,7 +82,9 @@ export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
         tokenBudget
       });
       const decision = policyDecisionForMemoryRequestStatus(bundle.status);
-
+      const explanation = bundle.reason
+        ? memoryRequestReasonLabel(bundle.reason)
+        : "No explanation was recorded.";
       context.emit({
         type: "policy-decision",
         data: {
@@ -95,7 +95,9 @@ export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
           reasons:
             bundle.denied.length > 0
               ? bundle.denied.map((denied) => denied.reason)
-              : []
+              : bundle.reason
+                ? [bundle.reason]
+                : []
         }
       });
 
@@ -141,7 +143,10 @@ export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
           type: "audit-event",
           data: {
             auditEventId: bundle.auditEventId,
-            type: AuditEventType.MEMORY_DISCLOSURE,
+            type:
+              bundle.status === "DENIED"
+                ? AuditEventType.MEMORY_REQUEST_DENIED
+                : AuditEventType.MEMORY_DISCLOSURE,
             severity: bundle.items.length > 0 ? "RISK" : "INFO"
           }
         });
@@ -156,12 +161,13 @@ export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
           status: decision === "DENY" ? "denied" : "completed",
           summary:
             decision === "DENY"
-              ? "Policy denied the memory retrieval request."
+              ? explanation
               : `${items.length} memory references returned.`,
           metadata: {
             requestId: bundle.requestId,
             status: bundle.status,
             policyId: bundle.policyId,
+            reason: bundle.reason,
             tokenBudget: bundle.tokenBudget,
             estimatedTokens: bundle.estimatedTokens,
             deniedCount: bundle.denied.length,
@@ -170,7 +176,14 @@ export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
         }
       });
 
-      return { items };
+      return {
+        items,
+        reason: bundle.reason,
+        explanation: bundle.reason ? explanation : null,
+        ...(bundle.reason === "no_client_policy"
+          ? { managePermissionsUrl: "/settings/clients" }
+          : {})
+      };
     }
   },
   {

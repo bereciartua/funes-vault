@@ -97,6 +97,23 @@ enum PolicyOperation {
   EXPORT
 }
 
+enum MemoryRequestReason {
+  unknown_or_blocked_client
+  no_client_policy
+  policy_expired
+  operation_not_allowed
+  no_matching_memories
+  no_allowed_memories
+  confirmation_required
+  policy_changed
+  inactive_memory
+  unapproved_memory
+  expired_memory
+  above_sensitivity_ceiling
+  denied_category
+  category_not_allowed
+}
+
 enum MemoryRequestStatus {
   PENDING
   APPROVED
@@ -125,6 +142,7 @@ enum AuditEventType {
   MEMORY_REQUEST_APPROVED
   MEMORY_REQUEST_DENIED
   MEMORY_SUGGESTION_CREATED
+  MEMORY_SUGGESTION_DENIED
   MEMORY_SUGGESTION_APPROVED
   MEMORY_SUGGESTION_REJECTED
   CLIENT_CREATED
@@ -470,6 +488,7 @@ model Client {
 
   @@unique([userId, name])
   @@unique([userId, oauthRegistrationId])
+  @@unique([id, userId])
   @@index([userId])
   @@index([userId, trustLevel])
 }
@@ -565,12 +584,11 @@ model OAuthToken {
   @@index([expiresAt])
 }
 
-/// Owner-scoped client grant for a purpose, operation set and disclosure ceiling.
+/// One owner-scoped permission set per client. updatedAt is the authorization version.
 model Policy {
   id                   String            @id @default(cuid())
   userId               String
-  clientId             String
-  purpose              String
+  clientId             String            @unique
   maxSensitivity       MemorySensitivity @default(INTERNAL)
   operations           PolicyOperation[] @default([READ])
   requiresConfirmation Boolean           @default(true)
@@ -579,34 +597,39 @@ model Policy {
   updatedAt            DateTime          @updatedAt
 
   allowedCategories MemoryCategory[] @relation("PolicyAllowedCategories")
-  client            Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client            Client           @relation(fields: [clientId, userId], references: [id, userId], onDelete: Cascade)
   deniedCategories  MemoryCategory[] @relation("PolicyDeniedCategories")
   user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([clientId, purpose])
+  requests    MemoryRequest[]
+  suggestions MemorySuggestion[]
+
   @@index([userId])
-  @@index([purpose])
 }
 
 /// Owner-scoped disclosure request; approved snapshots expire and are consumed once.
 model MemoryRequest {
-  id                   String              @id @default(cuid())
+  id                   String               @id @default(cuid())
   userId               String
   clientId             String
-  purpose              String
+  statedPurpose        String?
+  policyId             String?
+  policyVersion        String?
+  decisionReason       MemoryRequestReason?
+  policy               Policy?              @relation(fields: [policyId], references: [id], onDelete: SetNull)
   task                 String
-  status               MemoryRequestStatus @default(PENDING)
-  tokenBudget          Int                 @default(1200)
-  requestedCategories  String[]            @default([])
-  retention            ClientRetention     @default(UNKNOWN)
-  thirdPartyProcessors String[]            @default([])
-  reviewSnapshot       Json                @default("{}")
+  status               MemoryRequestStatus  @default(PENDING)
+  tokenBudget          Int                  @default(1200)
+  requestedCategories  String[]             @default([])
+  retention            ClientRetention      @default(UNKNOWN)
+  thirdPartyProcessors String[]             @default([])
+  reviewSnapshot       Json                 @default("{}")
   approvalExpiresAt    DateTime?
   approvedAt           DateTime?
   deniedAt             DateTime?
   fulfilledAt          DateTime?
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
 
   auditEvents AuditEvent[]
   client      Client              @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -616,6 +639,7 @@ model MemoryRequest {
   @@index([userId, status])
   @@index([clientId])
   @@index([createdAt])
+  @@index([policyId])
 }
 
 /// Disclosure snapshot owned through its request; preserves exactly what was shared.
@@ -642,6 +666,9 @@ model MemorySuggestion {
   userId               String
   sourceType           SourceType
   sourceClientId       String?
+  statedPurpose        String?
+  policyId             String?
+  policy               Policy?                @relation(fields: [policyId], references: [id], onDelete: SetNull)
   title                String
   body                 String
   suggestedKind        MemoryKind
@@ -660,6 +687,7 @@ model MemorySuggestion {
 
   @@index([userId, status])
   @@index([sourceClientId])
+  @@index([policyId])
 }
 
 /// Owner-scoped provider vector. A SQL-managed HNSW index supports cosine retrieval.

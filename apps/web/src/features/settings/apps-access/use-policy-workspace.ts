@@ -1,11 +1,16 @@
 "use client";
-import { type Client, type Policy } from "@funes-vault/shared";
+import {
+  type Client,
+  isFirstPartyClient,
+  type Policy
+} from "@funes-vault/shared";
 import { type FormEvent, useState } from "react";
 
 import { useConfirm } from "../../../components/ui/confirmation-dialog";
-import { apiErrorMessage } from "../../../lib/api/api-client";
+import { ApiError, apiErrorMessage } from "../../../lib/api/api-client";
+import { queryKeys } from "../../../lib/api/query-keys";
+import { useInvalidateQueries } from "../../../lib/api/use-api";
 import { toExpiresAtIso } from "../../../lib/dates";
-import { label } from "../../../lib/domain/labels";
 import {
   emptyPolicyDraft,
   type PolicyDraft,
@@ -16,6 +21,7 @@ import { usePolicies } from "./use-policies";
 import { usePolicyMutations } from "./use-policy-mutations";
 export function usePolicyWorkspace(client: Client) {
   const query = usePolicies(client.id);
+  const invalidate = useInvalidateQueries();
   const policies = query.data?.items ?? [];
   const [policyEditor, setPolicyEditor] = useState<PolicyEditorState>(null);
   const [policyDraft, setPolicyDraft] = useState<PolicyDraft>(emptyPolicyDraft);
@@ -28,7 +34,6 @@ export function usePolicyWorkspace(client: Client) {
     id: policyEditor?.mode === "edit" ? policyEditor.policyId : "draft-policy",
     clientId: client.id,
     clientName: client.name,
-    purpose: policyDraft.purpose || "New policy",
     expiresAt: toExpiresAtIso(policyDraft.expiresAt),
     createdAt: new Date(0).toISOString(),
     updatedAt: new Date(0).toISOString()
@@ -58,17 +63,8 @@ export function usePolicyWorkspace(client: Client) {
     setMessage(null);
     setError(null);
     const id = policyEditor.mode === "edit" ? policyEditor.policyId : null;
-    const purpose = policyDraft.purpose.trim();
-    if (
-      policies.some((policy) => policy.purpose === purpose && policy.id !== id)
-    ) {
-      setError("A policy with this purpose already exists for this app.");
-
-      return;
-    }
     const draft = {
       ...policyDraft,
-      purpose,
       expiresAt: toExpiresAtIso(policyDraft.expiresAt)
     };
     try {
@@ -78,17 +74,27 @@ export function usePolicyWorkspace(client: Client) {
         await mutations.create.mutateAsync({ ...draft, clientId: client.id });
       }
       setPolicyEditor(null);
-      setMessage(id ? "Policy updated." : "Policy created.");
+      setMessage(id ? "Permissions updated." : "Permissions created.");
     } catch (error) {
-      setError(apiErrorMessage(error, "Could not save this policy."));
+      setError(apiErrorMessage(error, "Could not save these permissions."));
+      if (error instanceof ApiError && error.status === 409) {
+        setPolicyEditor(null);
+        await invalidate(
+          queryKeys.clients.all,
+          queryKeys.policies.all,
+          queryKeys.overview
+        );
+      } else {
+        await query.refetch();
+      }
     }
   }
   async function confirmDeletePolicy(policy: Policy) {
     if (
       !(await confirm({
-        title: "Delete policy?",
-        body: `Delete the "${label(policy.purpose)}" policy. Future requests that depended on it may be denied until a new policy is created.`,
-        confirmLabel: "Delete policy",
+        title: "Remove permissions?",
+        body: `Remove permissions for ${client.name}. Future requests will be denied until permissions are set up again.`,
+        confirmLabel: "Remove permissions",
         tone: "danger"
       }))
     ) {
@@ -99,13 +105,37 @@ export function usePolicyWorkspace(client: Client) {
     try {
       await mutations.remove.mutateAsync(policy.id);
       setPolicyEditor(null);
-      setMessage("Policy deleted.");
+      setMessage("Permissions removed.");
     } catch (error) {
-      setError(apiErrorMessage(error, "Could not delete this policy."));
+      setError(apiErrorMessage(error, "Could not remove these permissions."));
+    }
+  }
+
+  async function restoreDefaults() {
+    setError(null);
+    setMessage(null);
+    try {
+      await mutations.restore.mutateAsync(client.id);
+      setPolicyEditor(null);
+      setMessage("Default permissions restored.");
+    } catch (error) {
+      setError(apiErrorMessage(error, "Could not restore permissions."));
+      if (error instanceof ApiError && error.status === 409) {
+        setPolicyEditor(null);
+        await invalidate(
+          queryKeys.clients.all,
+          queryKeys.policies.all,
+          queryKeys.overview
+        );
+      } else {
+        await query.refetch();
+      }
     }
   }
 
   return {
+    isFirstParty: isFirstPartyClient(client),
+    restoreDefaults,
     policies,
     policyEditor,
     setPolicyEditor,
@@ -121,10 +151,7 @@ export function usePolicyWorkspace(client: Client) {
     error:
       error ??
       (query.error
-        ? apiErrorMessage(
-            query.error,
-            "Could not load the policies for this app."
-          )
+        ? apiErrorMessage(query.error, "Could not load this app’s permissions.")
         : null)
   };
 }

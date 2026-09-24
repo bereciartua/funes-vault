@@ -1,3 +1,4 @@
+import { appPermissionsLabel } from "@funes-vault/shared";
 import {
   defaultMemoryCategories as categories,
   demoAccountEmail
@@ -10,32 +11,29 @@ import {
   AuditEventType,
   AuditSubjectRole,
   AuditSubjectType,
+  type Client,
   ClientRetention,
   ClientTrustLevel,
   ClientType,
   createPrismaClient,
+  type Memory,
   MemoryKind,
   MemoryProvenanceEntryType,
+  type MemoryRequest,
   MemoryRequestStatus,
   MemorySensitivity,
+  type MemorySuggestion,
   MemorySuggestionStatus,
+  type Policy,
   PolicyOperation,
   ProvenanceSubjectRole,
   ProvenanceSubjectType,
-  SourceType
+  SourceType,
+  type User
 } from "../src/index.js";
 
 loadEnv({ path: new URL("../../../.env", import.meta.url), quiet: true });
 const prisma = createPrismaClient();
-
-import type {
-  Client,
-  Memory,
-  MemoryRequest,
-  MemorySuggestion,
-  Policy,
-  User
-} from "../src/index.js";
 
 async function seedDemoUser(email: string, displayName: string) {
   const user = await prisma.user.upsert({
@@ -98,7 +96,6 @@ async function seedClientAndPolicy(user: User) {
     data: {
       userId: user.id,
       clientId: client.id,
-      purpose: "software_development",
       maxSensitivity: MemorySensitivity.INTERNAL,
       operations: [PolicyOperation.READ, PolicyOperation.SUGGEST],
       requiresConfirmation: false,
@@ -172,11 +169,17 @@ async function seedReviewItems(
   client: Client,
   communicationMemory: Memory
 ) {
+  const policy = await prisma.policy.findUniqueOrThrow({
+    where: { clientId: client.id }
+  });
   const memoryRequest = await prisma.memoryRequest.create({
     data: {
       userId: user.id,
       clientId: client.id,
-      purpose: "software_development",
+      statedPurpose: "Help with software development",
+      policyId: policy.id,
+      policyVersion: policy.updatedAt.toISOString(),
+      decisionReason: null,
       task: "Help the user work on the Funes Vault repository.",
       status: MemoryRequestStatus.FULFILLED,
       requestedCategories: ["communication_style", "software_development"],
@@ -277,7 +280,11 @@ async function seedAuditTrail(input: {
       clientId: client.id,
       type: AuditEventType.POLICY_CREATED,
       actorType: AuditActorType.SYSTEM,
-      metadata: { seed: true, policyId: policy.id, purpose: policy.purpose }
+      metadata: {
+        seed: true,
+        policyId: policy.id,
+        policyLabel: appPermissionsLabel(client.name)
+      }
     }
   });
   const suggestionAuditEvent = await prisma.auditEvent.create({
@@ -307,7 +314,7 @@ async function seedAuditTrail(input: {
         clientId: client.id,
         policyId: policy.id,
         memoryIds: [communicationMemory.id],
-        purpose: memoryRequest.purpose
+        statedPurpose: memoryRequest.statedPurpose
       }
     }
   });
@@ -329,7 +336,7 @@ async function seedAuditTrail(input: {
         subjectType: AuditSubjectType.POLICY,
         subjectId: policy.id,
         role: AuditSubjectRole.POLICY,
-        labelSnapshot: policy.purpose,
+        labelSnapshot: appPermissionsLabel(client.name),
         metadata: { seed: true }
       },
       {
@@ -365,7 +372,7 @@ async function seedAuditTrail(input: {
         subjectType: AuditSubjectType.MEMORY_REQUEST,
         subjectId: memoryRequest.id,
         role: AuditSubjectRole.REQUEST,
-        labelSnapshot: memoryRequest.purpose,
+        labelSnapshot: memoryRequest.statedPurpose,
         metadata: { seed: true }
       },
       {
@@ -383,7 +390,7 @@ async function seedAuditTrail(input: {
         subjectType: AuditSubjectType.POLICY,
         subjectId: policy.id,
         role: AuditSubjectRole.POLICY,
-        labelSnapshot: policy.purpose,
+        labelSnapshot: appPermissionsLabel(client.name),
         metadata: { seed: true }
       }
     ],

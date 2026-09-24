@@ -8,7 +8,7 @@ Choose the deployment and provider settings accordingly.
 ## Principles
 
 1. Every private record belongs to an owner; client access is a separate grant.
-2. A request's task text cannot override trust, purpose, category or sensitivity rules.
+2. A request's task text cannot override trust, operation, category or sensitivity rules.
 3. Approval shows the exact eligible text and permits a selected, single-use result.
 4. Writes, grants and disclosures leave an inspectable audit/provenance trail.
 5. Third-party processing is visible and bounded by the applicable permission.
@@ -19,7 +19,7 @@ Choose the deployment and provider settings accordingly.
 | Guarantee                                                                           | Mechanism                                                                           | Tests                                                                                                                                 |
 | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | Another user cannot read or mutate an owned record                                  | Owner-scoped queries and relation checks, including subjects and extraction sources | [Tenant isolation](../apps/api/test/tenant-isolation.e2e.spec.ts)                                                                     |
-| A blocked or ungranted client cannot bypass policy through request text             | Bearer identity, exact purpose, deny precedence, operation and sensitivity checks   | [Policy evaluator](../apps/api/src/policies/policy-evaluation.service.spec.ts)                                                        |
+| A blocked or ungranted client cannot bypass policy through request text             | Bearer identity, app permissions, deny precedence, operation and sensitivity checks | [Policy evaluator](../apps/api/src/policies/policy-evaluation.service.spec.ts)                                                        |
 | One-time approval discloses only selected text                                      | Revision snapshot, locked revalidation and client-bound single-use consumption      | [Disclosure review](../apps/api/test/disclosure-review.e2e.spec.ts)                                                                   |
 | Revocation and expiry affect future access                                          | Live client/policy checks at retrieval and token validation                         | [OAuth integration](../apps/api/test/oauth.e2e.spec.ts), [disclosure review](../apps/api/test/disclosure-review.e2e.spec.ts)          |
 | Secret-like values do not become durable memories through ordinary writes           | Shared secret detection before create, update, capture and candidate application    | [Memory integration](../apps/api/test/memories.e2e.spec.ts), [processing integration](../apps/api/test/memory-processing.e2e.spec.ts) |
@@ -42,7 +42,7 @@ session, followed by explicit confirmation. Google can reuse its existing login;
 this is not enforced password or MFA reauthentication.
 
 External tools use registered clients with static bearer tokens or OAuth grants.
-Policies match a purpose and operation and constrain categories, sensitivity,
+Each app has at most one permission set. Policies allow operations and constrain categories, sensitivity,
 expiry and confirmation. Unknown and blocked clients fail closed. Declared client
 retention is information for the owner's decision; Funes cannot verify how a
 recipient stores an already disclosed bundle.

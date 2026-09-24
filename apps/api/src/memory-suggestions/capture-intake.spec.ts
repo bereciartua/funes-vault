@@ -44,6 +44,7 @@ describe("privacy: MemorySuggestionsService.createCapture", () => {
       suggestionId: "suggestion_1",
       status: MemorySuggestionStatus.QUEUED_FOR_REVIEW,
       auditEventId: "audit_1",
+      reason: null,
       deduplicated: false
     });
     expect(policyEvaluationService.evaluateForClient).not.toHaveBeenCalled();
@@ -59,7 +60,7 @@ describe("privacy: MemorySuggestionsService.createCapture", () => {
         sourceMetadata: expect.objectContaining({
           channel: "quick_capture",
           captureId: "capture-0001",
-          capturedAt: "2026-07-03T08:12:00.000Z"
+          caller: { capturedAt: "2026-07-03T08:12:00.000Z" }
         })
       })
     });
@@ -78,6 +79,19 @@ describe("privacy: MemorySuggestionsService.createCapture", () => {
       })
     );
   });
+  it("omits caller timestamps when the owner sends none", async () => {
+    await service.intake.createCapture({
+      userId: "user_1",
+      body: createCaptureRequestSchema.parse({
+        text: "Prefer morning appointments."
+      })
+    });
+    expect(prismaClient.memorySuggestion.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        sourceMetadata: expect.objectContaining({ caller: {} })
+      })
+    });
+  });
   it("is idempotent by captureId", async () => {
     prismaClient.memorySuggestion.findFirst.mockResolvedValue(
       createSuggestion()
@@ -95,6 +109,7 @@ describe("privacy: MemorySuggestionsService.createCapture", () => {
       suggestionId: "suggestion_1",
       status: MemorySuggestionStatus.QUEUED_FOR_REVIEW,
       auditEventId: null,
+      reason: null,
       deduplicated: true
     });
     expect(prismaClient.memorySuggestion.findFirst).toHaveBeenCalledWith({
@@ -120,9 +135,9 @@ describe("privacy: MemorySuggestionsService.createCapture", () => {
       "user_1",
       expect.objectContaining({
         clientId: "client_1",
-        purpose: "quick_capture",
         operation: PolicyOperation.SUGGEST
-      })
+      }),
+      expect.anything()
     );
     expect(prismaClient.memory.create).not.toHaveBeenCalled();
     expect(prismaClient.memorySuggestion.create).toHaveBeenCalledWith({
@@ -145,9 +160,9 @@ describe("privacy: MemorySuggestionsService.createCapture", () => {
       decision: "DENY",
       policyId: null,
       allowedMemoryIds: [],
-      denied: [{ memoryId: "proposed_memory", reason: "no_active_policy" }],
+      denied: [{ memoryId: "proposed_memory", reason: "no_client_policy" }],
       requiresConfirmation: true,
-      reason: "no_active_policy"
+      reason: "no_client_policy"
     });
 
     const response = await service.intake.createCapture({
@@ -161,11 +176,12 @@ describe("privacy: MemorySuggestionsService.createCapture", () => {
     expect(response).toEqual({
       suggestionId: null,
       status: "DENIED",
-      auditEventId: null,
+      auditEventId: "audit_1",
+      reason: "no_client_policy",
       deduplicated: false
     });
     expect(prismaClient.memorySuggestion.create).not.toHaveBeenCalled();
-    expect(provenance.createAuditEvent).not.toHaveBeenCalled();
+    expect(provenance.createAuditEvent).toHaveBeenCalled();
   });
   it("blocks secret-like capture text", async () => {
     await expect(

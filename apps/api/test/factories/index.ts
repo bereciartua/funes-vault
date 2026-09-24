@@ -58,7 +58,7 @@ export function createClient(overrides: Record<string, unknown> = {}) {
     lastUsedAt: null,
     createdAt: now,
     updatedAt: now,
-    _count: { policies: 2 },
+    _count: { policies: 1 },
     ...overrides
   };
 }
@@ -68,7 +68,6 @@ export function createPolicy(overrides: Record<string, unknown> = {}) {
     id: "policy_1",
     userId: "user_1",
     clientId: "client_1",
-    purpose: "software_development",
     maxSensitivity: "INTERNAL",
     operations: ["READ"],
     requiresConfirmation: true,
@@ -88,6 +87,8 @@ export function createSuggestion(overrides: Record<string, unknown> = {}) {
     userId: "user_1",
     sourceType: SourceType.CHAT,
     sourceClientId: null,
+    statedPurpose: null,
+    policyId: null,
     title: "Uses TypeScript often",
     body: "The user frequently works in TypeScript projects.",
     suggestedKind: MemoryKind.PREFERENCE,

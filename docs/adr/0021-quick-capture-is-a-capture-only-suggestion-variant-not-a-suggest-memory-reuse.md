@@ -10,8 +10,12 @@ Quick capture is a low-friction, low-context write path — a Siri Shortcut or o
 
 ## Decision outcome
 
-The quick-capture endpoint (`POST /v1/captures`) is a stricter capture-only variant of memory suggestions rather than a pass-through to the full `suggest_memory` request shape. It accepts raw text only; the server derives the title, fixes kind to `FACT`, applies a conservative `INTERNAL` sensitivity, and always creates a `QUEUED_FOR_REVIEW` suggestion — never a direct memory write, even when a write policy would allow one. Requests are idempotent by a client-generated `captureId` so the PWA offline queue can retry syncs safely. The endpoint accepts the web session cookie (PWA) or a registered client bearer token (OS shortcuts); client captures are gated by a SUGGEST policy with purpose `quick_capture`, while user-session captures need no policy because the user is the authority over their own vault.
+The quick-capture endpoint (`POST /v1/captures`) is a stricter capture-only variant of memory suggestions rather than a pass-through to the full `suggest_memory` request shape. It accepts raw text only; the server derives the title, fixes kind to `FACT`, applies a conservative `INTERNAL` sensitivity, and always creates a `QUEUED_FOR_REVIEW` suggestion — never a direct memory write, even when a write policy would allow one. Requests are idempotent by a client-generated `captureId` so the PWA offline queue can retry syncs safely. The endpoint accepts the web session cookie (PWA) or a registered client bearer token (OS shortcuts); client captures are gated by the client’s SUGGEST permission; `quick_capture` is audit context only, while user-session captures need no policy because the user is the authority over their own vault.
 
 ## Consequences
 
 Raw captures cannot smuggle WRITE parameters or raise sensitivity privileges. Offline queues need owner isolation and idempotent retry before the server creates a reviewable suggestion.
+
+## Amendment — App permissions
+
+Bearer captures require the app’s SUGGEST permission and the memory.suggest token scope. Purpose is audit context only. Caller metadata cannot control archive dispatch or capture deduplication. See [ADR 0044](0044-app-permissions-and-stated-purpose.md).

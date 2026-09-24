@@ -65,6 +65,7 @@ function createClient(overrides: Record<string, unknown> = {}) {
     type: ClientType.MCP_CLIENT,
     trustLevel: ClientTrustLevel.APPROVED,
     declaredRetention: ClientRetention.NO_STORAGE,
+    _count: { policies: 1 },
     tokenHash: "hashed-token",
     lastUsedAt: null,
     createdAt: now,
@@ -78,7 +79,7 @@ function createExport() {
 
   return {
     metadata: {
-      schemaVersion: "funes-vault.export.v1" as const,
+      schemaVersion: "funes-vault.export.v2" as const,
       exportedAt: now.toISOString(),
       source: {
         app: "funes-vault" as const,
@@ -137,6 +138,7 @@ function createExport() {
         trustLevel: ClientTrustLevel.APPROVED,
         declaredRetention: ClientRetention.NO_STORAGE,
         hasToken: false,
+        hasPolicy: true,
         lastUsedAt: null,
         createdAt: now.toISOString(),
         updatedAt: now.toISOString()
@@ -147,7 +149,6 @@ function createExport() {
         id: "policy_1",
         clientId: "client_1",
         clientName: "Local Agent",
-        purpose: "software_development",
         allowedCategoryKeys: ["communication_style"],
         deniedCategoryKeys: [],
         maxSensitivity: MemorySensitivity.INTERNAL,

@@ -17,9 +17,6 @@ export class PolicyDto {
   @ApiPropertyNullable({ example: "Local Coding Agent" })
   clientName!: string | null;
 
-  @ApiProperty({ example: "software_development" })
-  purpose!: string;
-
   @ApiProperty({
     type: [String],
     example: ["communication_style", "software_development"]
@@ -56,9 +53,6 @@ export class CreatePolicyRequestDto {
   @ApiProperty({ example: "cmqvt0v580000xeg7jgy7v1u3" })
   clientId!: string;
 
-  @ApiProperty({ example: "software_development" })
-  purpose!: string;
-
   @ApiPropertyOptional({
     type: [String],
     example: ["communication_style", "software_development"]
@@ -86,12 +80,6 @@ export class CreatePolicyRequestDto {
 }
 
 export class UpdatePolicyRequestDto {
-  @ApiPropertyOptional({ example: "cmqvt0v580000xeg7jgy7v1u3" })
-  clientId?: string;
-
-  @ApiPropertyOptional({ example: "software_development" })
-  purpose?: string;
-
   @ApiPropertyOptional({
     type: [String],
     example: ["communication_style", "software_development"]

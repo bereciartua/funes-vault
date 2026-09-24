@@ -5,19 +5,17 @@ import {
 } from "@funes-vault/db";
 import {
   type ChatCitation,
-  createMemorySuggestionRequestSchema,
   listMemoriesQuerySchema,
-  updateMemoryRequestSchema
+  type MemoryRequestReason,
+  updateMemoryRequestSchema,
+  voicePurpose,
+  webChatPurpose
 } from "@funes-vault/shared";
 import { Injectable } from "@nestjs/common";
 
 import { parseRequest } from "../common/zod.js";
 import { apiEnv } from "../config.js";
-import {
-  FirstPartyAccessService,
-  voicePurpose,
-  webChatPurpose
-} from "../first-party-access/first-party-access.service.js";
+import { FirstPartyAccessService } from "../first-party-access/first-party-access.service.js";
 import { MemoriesService } from "../memories/memories.service.js";
 import { toMemoryResponse } from "../memories/memory.mapper.js";
 import { memoryInclude } from "../memories/memory.types.js";
@@ -28,7 +26,6 @@ import {
 import { type CompiledBundleItem } from "../memory-requests/bundle-compiler.service.js";
 import { MemoryRequestsService } from "../memory-requests/memory-requests.service.js";
 import { toMemorySuggestionResponse } from "../memory-suggestions/memory-suggestion.mapper.js";
-import { SuggestionIntakeService } from "../memory-suggestions/suggestion-intake.service.js";
 import { SuggestionReviewService } from "../memory-suggestions/suggestion-review.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
@@ -37,6 +34,7 @@ const chatTokenBudget = 1200;
 export type StewardChannel = "chat" | "voice";
 
 export type MemoryToolBundle = {
+  reason: MemoryRequestReason | null;
   requestId: string;
   status: string;
   policyId: string | null;
@@ -59,7 +57,6 @@ export class ChatMemoryToolsService {
     private readonly firstPartyAccess: FirstPartyAccessService,
     private readonly prisma: PrismaService,
     private readonly memoryRequestsService: MemoryRequestsService,
-    private readonly suggestionIntakeService: SuggestionIntakeService,
     private readonly suggestionReviewService: SuggestionReviewService,
     private readonly memoriesService: MemoriesService
   ) {}
@@ -92,6 +89,7 @@ export class ChatMemoryToolsService {
       requestId: bundle.requestId,
       status: bundle.status,
       policyId: bundle.policyId,
+      reason: bundle.reason,
       tokenBudget: bundle.tokenBudget,
       estimatedTokens: bundle.estimatedTokens,
       items: bundle.items,
@@ -99,100 +97,6 @@ export class ChatMemoryToolsService {
       denied: bundle.denied,
       auditEventId: bundle.auditEventId
     };
-  }
-
-  async suggestMemory(input: {
-    userId: string;
-    channel?: StewardChannel;
-    title: string;
-    body: string;
-    kind: string;
-    sensitivity: string;
-    categoryKeys: string[];
-    evidence: string;
-    confidence: number;
-    expiresAt?: string | null;
-  }) {
-    const clientId = await this.ensureChannelClient(
-      input.userId,
-      input.channel
-    );
-
-    // The model can occasionally repeat a tool call for a claim from an
-    // earlier turn (for example, after the user replies "awesome"). Keep the
-    // chat/voice boundary idempotent even when that happens. This lookup stays
-    // inside the authenticated first-party path so it does not expose memory
-    // existence to external suggestion clients.
-    const existingMemory = await this.prisma.client.memory.findFirst({
-      where: {
-        userId: input.userId,
-        status: MemoryStatus.ACTIVE,
-        title: { equals: input.title, mode: "insensitive" },
-        body: { equals: input.body, mode: "insensitive" },
-        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
-      },
-      select: { id: true }
-    });
-
-    if (existingMemory) {
-      return {
-        suggestionId: null,
-        memoryId: existingMemory.id,
-        status: MemorySuggestionStatus.APPLIED,
-        policyId: null,
-        auditEventId: null,
-        decision: "ALLOW" as const,
-        denied: [],
-        deduplicated: true
-      };
-    }
-
-    const existingSuggestion =
-      await this.prisma.client.memorySuggestion.findFirst({
-        where: {
-          userId: input.userId,
-          status: MemorySuggestionStatus.QUEUED_FOR_REVIEW,
-          title: { equals: input.title, mode: "insensitive" },
-          body: { equals: input.body, mode: "insensitive" },
-          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }]
-        },
-        select: { id: true }
-      });
-
-    if (existingSuggestion) {
-      return {
-        suggestionId: existingSuggestion.id,
-        memoryId: null,
-        status: MemorySuggestionStatus.QUEUED_FOR_REVIEW,
-        policyId: null,
-        auditEventId: null,
-        decision: "NEEDS_CONFIRMATION" as const,
-        denied: [],
-        deduplicated: true
-      };
-    }
-
-    const response = await this.suggestionIntakeService.createSuggestion({
-      userId: input.userId,
-      clientId,
-      body: parseRequest(createMemorySuggestionRequestSchema, {
-        purpose: purposeForChannel(input.channel),
-        kind: input.kind,
-        title: input.title,
-        body: input.body,
-        categoryKeys: input.categoryKeys,
-        sensitivity: input.sensitivity,
-        evidence: input.evidence,
-        confidence: input.confidence,
-        expiresAt: input.expiresAt ?? null,
-        sourceMetadata: {
-          origin:
-            input.channel === "voice" ? "memory_voice_tool" : "memory_chat_tool"
-        }
-      })
-    });
-
-    return { ...response, deduplicated: false };
   }
 
   async searchMemories(input: {

@@ -21,7 +21,7 @@ describe("privacy: memory processing run lifecycle (e2e)", () => {
     const user = await createUserWithSession(prisma, "crash@example.com");
     const message = await source(user.userId);
     const save = vi
-      .spyOn(app.get(SuggestionIntakeService), "createSuggestion")
+      .spyOn(app.get(SuggestionIntakeService), "prepareSuggestion")
       .mockRejectedValueOnce(new Error("simulated commit crash"));
     expect((await extraction.process(user.userId, message.id)).status).toBe(
       "failed"

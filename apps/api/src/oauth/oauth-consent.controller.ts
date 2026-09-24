@@ -68,10 +68,11 @@ export class OAuthConsentController {
     }
 
     try {
-      const context = await this.grantsService.getConsentContext(
-        parsed.data.request
-      );
       const user = await this.currentUser(req);
+      const context = await this.grantsService.getConsentContext(
+        parsed.data.request,
+        user?.id
+      );
 
       if (!user) {
         this.sendHtml(
@@ -178,6 +179,6 @@ export class OAuthConsentController {
         : "Something went wrong handling this authorization request.";
     const status = error instanceof HttpException ? error.getStatus() : 500;
 
-    this.sendHtml(res, status, renderErrorPage(message));
+    this.sendHtml(res, status, renderErrorPage(message, status !== 403));
   }
 }

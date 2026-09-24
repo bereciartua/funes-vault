@@ -94,13 +94,13 @@ Hashed access or refresh credential bound to an owner and client grant. Expiry, 
 
 ### `Policy`
 
-User-owned access rule for a client. Policies define purpose, operations, maximum sensitivity, confirmation behavior, allowed categories, and denied categories. A unique constraint on `(clientId, purpose)` allows at most one policy per client and purpose, matching the evaluator, which applies a single policy per declared purpose.
+User-owned App permissions for a client. A unique `clientId` allows at most one policy per app. The composite client/owner foreign key enforces ownership. Operations, sensitivity, categories, expiry and confirmation govern access; `updatedAt` is the authorization version. Purpose is never an authority input.
 
-The first policy evaluator denies missing or blocked clients, ignores expired policies, applies sensitivity ceilings, and lets denied categories override allowed categories. An empty allowed-category list means the policy covers every category (matching the Apps & access UI); a non-empty list grants only the listed categories.
+The first policy evaluator denies missing or blocked clients, denies expired permissions with `policy_expired`, applies sensitivity ceilings, and lets denied categories override allowed categories. An empty allowed-category list means the policy covers every category (matching the Apps & access UI); a non-empty list grants only the listed categories.
 
 ### `MemoryRequest`
 
-Records a client request for memory. Tracks purpose, task, requested categories, token budget, retention declaration, downstream processors, status, and approval/fulfillment timestamps.
+Records a client request for memory. Tracks nullable `statedPurpose`, bound `policyId` and `policyVersion`, `decisionReason`, task, requested categories, token budget, retention declaration, downstream processors, status, and approval/fulfillment timestamps.
 
 ### `MemoryRequestItem`
 
@@ -110,9 +110,11 @@ Current memory bundle creation writes request items only after policy evaluation
 
 ### `MemorySuggestion`
 
+Caller metadata is nested under `caller` and never drives dispatch. Archive dispatch requires a CONSOLIDATION source.
+
 Reviewable proposed memory from chat, clients, imports, or consolidation jobs. Suggestions are not active memories until approved. Suggestions can include an optional `expiresAt` timestamp; when the user approves the suggestion, that expiration is copied to the created memory.
 
-Client-created suggestions are accepted only after `SUGGEST` or `WRITE` policy evaluation for the declared purpose, categories, and sensitivity. Accepted `SUGGEST` suggestions create a `MEMORY_SUGGESTION_CREATED` audit event and remain `QUEUED_FOR_REVIEW`. Accepted `WRITE` suggestions with `requiresConfirmation=false` create an active memory immediately and store the suggestion as `APPLIED`.
+Client-created suggestions are accepted only after `SUGGEST` or `WRITE` policy evaluation for the authenticated app, categories, and sensitivity. Accepted `SUGGEST` suggestions create a `MEMORY_SUGGESTION_CREATED` audit event and remain `QUEUED_FOR_REVIEW`. Accepted `WRITE` suggestions with `requiresConfirmation=false` create an active memory immediately and store the suggestion as `APPLIED`.
 
 Consolidation suggestions use `sourceMetadata` to carry the proposed action, such as archiving an explicitly expired, duplicate, conflicting, or superseded memory. Applying an archive suggestion archives the target memory rather than creating a new duplicate memory record.
 
@@ -285,6 +287,25 @@ EXPORT EXPORT
 
 
 
+        MemoryRequestReason {
+            unknown_or_blocked_client unknown_or_blocked_client
+no_client_policy no_client_policy
+policy_expired policy_expired
+operation_not_allowed operation_not_allowed
+no_matching_memories no_matching_memories
+no_allowed_memories no_allowed_memories
+confirmation_required confirmation_required
+policy_changed policy_changed
+inactive_memory inactive_memory
+unapproved_memory unapproved_memory
+expired_memory expired_memory
+above_sensitivity_ceiling above_sensitivity_ceiling
+denied_category denied_category
+category_not_allowed category_not_allowed
+        }
+
+
+
         MemoryRequestStatus {
             PENDING PENDING
 APPROVED APPROVED
@@ -317,6 +338,7 @@ MEMORY_DISCLOSURE MEMORY_DISCLOSURE
 MEMORY_REQUEST_APPROVED MEMORY_REQUEST_APPROVED
 MEMORY_REQUEST_DENIED MEMORY_REQUEST_DENIED
 MEMORY_SUGGESTION_CREATED MEMORY_SUGGESTION_CREATED
+MEMORY_SUGGESTION_DENIED MEMORY_SUGGESTION_DENIED
 MEMORY_SUGGESTION_APPROVED MEMORY_SUGGESTION_APPROVED
 MEMORY_SUGGESTION_REJECTED MEMORY_SUGGESTION_REJECTED
 CLIENT_CREATED CLIENT_CREATED
@@ -689,7 +711,6 @@ FAILED failed
     String id "PK"
     String userId
     String clientId
-    String purpose
     MemorySensitivity maxSensitivity
     PolicyOperation operations
     Boolean requiresConfirmation
@@ -703,7 +724,10 @@ FAILED failed
     String id "PK"
     String userId
     String clientId
-    String purpose
+    String statedPurpose "nullable"
+    String policyId "nullable"
+    String policyVersion "nullable"
+    MemoryRequestReason decisionReason "nullable"
     String task
     MemoryRequestStatus status
     Int tokenBudget
@@ -737,6 +761,8 @@ FAILED failed
     String userId
     SourceType sourceType
     String sourceClientId "nullable"
+    String statedPurpose "nullable"
+    String policyId "nullable"
     String title
     String body
     MemoryKind suggestedKind
@@ -917,6 +943,8 @@ FAILED failed
     "Policy" |o--}o "PolicyOperation" : "enum:operations"
     "Policy" }o--|| "Client" : "client"
     "Policy" }o--|| "User" : "user"
+    "MemoryRequest" |o--|o "MemoryRequestReason" : "enum:decisionReason"
+    "MemoryRequest" }o--|o "Policy" : "policy"
     "MemoryRequest" |o--|| "MemoryRequestStatus" : "enum:status"
     "MemoryRequest" |o--|| "ClientRetention" : "enum:retention"
     "MemoryRequest" }o--|| "Client" : "client"
@@ -925,6 +953,7 @@ FAILED failed
     "MemoryRequestItem" }o--|| "Memory" : "memory"
     "MemoryRequestItem" }o--|| "MemoryRequest" : "memoryRequest"
     "MemorySuggestion" |o--|| "SourceType" : "enum:sourceType"
+    "MemorySuggestion" }o--|o "Policy" : "policy"
     "MemorySuggestion" |o--|| "MemoryKind" : "enum:suggestedKind"
     "MemorySuggestion" |o--|| "MemorySensitivity" : "enum:suggestedSensitivity"
     "MemorySuggestion" |o--|| "MemorySuggestionStatus" : "enum:status"

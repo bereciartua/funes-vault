@@ -1,6 +1,6 @@
 import { type MemoryCategory, type Policy } from "@funes-vault/shared";
 
-import { Button, DeleteButton } from "../../../components/ui/button";
+import { Button } from "../../../components/ui/button";
 import { CheckboxField } from "../../../components/ui/checkbox";
 import { FormField } from "../../../components/ui/form-field";
 import { SelectField } from "../../../components/ui/select";
@@ -12,7 +12,6 @@ import {
 import { CategoryAccessMatrix } from "./CategoryAccessMatrix";
 import {
   operations,
-  purposeSuggestions,
   sensitivities,
   togglePolicyOperation
 } from "./policy-draft";
@@ -41,47 +40,21 @@ export function PolicyEditor({
   return (
     <div className="policy-editor">
       <div className="policy-summary">
-        <p>{policySummary(draftPolicy)}</p>
+        <p>{policySummary(draftPolicy, model.isFirstParty)}</p>
         {policyRiskFactors(draftPolicy, categories.length).length > 0 ? (
           <p className="risk-sentence">
             {policyRiskFactors(draftPolicy, categories.length)
               .map((factor) => factor.label)
               .join(" · ")}{" "}
-            — consider tightening this policy.
+            — consider tightening these permissions.
           </p>
         ) : null}
       </div>
       <form className="form-stack" onSubmit={savePolicy}>
         <div className="form-grid">
-          <FormField label="Purpose">
-            <SelectField
-              ariaLabel="Policy purpose"
-              value={policyDraft.purpose}
-              options={[
-                ...purposeSuggestions,
-                ...(purposeSuggestions.includes(policyDraft.purpose)
-                  ? []
-                  : [policyDraft.purpose])
-              ].map((purpose) => ({
-                label: label(purpose),
-                value: purpose
-              }))}
-              onValueChange={(purpose) =>
-                setPolicyDraft((current) => ({
-                  ...current,
-                  purpose
-                }))
-              }
-              required
-            />
-            <span className="field-hint">
-              What the app says it needs memory for. Requests must declare this
-              same purpose to match. One policy per purpose.
-            </span>
-          </FormField>
           <FormField label="Max sensitivity">
             <SelectField
-              ariaLabel="Policy max sensitivity"
+              ariaLabel="App permissions max sensitivity"
               value={policyDraft.maxSensitivity}
               options={sensitivities.map((sensitivity) => ({
                 label: label(sensitivity),
@@ -146,11 +119,14 @@ export function PolicyEditor({
             {isSaving ? "Saving..." : editingPolicy ? "Save" : "Create"}
           </Button>
           {editingPolicy ? (
-            <DeleteButton
+            <Button
+              variant="danger"
               type="button"
               disabled={isSaving}
               onClick={() => void confirmDeletePolicy(editingPolicy)}
-            />
+            >
+              Remove permissions
+            </Button>
           ) : null}
           <Button
             type="button"

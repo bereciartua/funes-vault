@@ -90,14 +90,15 @@ sequenceDiagram
     participant D as Database
     participant O as Owner
     C->>A: request_memory(task, purpose, budget)
-    A->>D: Authenticate client#59; retrieve owner-scoped candidates
-    A->>A: Evaluate trust, purpose, categories, sensitivity, expiry
+    A->>D: Authenticate client and check app permissions before retrieval
+    A->>A: Evaluate trust, operations, categories, sensitivity, expiry
     A->>D: Save request and policy result
     alt Policy allows immediate disclosure
         A->>D: Store bundle items and MEMORY_DISCLOSURE in transaction
         A-->>C: FULFILLED + bundle
     else Policy denies
-        A-->>C: DENIED (no item snapshot or audit event)
+        A->>D: MEMORY_REQUEST_DENIED audit
+        A-->>C: DENIED + reason (no item snapshot)
     else Owner approval required
         A-->>C: NEEDS_USER_APPROVAL + requestId
     O->>A: Read exact disclosure preview
@@ -130,7 +131,7 @@ sequenceDiagram
     Tool->>API: Discovery and dynamic registration
     Tool->>Owner: Open authorization URL with S256 challenge
     Owner->>API: Google sign-in on canonical API origin
-    Owner->>API: Approve client scopes and purpose
+    Owner->>API: Approve client scopes and resulting app permissions
     API-->>Tool: Short-lived single-use authorization code
     Tool->>API: Exchange code + verifier
     API-->>Tool: Access / refresh token pair

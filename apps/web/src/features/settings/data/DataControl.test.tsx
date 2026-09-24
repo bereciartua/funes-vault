@@ -57,7 +57,7 @@ describe("independent data controls", () => {
     ).toBe(false);
     resolve?.({
       preview: {
-        schemaVersion: "funes-vault.export.v1",
+        schemaVersion: "funes-vault.export.v2",
         exportedAt: "2026-09-22T00:00:00.000Z",
         memories: 1,
         archivedMemories: 0,

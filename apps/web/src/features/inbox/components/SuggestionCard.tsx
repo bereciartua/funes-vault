@@ -127,7 +127,35 @@ export function SuggestionCard({
         </div>
         <p className="suggestion-source">{suggestionSource(suggestion)}</p>
         <p>{suggestion.body}</p>
+        {suggestion.source.type === "CLIENT_SUGGESTION" ? (
+          <dl className="memory-facts">
+            <div>
+              <dt>Stated purpose</dt>
+              <dd>{suggestion.statedPurpose ?? "Not provided"}</dd>
+            </div>
+            <div>
+              <dt>App permissions</dt>
+              <dd>
+                {suggestion.policyId ? (
+                  <Link href="/settings/clients">Manage app permissions</Link>
+                ) : (
+                  "No current permissions"
+                )}
+              </dd>
+            </div>
+          </dl>
+        ) : null}
         {subjects.length > 0 ? <SubjectChips subjects={subjects} /> : null}
+        {suggestion.source.metadata.caller &&
+        typeof suggestion.source.metadata.caller === "object" &&
+        Object.keys(suggestion.source.metadata.caller).length > 0 ? (
+          <details>
+            <summary>Caller metadata</summary>
+            <pre>
+              {JSON.stringify(suggestion.source.metadata.caller, null, 2)}
+            </pre>
+          </details>
+        ) : null}
         {Array.isArray(suggestion.source.metadata?.processors) ? (
           <p className="suggestion-evidence">
             Processed by{" "}

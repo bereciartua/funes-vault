@@ -1,7 +1,10 @@
 import { z } from "zod";
 
-import { requireAtLeastOneField } from "./common.js";
-import { paginationQuerySchema, paginationSchema } from "./common.js";
+import {
+  paginationQuerySchema,
+  paginationSchema,
+  requireAtLeastOneField
+} from "./common.js";
 import {
   clientRetentionSchema,
   clientTrustLevelSchema,
@@ -16,17 +19,17 @@ export const clientSchema = z.object({
   trustLevel: clientTrustLevelSchema,
   declaredRetention: clientRetentionSchema,
   hasToken: z.boolean(),
-  // The client list includes its latest unexpired policy for display.
+  // The client list includes its sole permission set, including expired permissions.
   policySummary: z
     .object({
       maxSensitivity: memorySensitivitySchema,
+      expiresAt: z.iso.datetime().nullable(),
       allowedCategoryKeys: z.array(z.string()),
       requiresConfirmation: z.boolean()
     })
     .nullable()
     .optional(),
-  // Defaults preserve compatibility with older vault exports.
-  policyCount: z.number().int().nonnegative().default(0),
+  hasPolicy: z.boolean(),
   oauthConnector: z.boolean().default(false),
   lastUsedAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),

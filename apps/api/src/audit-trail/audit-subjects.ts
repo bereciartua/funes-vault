@@ -7,6 +7,7 @@ import {
   ProvenanceSubjectRole,
   ProvenanceSubjectType
 } from "@funes-vault/db";
+import { appPermissionsLabel } from "@funes-vault/shared";
 
 import { getObjectMetadata } from "../common/serialization.js";
 import type { AuditMetadata } from "./audit-metadata.js";
@@ -208,7 +209,7 @@ export function inferAuditSubjects(
       type: AuditSubjectType.POLICY,
       id: policyId,
       role: AuditSubjectRole.POLICY,
-      label: metadata.purpose
+      label: metadata.policyLabel ?? appPermissionsLabel(metadata.clientName)
     });
   }
 

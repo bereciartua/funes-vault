@@ -1,12 +1,16 @@
 {
   "name": "@funes-vault/mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./http": {
+      "types": "./dist/http-server.d.ts",
+      "default": "./dist/http-server.js"
     }
   },
   "bin": {

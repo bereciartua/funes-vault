@@ -1,6 +1,6 @@
 {
   "name": "funes-vault",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "packageManager": "pnpm@11.7.0",
   "engines": {
@@ -26,6 +26,9 @@
     "db:reset": "pnpm --filter @funes-vault/db db:reset",
     "db:seed": "pnpm --filter @funes-vault/db db:seed",
     "publish:images": "scripts/publish-images.sh",
+    "release:prepare": "node scripts/release/prepare.mjs",
+    "release:verify": "node scripts/release/verify.mjs",
+    "test:release": "node --test scripts/release/*.test.mjs",
     "clean": "node scripts/clean.mjs",
     "icons:generate": "node scripts/generate-pwa-icons.mjs",
     "db:check-migrations": "node scripts/check-migrations.mjs",
