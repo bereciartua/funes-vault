@@ -1,13 +1,15 @@
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { readFileSync, readlinkSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { replaceJsonString } from "./json-string.mjs";
 
 export const planPath = ".release/plan.json";
-export const read = (path) => readFileSync(path, "utf8");
+export const read = (path) =>
+  readFileSync(path, "utf8").replaceAll("\r\n", "\n");
 export const git = (...args) =>
   execFileSync("git", args, { encoding: "utf8" }).trim();
-export const assert = (condition, message) => {
-  if (!condition) throw new Error(message);
+export const assert = (condition, message, code) => {
+  if (!condition) throw Object.assign(new Error(message), { code });
 };
 const stableVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 export const hasBreakingNotes = (notes) =>
@@ -41,6 +43,27 @@ export function latestTag(exclude) {
   return tags[0];
 }
 
+export function isPublishedVersion(version) {
+  const tag = `v${version}`;
+  if (git("tag", "--merged", "HEAD", "--list", tag) !== tag) return false;
+  let publishedPlan;
+  try {
+    publishedPlan = JSON.parse(
+      execFileSync("git", ["show", `${tag}:${planPath}`], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"]
+      })
+    );
+  } catch {
+    // Releases predating this automation do not contain a plan.
+    return !existsSync(planPath);
+  }
+  return (
+    existsSync(planPath) &&
+    JSON.stringify(publishedPlan) === JSON.stringify(JSON.parse(read(planPath)))
+  );
+}
+
 let manifestPaths;
 function manifests() {
   return (manifestPaths ??= git("ls-files")
@@ -52,14 +75,10 @@ function manifests() {
 
 export function replaceVersion(path, content, version) {
   if (manifests().includes(path)) {
-    const value = JSON.parse(content);
-    value.version = version;
-    return JSON.stringify(value, null, 2) + "\n";
+    return replaceJsonString(content, ["version"], version);
   }
   if (path === "docs/openapi.json") {
-    const value = JSON.parse(content);
-    value.info.version = version;
-    return JSON.stringify(value, null, 2) + "\n";
+    return replaceJsonString(content, ["info", "version"], version);
   }
   if (path === "apps/api/src/openapi.ts") {
     assert(
@@ -93,35 +112,119 @@ export function versionPaths() {
   ];
 }
 
-// Bind the assessment to the reviewed tree, allowing only version edits and
-// release notes. Later code/config/dependency changes require reassessment.
+function normalizedVersion(path, content) {
+  const normalized = replaceVersion(path, content, "0.0.0");
+  return path.endsWith(".json")
+    ? JSON.stringify(JSON.parse(normalized))
+    : normalized;
+}
+
+const indexContent = (path) =>
+  execFileSync("git", ["show", `:${path}`], { encoding: "utf8" });
+
+// Hash canonical staged content: checkout line endings and smudge filters do not
+// change an assessment. Normalize only the small set of version-bearing files.
 export function fingerprint() {
   const hash = createHash("sha256");
   const entries = git("ls-files", "--stage", "-z").split("\0").filter(Boolean);
   for (const entry of entries) {
     const [metadata, path] = entry.split("\t");
     if ([planPath, "CHANGELOG.md"].includes(path)) continue;
-    const mode = metadata.split(" ")[0];
-    const content =
-      mode === "120000"
-        ? readlinkSync(path)
-        : versionPaths().includes(path)
-          ? replaceVersion(path, read(path), "0.0.0")
-          : readFileSync(path);
+    const [mode, blob, stage] = metadata.split(" ");
+    assert(stage === "0", "Resolve index conflicts before assessing a release");
+    const content = versionPaths().includes(path)
+      ? normalizedVersion(path, indexContent(path))
+      : blob;
     hash.update(`${mode}\0${path}\0`).update(content).update("\0");
   }
   return hash.digest("hex");
 }
 
+function assertReviewedWorkspace() {
+  const paths = versionPaths();
+  const changed = git(
+    "diff",
+    "--name-only",
+    "--",
+    ".",
+    ...[planPath, "CHANGELOG.md", ...paths].map((path) => `:(exclude)${path}`)
+  );
+  assert(
+    !changed,
+    "The reviewed tree changed; stage or commit source edits before reassessing the release",
+    "RELEASE_TREE_CHANGED"
+  );
+  for (const path of paths) {
+    // Apply Git's clean filters to working content before comparing with the index.
+    const clean = execFileSync(
+      "git",
+      ["hash-object", "--path", path, "--stdin"],
+      {
+        input: normalizedVersion(path, read(path)),
+        encoding: "utf8"
+      }
+    ).trim();
+    const indexed = execFileSync("git", ["hash-object", "--stdin"], {
+      input: normalizedVersion(path, indexContent(path)),
+      encoding: "utf8"
+    }).trim();
+    assert(
+      clean === indexed,
+      `The reviewed tree changed in ${path}; stage or commit source edits before reassessing the release`,
+      "RELEASE_TREE_CHANGED"
+    );
+  }
+}
+
+function changelogSection(changelog, version) {
+  const heading = new RegExp(
+    `^## \\[${version.replaceAll(".", "\\.")}\\]${version === "Unreleased" ? "" : " - [^\\n]+"}\\n`,
+    "m"
+  );
+  const match = heading.exec(changelog);
+  assert(match, `Missing changelog section for ${version}`);
+  const bodyStart = match.index + match[0].length;
+  const rest = changelog.slice(bodyStart);
+  const next = rest.search(/^## \[|^\[Unreleased\]:/m);
+  const end = next < 0 ? changelog.length : bodyStart + next;
+  return {
+    start: match.index,
+    end,
+    body: changelog.slice(bodyStart, end).trim()
+  };
+}
+
 export function releaseNotes(changelog, version) {
-  const start = changelog.indexOf(`## [${version}] - `);
-  assert(start >= 0, `Missing dated changelog section for ${version}`);
-  const rest = changelog.slice(start);
-  const end = rest.slice(1).search(/\n## \[|\n\[Unreleased\]:/);
-  const section = end < 0 ? rest : rest.slice(0, end + 1);
-  const body = section.slice(section.indexOf("\n") + 1).trim();
+  const { body } = changelogSection(changelog, version);
   assert(body.length > 0, "Release notes are empty");
+  const headings = [...body.matchAll(/^### (.+)$/gm)].map((match) =>
+    match[1].trim().toLowerCase()
+  );
+  assert(
+    new Set(headings).size === headings.length,
+    "Merge duplicate release-note subsection headings"
+  );
   return body;
+}
+
+function mergeSubsections(notes) {
+  const [intro, ...parts] = notes.split(/^### (.+)$/m);
+  const sections = new Map();
+  for (let i = 0; i < parts.length; i += 2) {
+    const title = parts[i].trim();
+    const key = title.toLowerCase();
+    const section = sections.get(key) ?? { title, bodies: [] };
+    if (parts[i + 1].trim()) section.bodies.push(parts[i + 1].trim());
+    sections.set(key, section);
+  }
+  return [
+    intro.trim(),
+    ...[...sections.values()].map(
+      ({ title, bodies }) => `### ${title}\n\n${bodies.join("\n\n")}`
+    )
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 export function finalizeChangelog(
@@ -132,23 +235,25 @@ export function finalizeChangelog(
   previousTag
 ) {
   let text = changelog;
+  let pendingNotes = "";
   if (pendingVersion) {
-    const heading = new RegExp(
-      `^## \\[${pendingVersion.replaceAll(".", "\\.")}\\] - .+$`,
-      "m"
-    );
-    assert(heading.test(text), "Pending release section is missing");
-    text = text.replace(heading, "");
+    const pending = changelogSection(text, pendingVersion);
+    pendingNotes = pending.body;
+    text = text.slice(0, pending.start) + text.slice(pending.end);
     text = text.replace(
       new RegExp(`^\\[${pendingVersion.replaceAll(".", "\\.")}\\]:.*\\n?`, "m"),
       ""
     );
   }
-  assert(text.includes("## [Unreleased]\n"), "Missing Unreleased section");
-  text = text.replace(
-    "## [Unreleased]\n",
-    `## [Unreleased]\n\n## [${version}] - ${date}\n`
+  const unreleased = changelogSection(text, "Unreleased");
+  const notes = mergeSubsections(
+    [unreleased.body, pendingNotes].filter(Boolean).join("\n\n")
   );
+  assert(notes, "Release notes are empty");
+  text =
+    text.slice(0, unreleased.start) +
+    `## [Unreleased]\n\n## [${version}] - ${date}\n\n${notes}\n\n` +
+    text.slice(unreleased.end);
   assert(
     /^\[Unreleased\]: https:\/\/github\.com\/[^\n]+\/compare\/[^\n]+$/m.test(
       text
@@ -189,8 +294,10 @@ export function verifyPlan() {
   );
   assert(
     plan.fingerprint === fingerprint(),
-    "The reviewed tree changed; reassess and rerun release:prepare"
+    "The reviewed tree changed; reassess and rerun release:prepare",
+    "RELEASE_TREE_CHANGED"
   );
+  assertReviewedWorkspace();
   for (const path of versionPaths()) {
     // JSON formatting is not a version mismatch.
     const actual = path.endsWith(".json")

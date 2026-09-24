@@ -5,6 +5,7 @@ import {
   fingerprint,
   git,
   hasBreakingNotes,
+  isPublishedVersion,
   latestTag,
   nextVersion,
   planPath,
@@ -37,14 +38,23 @@ try {
     "Describe the compatibility decision and supporting paths/PRs"
   );
   const currentVersion = JSON.parse(read("package.json")).version;
-  const pending = currentVersion !== previousTag.slice(1);
   const oldPlan = existsSync(planPath) ? JSON.parse(read(planPath)) : null;
+  const pending =
+    currentVersion !== previousTag.slice(1) ||
+    (oldPlan && !isPublishedVersion(currentVersion));
   assert(
-    !pending ||
-      (oldPlan?.version === currentVersion &&
-        oldPlan.previousTag === previousTag),
+    !pending || oldPlan?.version === currentVersion,
     "Unrecognized version changes; reconcile the pending release first"
   );
+  if (pending && oldPlan.previousTag !== previousTag) {
+    assert(
+      /^v\d+\.\d+\.\d+$/.test(oldPlan.previousTag),
+      "Invalid pending baseline tag"
+    );
+    // A merged hotfix advances the baseline; divergent/replaced histories must
+    // still be reconciled explicitly rather than silently accepted.
+    git("merge-base", "--is-ancestor", oldPlan.previousTag, previousTag);
+  }
   const date = new Date().toISOString().slice(0, 10);
   const changelog = finalizeChangelog(
     read("CHANGELOG.md"),

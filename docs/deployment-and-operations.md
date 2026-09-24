@@ -257,9 +257,9 @@ deploy a release or change repository visibility.
 
 Manual Publish Images dispatch accepts a target-platform choice and publishes only
 the selected commit's SHA tag. Stable version and `latest` aliases belong to the
-verified release workflow. Local `pnpm publish:images [tag]` is a maintainer escape
-hatch with GHCR write access; do not use it for stable release/version aliases or
-to bypass release verification. Check package visibility before deployment.
+verified release workflow. Local `pnpm publish:images` is a maintainer diagnostic
+command with GHCR write access: it accepts no tag argument and publishes only the
+checkout's SHA tag. Check package visibility before deployment.
 
 ## App permissions migration
 

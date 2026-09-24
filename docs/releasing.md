@@ -4,6 +4,7 @@ This is the maintainer and AI-agent runbook. Release preparation is local and
 reviewable; publication runs in GitHub Actions. Deployment is a separate operation.
 Use Node 24, the pinned pnpm, Git and authenticated `gh`. Do not install a Git Flow
 extension: the repository uses ordinary branches and pull requests.
+The publication decision is recorded in [ADR 0045](adr/0045-releases-publish-from-verified-main-merges.md).
 
 ## Authorization and responsibilities
 
@@ -123,8 +124,6 @@ surface is unchanged solely because its directory did not change.
    source; that would require reassessment. Record exactly which manual and live
    checks ran. Commit and push with an explicit destination:
    `git push --set-upstream origin HEAD:refs/heads/chore/release-X.Y.Z`.
-   This also works when the local Git configuration uses `push.default=upstream`
-   and the new branch initially tracks `origin/develop`.
 6. Write a PR body to a file containing the version rationale, migration notes and
    validation evidence. Open the preparation PR with
    `gh pr create --base develop --head chore/release-X.Y.Z --title "chore(release): prepare vX.Y.Z" --body-file /tmp/funes-release-pr.md`.
@@ -142,15 +141,24 @@ publish anything. The preparation PR and release PR are intentionally distinct.
 ### Changes after preparation
 
 The plan records a source commit, compatibility rationale and SHA-256 fingerprint
-of the reviewed tracked tree. Versions are normalized for that fingerprint;
+of the reviewed Git index. Ordinary paths contribute their blob IDs and modes;
+version-bearing files are normalized from their staged Git content. Checkout line
+endings and clean/smudge filters therefore do not alter the fingerprint. Verification
+also rejects unstaged source edits, while allowing version and release-note edits.
+Versions are normalized for that fingerprint;
 `CHANGELOG.md` and the plan itself are excluded so notes can be finalized. All
 other code, configuration and dependency changes invalidate the assessment.
-CI validates pending plans and prevents unnoticed additions to the candidate.
+CI validates pending plans and prevents unnoticed additions to the candidate. During
+this window, unrelated PRs into `develop` will fail with a pending-release message;
+merge them after publication and the `main → develop` synchronization, or have a
+release maintainer reassess the candidate to include them.
 
 To refresh: incorporate the new candidate into the preparation branch, review the
 new complete diff, commit a clean tree, update the rationale, and rerun
 `release:prepare` with the appropriate bump. It replaces the pending version and
-retains the original release baseline and existing pending notes. Run formatting,
+merges new and pending entries under one heading per changelog subsection. It
+retains the original baseline unless a merged hotfix has advanced it; in that case
+it uses the new stable tag and recalculates the version. Run formatting,
 verification and checks again. If preparation already merged, use a new
 `chore/release-*` PR into `develop`. Prefer pausing unrelated merges into `develop`
 during final release review. A recorded source commit may be a pre-squash commit;
@@ -192,6 +200,15 @@ the next prepared release. No custom PAT, deployment secret or GitHub App is nee
 the jobs request scoped `contents: write`, `pull-requests: read` and
 `packages: write` permissions from `GITHUB_TOKEN` where needed.
 
+The `workflow_run` workflow uses the default branch's workflow definition, and a
+reusable workflow referenced with `./` comes from the same commit as its caller.
+The checkout and release scripts instead come from the tested `main` merge SHA.
+Consequently, YAML and scripts can come from different commits when `develop` has
+advanced beyond `main`. Keep workflow changes compatible with the scripts shipped
+on `main`, particularly for hotfixes; land any prerequisite script changes on the
+hotfix branch before merging it. See GitHub's [event reference](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#workflow_run)
+and [reusable-workflow reference](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#jobsjob_iduses).
+
 Configure branch rules for `develop` and `main` to require PRs, passing CI and the
 CodeQL/security checks described in [Testing and release](testing-and-release.md),
 and block force pushes. Allow merge commits for releases. Any tag rules must allow
@@ -226,7 +243,14 @@ For an urgent fix, branch `hotfix/<description>` from updated `origin/main`.
 Implement and test the focused correction, assess its actual compatibility impact,
 then prepare on that branch with the same command. Open its PR directly into
 `main` and use a merge commit. The same CI and publication gates apply. Merge
-`main` back into `develop` afterward; reconcile any pending release plan.
+`main` back into `develop` afterward. If a release plan was already pending, preserve
+its notes while resolving merge conflicts, update the compatibility rationale and
+commit the merged candidate on a `chore/release-*` branch. Rerun
+`pnpm release:prepare <bump> /tmp/funes-release.md`: it accepts a baseline that has
+advanced along the existing release history and recalculates the version and
+comparison link from the hotfix tag. For example, a pending `1.0.1` patch becomes
+`1.0.2` after hotfix `v1.0.1`, while a pending `2.0.0` major remains `2.0.0` but
+compares against `v1.0.1`. Do not hand-edit the plan or fingerprint.
 
 Deployment remains separately triggered. Follow [Deployment and operations](deployment-and-operations.md):
 verify a database backup, review the release's migration/rollback instructions,
