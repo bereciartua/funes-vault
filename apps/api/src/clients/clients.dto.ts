@@ -14,8 +14,8 @@ const trustLevels = Object.values(ClientTrustLevel);
 const retentionLevels = Object.values(ClientRetention);
 
 export class ClientPolicySummaryDto {
-  @ApiPropertyOptional({ type: String, nullable: true })
-  expiresAt?: string | null;
+  @ApiProperty({ type: String, nullable: true })
+  expiresAt!: string | null;
 
   @ApiProperty({ enum: Object.values(MemorySensitivity) })
   maxSensitivity!: MemorySensitivity;

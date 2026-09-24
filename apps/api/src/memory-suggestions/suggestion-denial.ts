@@ -1,4 +1,9 @@
-import { AuditActorType, AuditEventType, type Prisma } from "@funes-vault/db";
+import {
+  AuditActorType,
+  AuditEventType,
+  PolicyOperation,
+  type Prisma
+} from "@funes-vault/db";
 import { appPermissionsLabel } from "@funes-vault/shared";
 
 import type { AuditTrailService } from "../audit-trail/audit-trail.service.js";
@@ -27,7 +32,7 @@ export function recordSuggestionDenial(
       policyLabel: appPermissionsLabel(input.policy.client?.name),
       reason: input.policy.reason,
       decision: "DENY",
-      operation: "SUGGEST"
+      operation: PolicyOperation.SUGGEST
     }
   });
 }

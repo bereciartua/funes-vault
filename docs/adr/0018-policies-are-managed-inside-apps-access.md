@@ -4,7 +4,7 @@ Date: 2026-07-03
 
 Status: superseded
 
-Superseded by: [0044](0044-app-permissions-and-stated-purpose.md)
+Superseded by: [0044](0044-app-permissions-and-stated-purpose.md).
 
 ## Context and problem
 

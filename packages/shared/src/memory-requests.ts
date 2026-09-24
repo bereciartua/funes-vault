@@ -1,11 +1,13 @@
 import { z } from "zod";
 
-import { statedPurposeSchema } from "./common.js";
-import { deniedMemorySchema } from "./common.js";
-import { paginationSchema } from "./common.js";
-import { memoryRequestReasonSchema } from "./enums.js";
+import {
+  deniedMemorySchema,
+  paginationSchema,
+  statedPurposeSchema
+} from "./common.js";
 import {
   clientRetentionSchema,
+  memoryRequestReasonSchema,
   memoryRequestStatusSchema,
   memorySensitivitySchema
 } from "./enums.js";
@@ -108,6 +110,7 @@ export const memoryRequestReviewsResponseSchema = z.object({
 });
 
 export const memoryRequestPreviewSchema = z.object({
+  approvalExpired: z.boolean().optional(),
   request: memoryRequestReviewSummarySchema,
   revision: z.string(),
   items: z.array(memoryBundleItemSchema),

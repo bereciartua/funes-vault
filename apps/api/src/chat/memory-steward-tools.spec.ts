@@ -58,15 +58,6 @@ function createContext(overrides: Record<string, unknown> = {}) {
           ],
           denied: [],
           auditEventId: "audit_1"
-        }),
-        suggestMemory: vi.fn().mockResolvedValue({
-          suggestionId: "suggestion_1",
-          memoryId: null,
-          status: "QUEUED_FOR_REVIEW",
-          policyId: "policy_1",
-          auditEventId: "audit_2",
-          decision: "NEEDS_CONFIRMATION",
-          denied: []
         })
       },
       state: createStewardToolRunState(),
@@ -172,7 +163,6 @@ describe("privacy: memory steward tool module", () => {
         "call_3"
       )
     ).rejects.toThrow();
-    expect(context.chatMemoryTools.suggestMemory).not.toHaveBeenCalled();
   });
   it("returns pending for tool events arriving before the transcript", async () => {
     const { context } = createContext();

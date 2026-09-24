@@ -6,7 +6,6 @@ import { mockPrisma } from "../../test/mocks/prisma.js";
 import { apiEnvSchema } from "../config.js";
 import { SuggestionIntakeService } from "../memory-suggestions/suggestion-intake.service.js";
 import { SuggestionWriterService } from "../memory-suggestions/suggestion-writer.service.js";
-import { PolicyEvaluationService } from "../policies/policy-evaluation.service.js";
 import { CandidateApplier } from "./candidate-applier.js";
 import type { Candidate } from "./contracts.js";
 import { resolveProcessingConfiguration } from "./memory-processing-config.service.js";
@@ -35,15 +34,11 @@ async function setup() {
     suggestionId: "suggestion",
     memoryId: null
   });
-  const evaluateForClient = vi.fn().mockResolvedValue({ decision: "ALLOW" });
+  const prepareSuggestion = vi
+    .fn()
+    .mockResolvedValue({ decision: "ALLOW", apply: createSuggestion });
   const service = await createService(CandidateApplier, [
-    {
-      provide: PolicyEvaluationService,
-      useValue: {
-        evaluateForClient
-      }
-    },
-    { provide: SuggestionIntakeService, useValue: { createSuggestion } },
+    { provide: SuggestionIntakeService, useValue: { prepareSuggestion } },
     {
       provide: SuggestionWriterService,
       useValue: { enqueueEmbeddingGeneration: vi.fn() }
@@ -53,7 +48,7 @@ async function setup() {
 
   return {
     prisma,
-    evaluateForClient,
+    prepareSuggestion,
     createSuggestion,
     apply: (value: Candidate, channel: "chat" | "voice" = "chat") =>
       service.applyCandidate(
@@ -70,9 +65,10 @@ async function setup() {
 }
 describe("candidate suggestion boundary", () => {
   it("normalizes provider text before suggestion intake", async () => {
-    const { apply, createSuggestion } = await setup();
-    await apply(candidate);
-    expect(createSuggestion).toHaveBeenCalledWith(
+    const { apply, prepareSuggestion } = await setup();
+    const outcome = await apply(candidate);
+    expect(outcome.categoryKeys).toEqual(["preferences"]);
+    expect(prepareSuggestion).toHaveBeenCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({
           title: "Prefers short answers",
@@ -93,6 +89,7 @@ describe("candidate suggestion boundary", () => {
     "rejects malformed provider output before writing: %j",
     async (invalid) => {
       const { apply, createSuggestion, prisma } = await setup();
+      prisma.memory.findFirst.mockResolvedValue({ id: "existing" });
       await expect(apply({ ...candidate, ...invalid })).rejects.toBeInstanceOf(
         BadRequestException
       );
@@ -101,22 +98,22 @@ describe("candidate suggestion boundary", () => {
     }
   );
   it("checks normalized categories before deduplication", async () => {
-    const { apply, evaluateForClient, prisma, createSuggestion } =
+    const { apply, prepareSuggestion, prisma, createSuggestion } =
       await setup();
     prisma.memory.findFirst.mockResolvedValue({ id: "existing" });
     const outcome = await apply(candidate);
-    expect(
-      evaluateForClient.mock.calls[0]?.[1].candidateMemories[0].categories
-    ).toEqual([{ key: "preferences" }]);
+    expect(prepareSuggestion.mock.calls[0]?.[0].body.categoryKeys).toEqual([
+      "preferences"
+    ]);
     expect(outcome.status).toBe("deduplicated");
     expect(createSuggestion).not.toHaveBeenCalled();
   });
   it("records removed permission denial without looking up duplicate memories", async () => {
-    const { apply, evaluateForClient, prisma, createSuggestion } =
+    const { apply, prepareSuggestion, prisma, createSuggestion } =
       await setup();
-    evaluateForClient.mockResolvedValue({
+    prepareSuggestion.mockResolvedValue({
       decision: "DENY",
-      reason: "no_client_policy"
+      apply: createSuggestion
     });
     createSuggestion.mockResolvedValue({
       status: "DENIED",
@@ -133,9 +130,9 @@ describe("candidate suggestion boundary", () => {
     expect(prisma.memoryCandidateApplication.create).toHaveBeenCalled();
   });
   it("lets the voice app’s permissions determine WRITE in policy mode", async () => {
-    const { apply, createSuggestion } = await setup();
+    const { apply, prepareSuggestion } = await setup();
     await apply(candidate, "voice");
-    expect(createSuggestion).toHaveBeenCalledWith(
+    expect(prepareSuggestion).toHaveBeenCalledWith(
       expect.objectContaining({ reviewOnly: false })
     );
   });

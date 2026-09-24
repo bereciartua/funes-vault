@@ -58,7 +58,7 @@ An external client requests context through `POST /v1/memory-requests`:
 
 ```json
 {
-  "purpose": "Help review the user’s code",
+  "purpose": "Plan the next garden-planner feature",
   "task": "Help me plan the next accessible garden-planner feature",
   "requestedCategories": ["communication_style", "project_context"],
   "retention": "NO_STORAGE",
@@ -68,7 +68,7 @@ An external client requests context through `POST /v1/memory-requests`:
 ```
 
 The server authenticates the client, checks app authority before retrieval, then evaluates eligible candidates.
-The response includes `requestId`, `status`, `items`, `denied`, token accounting,
+The response includes `requestId`, `status`, `reason`, `items`, `denied`, token accounting,
 instructions and the relevant audit reference. A transport success does not imply
 permission: inspect the response status. `NEEDS_USER_APPROVAL` contains no
 approved memory bodies yet. Declared retention informs the owner's decision; the
@@ -201,6 +201,6 @@ Each client has at most one policy. Creating a second returns 409, “This app a
 
 Read and suggestion responses include nullable `reason`: `unknown_or_blocked_client`, `no_client_policy`, `policy_expired`, `operation_not_allowed`, `no_matching_memories`, `no_allowed_memories`, `confirmation_required`, or `policy_changed`. Client-level denials contain no memory identifiers. Per-memory denial reasons retain their category, sensitivity, status and expiry distinctions.
 
-OAuth `memory.read` gates requests and `memory.suggest` gates suggestions and captures. WRITE has no scope; an owner-granted WRITE permission allows eligible proposals to apply immediately. Capture and voice remain review-only. Caller `sourceMetadata` is nested under `caller` and cannot dispatch actions.
+OAuth `memory.read` gates requests and `memory.suggest` gates suggestions and captures. WRITE has no scope; an owner-granted WRITE permission allows eligible proposals to apply immediately. Capture remains review-only. Voice queues by default because its permissions omit WRITE; owners may grant WRITE to allow immediate application within the other permission limits. Caller `sourceMetadata` is nested under `caller` and cannot dispatch actions.
 
 Exports use `funes-vault.export.v2`. Import rejects v1, duplicate policies for a client, and policies whose client is absent from the export.

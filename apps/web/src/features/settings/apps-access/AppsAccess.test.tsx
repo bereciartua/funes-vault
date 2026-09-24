@@ -161,6 +161,7 @@ it("renders list policy summaries without requesting policies for each row", asy
       ...approvedClient,
       hasPolicy: true,
       policySummary: {
+        expiresAt: null,
         maxSensitivity: "LOW",
         allowedCategoryKeys: ["work"],
         requiresConfirmation: true

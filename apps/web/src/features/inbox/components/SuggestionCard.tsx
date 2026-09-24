@@ -127,22 +127,24 @@ export function SuggestionCard({
         </div>
         <p className="suggestion-source">{suggestionSource(suggestion)}</p>
         <p>{suggestion.body}</p>
-        <dl className="memory-facts">
-          <div>
-            <dt>Stated purpose</dt>
-            <dd>{suggestion.statedPurpose ?? "Not provided"}</dd>
-          </div>
-          <div>
-            <dt>App permissions</dt>
-            <dd>
-              {suggestion.policyId ? (
-                <Link href="/settings/clients">Permissions when proposed</Link>
-              ) : (
-                "Not provided"
-              )}
-            </dd>
-          </div>
-        </dl>
+        {suggestion.source.type === "CLIENT_SUGGESTION" ? (
+          <dl className="memory-facts">
+            <div>
+              <dt>Stated purpose</dt>
+              <dd>{suggestion.statedPurpose ?? "Not provided"}</dd>
+            </div>
+            <div>
+              <dt>App permissions</dt>
+              <dd>
+                {suggestion.policyId ? (
+                  <Link href="/settings/clients">Manage app permissions</Link>
+                ) : (
+                  "No current permissions"
+                )}
+              </dd>
+            </div>
+          </dl>
+        ) : null}
         {subjects.length > 0 ? <SubjectChips subjects={subjects} /> : null}
         {suggestion.source.metadata.caller &&
         typeof suggestion.source.metadata.caller === "object" &&

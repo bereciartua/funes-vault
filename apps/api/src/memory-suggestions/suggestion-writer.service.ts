@@ -47,7 +47,7 @@ export class SuggestionWriterService {
     policyVersion: string | null;
     policyLabel: string;
     serverMetadata?: Record<string, unknown>;
-    transaction?: Prisma.TransactionClient;
+    transaction: Prisma.TransactionClient;
   }) {
     const { suggestion, memory, auditEvent } = await this.inTransaction(
       input.transaction,

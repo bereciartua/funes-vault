@@ -1,11 +1,11 @@
-import type { MemoryRequestReason } from "./enums.js";
+import { clientTypeSchema, type MemoryRequestReason } from "./enums.js";
 export const webChatClientName = "Funes Vault Web Chat";
 export const voiceClientName = "Funes Vault Voice";
 export const webChatPurpose = "memory_chat";
 export const voicePurpose = "memory_voice";
 export function isFirstPartyClient(client: { name: string; type: string }) {
   return (
-    client.type === "WEB_APP" &&
+    client.type === clientTypeSchema.enum.WEB_APP &&
     [webChatClientName, voiceClientName].includes(client.name)
   );
 }
@@ -32,6 +32,6 @@ export const memoryRequestReasonLabels: Record<MemoryRequestReason, string> = {
   denied_category: "The memory belongs to a denied category.",
   category_not_allowed: "The memory is outside this app’s allowed categories."
 };
-export function memoryRequestReasonLabel(reason: MemoryRequestReason | null) {
-  return reason ? memoryRequestReasonLabels[reason] : "Not evaluated";
+export function memoryRequestReasonLabel(reason: MemoryRequestReason) {
+  return memoryRequestReasonLabels[reason];
 }

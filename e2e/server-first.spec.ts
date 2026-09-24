@@ -58,7 +58,6 @@ test("reviews a server disclosure, excludes a memory, and consumes only the appr
   const policy = await page.request.post(`${api}/v1/policies`, {
     data: {
       clientId: client.client.id,
-
       operations: ["READ"],
       maxSensitivity: "LOW",
       requiresConfirmation: true,

@@ -75,14 +75,16 @@ test("sets up, edits and removes one app permission set, then restores first-par
   const chat = clients.find(
     (item: { name: string }) => item.name === "Funes Vault Web Chat"
   );
+  expect(chat).toBeTruthy();
   const policies = (
     await (
       await page.request.get(`${api}/v1/policies?clientId=${chat.id}`)
     ).json()
   ).items;
-  if (policies[0]) {
-    await page.request.delete(`${api}/v1/policies/${policies[0].id}`);
-  }
+  expect(policies).toHaveLength(1);
+  expect(
+    (await page.request.delete(`${api}/v1/policies/${policies[0].id}`)).ok()
+  ).toBe(true);
   await page.reload();
   await page
     .locator("article.client-feed-row")

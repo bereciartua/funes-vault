@@ -64,7 +64,7 @@ it.each([
     expect(policySummary(policy)).toContain("every category");
   }
 );
-it("hides Restore for connected apps and matches the visible remove button name", async () => {
+it("matches the visible remove button name", async () => {
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => json({ items: [policy], pagination }))
@@ -81,6 +81,25 @@ it("hides Restore for connected apps and matches the visible remove button name"
   );
   const remove = screen.getByRole("button", { name: "Remove permissions" });
   expect(remove.textContent).toBe("Remove permissions");
+  expect(
+    screen.queryByRole("button", { name: "Restore default permissions" })
+  ).toBeNull();
+});
+it("hides Restore for a connected app with no permissions", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      json({ items: [], pagination: { ...pagination, total: 0 } })
+    )
+  );
+  render(
+    <ApiProvider apiUrl="http://vault.test">
+      <PolicyList client={app} categories={[]} />
+    </ApiProvider>
+  );
+  expect(
+    await screen.findByRole("button", { name: "Set up permissions" })
+  ).toBeTruthy();
   expect(
     screen.queryByRole("button", { name: "Restore default permissions" })
   ).toBeNull();

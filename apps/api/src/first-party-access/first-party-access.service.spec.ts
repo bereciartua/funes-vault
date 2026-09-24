@@ -63,6 +63,15 @@ describe("privacy: FirstPartyAccessService", () => {
       clientId: "client_1",
       policyId: "policy_1"
     });
+    expect(tx.client.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: "user_1",
+          name: webChatClientName,
+          type: ClientType.WEB_APP
+        }
+      })
+    );
     expect(tx.client.create).toHaveBeenCalledWith({
       data: {
         userId: "user_1",

@@ -260,5 +260,12 @@ describe("privacy: OAuth app permission boundaries", () => {
     const blocked = await page().expect(403);
     expect(blocked.text).toContain("Unblock it in Apps &amp; access");
     expect(blocked.text).not.toContain("start the connection again");
+    await api()
+      .post("/oauth/consent/decision")
+      .set("Cookie", cookie)
+      .type("form")
+      .send({ request: pending.id, nonce: "nonce", decision: "approve" })
+      .expect(403);
+    expect(await prisma.policy.count({ where: { clientId } })).toBe(0);
   });
 });

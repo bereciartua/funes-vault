@@ -47,6 +47,11 @@ describe("privacy: MemorySuggestionsService", () => {
     });
 
     expect(response.status).toBe(MemorySuggestionStatus.QUEUED_FOR_REVIEW);
+    expect(
+      policyEvaluationService.evaluateForClient.mock.calls.map(
+        (call) => call[1].operation
+      )
+    ).toEqual(["WRITE", "SUGGEST"]);
     expect(policyEvaluationService.evaluateForClient).toHaveBeenCalledWith(
       "user_1",
       expect.objectContaining({
@@ -178,6 +183,7 @@ describe("privacy: MemorySuggestionsService", () => {
     });
 
     expect(response.status).toBe(MemorySuggestionStatus.APPLIED);
+    expect(policyEvaluationService.evaluateForClient).toHaveBeenCalledTimes(1);
     expect(response.suggestionId).toBe("suggestion_1");
     expect(response.memoryId).toBe("memory_1");
     expect(prismaClient.memorySuggestion.create).toHaveBeenCalledWith({

@@ -48,9 +48,7 @@ describe("mcp package", () => {
         estimatedTokens: 0,
         items: [],
         instructions: [],
-        denied: [
-          { memoryId: "candidate", reason: "no_active_policy" as never }
-        ],
+        denied: [{ memoryId: "candidate", reason: "category_not_allowed" }],
         auditEventId: "audit"
       };
     };
@@ -65,11 +63,11 @@ describe("mcp package", () => {
         policyId: null,
         reason: "operation_not_allowed",
         decision: "DENY",
-        denied: [{ memoryId: "proposed", reason: "no_active_policy" as never }],
+        denied: [{ memoryId: "proposed", reason: "category_not_allowed" }],
         auditEventId: "audit"
       };
     };
-    // Reproduce the old retry trigger, including a configured fallback purpose.
+    // A configured legacy fallback must never rewrite purpose on valid denials.
     // Extra legacy options are ignored by the new server.
     const legacyOptions = {
       appUrl: "https://vault.example.test",
@@ -100,14 +98,14 @@ describe("mcp package", () => {
       expect(
         tools.find((t) => t.name === "request_memory")?.inputSchema.required
       ).toContain("task");
-      await client.callTool({
+      const readResult = await client.callTool({
         name: "request_memory",
         arguments: {
           task: "Favorite color",
           purpose: "Answer the color question"
         }
       });
-      await client.callTool({
+      const suggestionResult = await client.callTool({
         name: "suggest_memory",
         arguments: {
           title: "Color",
@@ -115,6 +113,27 @@ describe("mcp package", () => {
           purpose: "Remember a preference"
         }
       });
+      expect(readResult.isError).toBeFalsy();
+      expect(readResult.structuredContent).toMatchObject({
+        status: "DENIED",
+        reason: "no_client_policy"
+      });
+      expect(suggestionResult.isError).toBeFalsy();
+      expect(suggestionResult.structuredContent).toMatchObject({
+        status: "DENIED",
+        reason: "operation_not_allowed"
+      });
+      for (const name of [
+        "get_memory_request",
+        "open_consent_review",
+        "list_memory_categories"
+      ]) {
+        const invalid = await client.callTool({
+          name,
+          arguments: { requestId: "request", unknown: true }
+        });
+        expect(invalid.isError).toBe(true);
+      }
       expect(suggestionCalls).toHaveLength(1);
       expect(calls).toHaveLength(1);
       expect(calls[0]).toMatchObject({ purpose: "Answer the color question" });

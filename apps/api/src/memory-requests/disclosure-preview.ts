@@ -11,6 +11,7 @@ import type { BundleCompilerService } from "./bundle-compiler.service.js";
 import { disclosureContext } from "./disclosure-context.js";
 import {
   clientRevision,
+  snapshotIsCurrent,
   snapshotSchema,
   summary
 } from "./disclosure-snapshot.js";
@@ -25,8 +26,7 @@ export async function previewDisclosure(input: {
   invalidate: (
     tx: Prisma.TransactionClient,
     request: MemoryRequest,
-    version?: string | null,
-    clientName?: string
+    context: Awaited<ReturnType<typeof disclosureContext>>
   ) => Promise<MemoryRequest>;
 }) {
   const { tx, candidates, evaluator, compiler, invalidate } = input;
@@ -44,12 +44,7 @@ export async function previewDisclosure(input: {
     request.policyId &&
     (!context.bound || request.policyVersion !== context.policyVersion)
   ) {
-    request = await invalidate(
-      tx,
-      request,
-      context.bound ? context.policyVersion : undefined,
-      context.client.name
-    );
+    request = await invalidate(tx, request, context);
   }
   const byId = new Map(context.memories.map((m) => [m.id, m]));
   const eligible = candidates.flatMap((c) => {
@@ -75,18 +70,7 @@ export async function previewDisclosure(input: {
   };
   if (isApproved && previous.success) {
     // A preview cannot revoke an approval when retrieval availability or ranking changes.
-    const unchanged =
-      context.bound &&
-      context.policyVersion === previous.data.policyVersion &&
-      clientRevision(context.client) === previous.data.clientVersion &&
-      request.approvalExpiresAt &&
-      request.approvalExpiresAt > new Date() &&
-      previous.data.items.every(
-        (item) =>
-          context.allowed.has(item.memoryId) &&
-          byId.get(item.memoryId)?.updatedAt.toISOString() ===
-            previous.data.versions[item.memoryId]
-      );
+    const unchanged = snapshotIsCurrent(request, previous.data, context);
     snapshot.items = unchanged
       ? previous.data.items.map((item) => ({
           ...item,
@@ -101,6 +85,10 @@ export async function previewDisclosure(input: {
     snapshot,
     preview: {
       request: summary(request, context.client.name),
+      approvalExpired: Boolean(
+        isApproved &&
+        (!request.approvalExpiresAt || request.approvalExpiresAt <= new Date())
+      ),
       revision: createHash("sha256")
         .update(JSON.stringify({ requestId: request.id, ...snapshot }))
         .digest("hex"),

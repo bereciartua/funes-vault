@@ -167,6 +167,18 @@ describe("OverviewService", () => {
     expect(overview.recentAuditEvents).toEqual([{ id: "audit_1" }]);
   });
 
+  it.each(["WEB_APP", "MCP_CLIENT"])(
+    "identifies first-party permissions by name and type: %s",
+    async (type) => {
+      prismaClient.policy.findMany.mockResolvedValue([
+        createPolicy({ client: { name: "Funes Vault Web Chat", type } })
+      ]);
+      expect(
+        (await service.getOverview("user_1")).broadestPolicy?.firstParty
+      ).toBe(type === "WEB_APP");
+    }
+  );
+
   it("zero-fills UTC capture days and excludes rows outside the window", () => {
     const series = fillDailySeries(
       [

@@ -265,7 +265,7 @@ function DisclosurePreview() {
         <i aria-hidden="true" />
         <p>
           <strong>Shared</strong> — coding preferences and project context, 4
-          memories within their permissions.
+          memories allowed by app permissions.
         </p>
       </div>
       <div className="disclosure-decision" data-tone="warn">

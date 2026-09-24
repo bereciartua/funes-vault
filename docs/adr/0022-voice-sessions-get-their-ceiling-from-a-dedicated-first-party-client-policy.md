@@ -14,11 +14,11 @@ The voice privacy review asked whether voice needs its own sensitivity ceiling o
 
 ## Decision outcome
 
-Realtime voice sessions run their memory tools through a dedicated first-party client ("Funes Vault Voice", audit reason `memory_voice`) instead of the web chat client. Its default policy allows READ and SUGGEST only — never direct WRITE, so every memory write from voice queues for review — and caps disclosure at `VOICE_MAX_SENSITIVITY` (default `SENSITIVE`, vs web chat's `SECRET`). The ceiling is therefore enforced by the existing policy engine, is visible and adjustable in Apps & access like any other policy, and every voice tool call is audit-attributed to the voice client. The env var only sets the default at policy creation.
+Realtime voice sessions run their memory tools through a dedicated first-party client ("Funes Vault Voice", audit reason `memory_voice`) instead of the web chat client. Its default policy allows READ and SUGGEST only, so memory writes queue for review by default; the owner may explicitly grant WRITE for direct application. It caps disclosure at `VOICE_MAX_SENSITIVITY` (default `SENSITIVE`, vs web chat's `SECRET`). The ceiling is therefore enforced by the existing policy engine, is visible and adjustable in Apps & access like any other policy, and every voice tool call is audit-attributed to the voice client. The env var only sets the default at policy creation.
 
 ## Consequences
 
-The voice client and policy appear in Apps & access on first voice use; users can tighten or loosen the voice ceiling without redeploying; `request_memory` in voice sessions is filtered to the policy's sensitivity cap; memory writes from voice always land in the suggestions inbox.
+The voice client and policy appear in Apps & access on first voice use; users can tighten or loosen the voice ceiling without redeploying; `request_memory` in voice sessions is filtered to the policy's sensitivity cap; memory writes from voice land in the suggestions inbox by default.
 
 ## Amendment — App permissions
 

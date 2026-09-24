@@ -3,12 +3,13 @@ import {
   MemoryStatus,
   MemorySuggestionStatus
 } from "@funes-vault/db";
-import { voicePurpose, webChatPurpose } from "@funes-vault/shared";
 import {
   type ChatCitation,
   listMemoriesQuerySchema,
   type MemoryRequestReason,
-  updateMemoryRequestSchema
+  updateMemoryRequestSchema,
+  voicePurpose,
+  webChatPurpose
 } from "@funes-vault/shared";
 import { Injectable } from "@nestjs/common";
 

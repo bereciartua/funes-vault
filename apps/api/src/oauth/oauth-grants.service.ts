@@ -4,9 +4,7 @@ import {
   ClientRetention,
   ClientTrustLevel,
   ClientType,
-  MemorySensitivity,
   OAuthRegistrationStatus,
-  PolicyOperation,
   type Prisma
 } from "@funes-vault/db";
 import { appPermissionsLabel } from "@funes-vault/shared";
@@ -18,8 +16,10 @@ import {
 } from "@nestjs/common";
 
 import { AuditTrailService } from "../audit-trail/audit-trail.service.js";
+import { isPrismaError } from "../common/prisma-errors.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import { oauthAuthorizationCodeTtlMs } from "./oauth.config.js";
+import type { ConsentContext } from "./oauth-consent.types.js";
 import {
   createOAuthAuthorizationCode,
   credentialMatchesHash,
@@ -32,25 +32,7 @@ import {
   scopesToOperations
 } from "./oauth-permissions.js";
 
-export type ConsentContext = {
-  requestId: string;
-  clientName: string;
-  clientUri: string | null;
-  logoUri: string | null;
-  redirectHost: string;
-  redirectOrigin: string;
-  scopes: string[];
-  registrationStatus: OAuthRegistrationStatus;
-  maxSensitivity: MemorySensitivity;
-  operations: PolicyOperation[];
-  createsPermissions: boolean;
-  recreating: boolean;
-  addedOperations: PolicyOperation[];
-  allowedCategories: string[];
-  deniedCategories: string[];
-  requiresConfirmation: boolean;
-  expiresAt: string | null;
-};
+export type { ConsentContext } from "./oauth-consent.types.js";
 
 type ConsentDecisionInput = {
   userId: string;
@@ -97,11 +79,13 @@ export class OAuthGrantsService {
       createsPermissions: !policy,
       allowedCategories:
         policy?.allowedCategories.map((c) => c.key) ??
-        (
-          await this.prisma.client.memoryCategory.findMany({
-            select: { key: true }
-          })
-        ).map((category) => category.key),
+        (userId
+          ? (
+              await this.prisma.client.memoryCategory.findMany({
+                select: { key: true }
+              })
+            ).map((category) => category.key)
+          : []),
       deniedCategories: policy?.deniedCategories.map((c) => c.key) ?? [],
       requiresConfirmation: policy?.requiresConfirmation ?? false,
       expiresAt: policy?.expiresAt?.toISOString() ?? null,
@@ -113,60 +97,70 @@ export class OAuthGrantsService {
     const request = await this.loadPendingRequest(input.requestId, input.nonce);
     const code = createOAuthAuthorizationCode();
 
-    await this.prisma.client.$transaction(async (tx) => {
-      const client = await this.ensureGrantClient(tx, {
-        userId: input.userId,
-        registrationId: request.registrationId,
-        registrationName: request.registration.name,
-        registrationClientId: request.registration.clientId
-      });
-
-      await this.ensureGrantPolicy(tx, {
-        userId: input.userId,
-        clientId: client.id,
-        scopes: request.scopes
-      });
-
-      if (request.registration.status === OAuthRegistrationStatus.PENDING) {
-        await tx.oAuthClientRegistration.update({
-          where: { id: request.registrationId },
-          data: { status: OAuthRegistrationStatus.APPROVED }
-        });
-      }
-
-      await tx.oAuthAuthorizationCode.create({
-        data: {
+    await this.prisma.client
+      .$transaction(async (tx) => {
+        const client = await this.ensureGrantClient(tx, {
+          userId: input.userId,
           registrationId: request.registrationId,
+          registrationName: request.registration.name,
+          registrationClientId: request.registration.clientId
+        });
+
+        await this.ensureGrantPolicy(tx, {
           userId: input.userId,
           clientId: client.id,
-          codeHash: hashOAuthCredential(code),
-          redirectUri: request.redirectUri,
-          codeChallenge: request.codeChallenge,
-          scopes: request.scopes,
-          resource: request.resource,
-          expiresAt: new Date(Date.now() + oauthAuthorizationCodeTtlMs())
-        }
-      });
+          clientName: client.name,
+          scopes: request.scopes
+        });
 
-      await tx.oAuthAuthorizationRequest.update({
-        where: { id: request.id },
-        data: { decidedAt: new Date() }
-      });
-
-      await this.auditService.createAuditEvent(tx, {
-        userId: input.userId,
-        clientId: client.id,
-        type: AuditEventType.OAUTH_GRANT_APPROVED,
-        actorType: AuditActorType.USER,
-        actorId: input.userId,
-        metadata: {
-          oauthClientId: request.registration.clientId,
-          clientName: request.registration.name,
-          scopes: request.scopes,
-          redirectHost: new URL(request.redirectUri).host
+        if (request.registration.status === OAuthRegistrationStatus.PENDING) {
+          await tx.oAuthClientRegistration.update({
+            where: { id: request.registrationId },
+            data: { status: OAuthRegistrationStatus.APPROVED }
+          });
         }
+
+        await tx.oAuthAuthorizationCode.create({
+          data: {
+            registrationId: request.registrationId,
+            userId: input.userId,
+            clientId: client.id,
+            codeHash: hashOAuthCredential(code),
+            redirectUri: request.redirectUri,
+            codeChallenge: request.codeChallenge,
+            scopes: request.scopes,
+            resource: request.resource,
+            expiresAt: new Date(Date.now() + oauthAuthorizationCodeTtlMs())
+          }
+        });
+
+        await tx.oAuthAuthorizationRequest.update({
+          where: { id: request.id },
+          data: { decidedAt: new Date() }
+        });
+
+        await this.auditService.createAuditEvent(tx, {
+          userId: input.userId,
+          clientId: client.id,
+          type: AuditEventType.OAUTH_GRANT_APPROVED,
+          actorType: AuditActorType.USER,
+          actorId: input.userId,
+          metadata: {
+            oauthClientId: request.registration.clientId,
+            clientName: request.registration.name,
+            scopes: request.scopes,
+            redirectHost: new URL(request.redirectUri).host
+          }
+        });
+      })
+      .catch((error) => {
+        if (isPrismaError(error, "P2002")) {
+          throw new ConflictException(
+            "This app’s permissions changed during approval. Start the connection again."
+          );
+        }
+        throw error;
       });
-    });
 
     const redirect = new URL(request.redirectUri);
     redirect.searchParams.set("code", code);
@@ -310,7 +304,12 @@ export class OAuthGrantsService {
 
   private async ensureGrantPolicy(
     tx: Prisma.TransactionClient,
-    input: { userId: string; clientId: string; scopes: string[] }
+    input: {
+      userId: string;
+      clientId: string;
+      clientName: string;
+      scopes: string[];
+    }
   ) {
     const operations = scopesToOperations(input.scopes);
     const existing = await tx.policy.findUnique({
@@ -329,9 +328,6 @@ export class OAuthGrantsService {
           where: { id: existing.id },
           data: { operations: merged }
         });
-        const client = await tx.client.findFirst({
-          where: { id: input.clientId, userId: input.userId }
-        });
         await this.auditService.createAuditEvent(tx, {
           userId: input.userId,
           clientId: input.clientId,
@@ -340,7 +336,7 @@ export class OAuthGrantsService {
           actorId: input.userId,
           metadata: {
             policyId: existing.id,
-            policyLabel: appPermissionsLabel(client?.name),
+            policyLabel: appPermissionsLabel(input.clientName),
             changedFields: ["operations"],
             previousOperations: existing.operations,
             operations: merged,
@@ -384,6 +380,7 @@ export class OAuthGrantsService {
         operations,
         requiresConfirmation: false,
         allowedCategoryCount: categories.length,
+        policyLabel: appPermissionsLabel(input.clientName),
         oauthGrant: true
       }
     });

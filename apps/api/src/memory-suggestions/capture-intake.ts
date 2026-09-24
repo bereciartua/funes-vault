@@ -8,11 +8,11 @@ import {
   ReviewState,
   SourceType
 } from "@funes-vault/db";
-import type {
-  CreateCaptureRequest,
-  CreateMemorySuggestionRequest
+import {
+  appPermissionsLabel,
+  type CreateCaptureRequest,
+  type CreateMemorySuggestionRequest
 } from "@funes-vault/shared";
-import { appPermissionsLabel } from "@funes-vault/shared";
 
 import type { AuditTrailService } from "../audit-trail/audit-trail.service.js";
 import { assertNoSecretLikeContent } from "../common/secret-like-content.js";
@@ -136,7 +136,9 @@ export async function captureNote(
     serverMetadata: request.sourceMetadata,
     request: {
       ...request,
-      sourceMetadata: { capturedAt: capture.capturedAt ?? null }
+      sourceMetadata: capture.capturedAt
+        ? { capturedAt: capture.capturedAt }
+        : {}
     }
   });
   const auditEvent = await auditTrail.createAuditEvent(tx, {
@@ -153,7 +155,7 @@ export async function captureNote(
       reason: policy?.reason ?? null,
       channel: quickCapturePurpose,
       captureId: capture.captureId ?? null,
-      caller: { capturedAt: capture.capturedAt ?? null },
+      caller: capture.capturedAt ? { capturedAt: capture.capturedAt } : {},
       clientId: input.clientId ?? null,
       sensitivity: quickCaptureSensitivity
     },
@@ -161,7 +163,7 @@ export async function captureNote(
       suggestion,
       clientId: input.clientId ?? null,
       policyId: policy?.policyId ?? null,
-      policyLabel: appPermissionsLabel(policy?.client?.name ?? "App")
+      policyLabel: appPermissionsLabel(policy?.client?.name)
     })
   });
 

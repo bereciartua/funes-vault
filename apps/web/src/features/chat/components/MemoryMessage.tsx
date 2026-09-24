@@ -1,6 +1,7 @@
 "use client";
 import { type FunesDataParts } from "@funes-vault/shared";
 import { ChevronDown, Mic } from "lucide-react";
+import Link from "next/link";
 
 import { DotBadge } from "../../../components/ui/dot-badge";
 import { formatChatTimestamp } from "../../../lib/dates";
@@ -73,12 +74,16 @@ export function MemoryMessage({
         ) : null
       )}
       <MemoryProcessingOutcome initial={message.metadata?.processing} />
-      {toolTraces.some(
+      {!message.metadata?.processing?.outcomes?.some(
+        (outcome) =>
+          outcome.status === "DENIED" && outcome.reason === "no_client_policy"
+      ) &&
+      toolTraces.some(
         (trace) => trace.metadata?.reason === "no_client_policy"
       ) ? (
         <p>
           This app has no permissions.{" "}
-          <a href="/settings/clients">Manage App permissions</a>
+          <Link href="/settings/clients">Manage App permissions</Link>
         </p>
       ) : null}
       {citations.length > 0 ? (

@@ -43,6 +43,13 @@ export function MemoryProcessingOutcome({
     (o) => o.status === "QUEUED_FOR_REVIEW"
   ).length;
   const denied = outcomes.filter((o) => o.status === "DENIED");
+  const denialReasons = [
+    ...new Set(
+      denied
+        .map((outcome) => memoryRequestReasonSchema.safeParse(outcome.reason))
+        .map((parsed) => (parsed.success ? parsed.data : null))
+    )
+  ];
   const pending = outcomes.filter((o) =>
     ["pending_reconciliation", "needs_clarification"].includes(o.status)
   ).length;
@@ -75,12 +82,10 @@ export function MemoryProcessingOutcome({
               ? "processing"
               : `${saved} saved, ${queued} queued${denied.length ? `, ${denied.length} denied` : ""}${pending ? `, ${pending} awaiting clarification` : ""}`}
       </p>
-      {denied.map((outcome) => (
-        <p key={outcome.candidateId}>
-          {memoryRequestReasonSchema.safeParse(outcome.reason).success
-            ? memoryRequestReasonLabel(
-                memoryRequestReasonSchema.parse(outcome.reason)
-              )
+      {denialReasons.map((reason) => (
+        <p key={reason ?? "unspecified"}>
+          {reason
+            ? memoryRequestReasonLabel(reason)
             : "The proposal was denied."}
         </p>
       ))}

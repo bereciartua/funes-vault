@@ -108,20 +108,31 @@ export type SuggestMemoryToolInput = z.infer<
   typeof suggestMemoryToolInputSchema
 >;
 
-export const openConsentReviewToolInputSchema = z.object({
-  requestId: z
-    .string()
-    .trim()
-    .min(1)
-    .optional()
-    .describe("Pending disclosure request to review."),
-  suggestionId: z
-    .string()
-    .trim()
-    .min(1)
-    .optional()
-    .describe("Pending memory suggestion to review.")
-});
+const getMemoryRequestToolInputSchema = z
+  .object({
+    requestId: z
+      .string()
+      .min(1)
+      .describe("Request id returned by request_memory.")
+  })
+  .strict();
+
+export const openConsentReviewToolInputSchema = z
+  .object({
+    requestId: z
+      .string()
+      .trim()
+      .min(1)
+      .optional()
+      .describe("Pending disclosure request to review."),
+    suggestionId: z
+      .string()
+      .trim()
+      .min(1)
+      .optional()
+      .describe("Pending memory suggestion to review.")
+  })
+  .strict();
 
 export type OpenConsentReviewToolInput = z.infer<
   typeof openConsentReviewToolInputSchema
@@ -158,18 +169,13 @@ export function createToolDefinitions(
         title: "Get Memory Request",
         description:
           "Check an existing request after user review. An approved bundle can be retrieved once within 15 minutes. Changes to memories or permissions require fresh approval. Do not repeatedly poll while awaiting the user.",
-        inputSchema: z.object({
-          requestId: z
-            .string()
-            .min(1)
-            .describe("Request id returned by request_memory.")
-        }),
+        inputSchema: getMemoryRequestToolInputSchema,
         outputSchema: memoryRequestBundleResponseSchema
       },
       handler: async (input: unknown) =>
         asToolResult(
           await api.getMemoryRequest(
-            z.object({ requestId: z.string().min(1) }).parse(input).requestId
+            getMemoryRequestToolInputSchema.parse(input).requestId
           )
         )
     },
@@ -195,6 +201,7 @@ export function createToolDefinitions(
         title: "List Memory Categories",
         description:
           "List memory category keys available for requests and suggestions.",
+        inputSchema: z.object({}).strict(),
         outputSchema: listCategoriesResponseSchema
       },
       handler: async () => {

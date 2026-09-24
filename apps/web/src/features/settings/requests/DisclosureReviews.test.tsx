@@ -180,6 +180,7 @@ it("shows an orphaned request as not evaluated, with separate facts", async () =
             ...request,
             statedPurpose: null,
             policyId: null,
+            policyVersion: null,
             reason: null
           }
         }
@@ -190,7 +191,9 @@ it("shows an orphaned request as not evaluated, with separate facts", async () =
     </ApiProvider>
   );
   expect(await screen.findByText("Not provided")).toBeTruthy();
-  expect(screen.getByText("Not evaluated")).toBeTruthy();
+  expect(screen.getByText("Reason").nextElementSibling?.textContent).toBe(
+    "Not evaluated"
+  );
   expect(screen.queryByText("Allowed")).toBeNull();
   for (const fact of container.querySelectorAll("dl.memory-facts > div")) {
     expect(fact.querySelectorAll("dt")).toHaveLength(1);

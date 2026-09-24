@@ -55,7 +55,7 @@ export function auditEventSummary(event: AuditEvent) {
     : memoryId
       ? `Memory ${shortId(memoryId)}`
       : policyId
-        ? `Policy ${shortId(policyId)}`
+        ? "App permissions"
         : clientId
           ? `Client ${shortId(clientId)}`
           : event.memoryRequestId
@@ -142,7 +142,7 @@ function auditEventDescription(
           ? "updated"
           : "deleted";
 
-    return `${actor} ${verb} a disclosure policy.`;
+    return `${actor} ${verb} app permissions.`;
   }
 
   const memoryVerb = memoryEventVerbs[event.type];

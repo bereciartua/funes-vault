@@ -39,7 +39,7 @@ export type PolicyEvaluationResult = {
   reason: MemoryRequestReason | null;
 };
 
-/** Single owner-scoped authority entry point. Never consumes caller purpose. */
+/** Owner-scoped authority gate; pure candidate filtering is safe only after this check. Never consumes caller purpose. */
 @Injectable()
 export class PolicyEvaluationService {
   constructor(private readonly prisma: PrismaService) {}

@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import type { Client, MemoryRequest } from "@funes-vault/db";
 import { memoryBundleItemSchema } from "@funes-vault/shared";
 import { z } from "zod";
+
+import type { disclosureContext } from "./disclosure-context.js";
 export const snapshotSchema = z.object({
   items: z.array(memoryBundleItemSchema),
   versions: z.record(z.string(), z.string()),
@@ -44,3 +46,33 @@ export function clientRevision(client: Client) {
 }
 
 export const disclosureApprovalTtlMs = 15 * 60_000;
+
+/** Both preview and consumption validate the exact granted versions. */
+export function snapshotIsCurrent(
+  request: MemoryRequest,
+  snapshot: z.infer<typeof snapshotSchema>,
+  context: Awaited<ReturnType<typeof disclosureContext>>
+) {
+  const versions = new Map(
+    context.memories.map((memory) => [
+      memory.id,
+      memory.updatedAt.toISOString()
+    ])
+  );
+
+  return Boolean(
+    request.approvalExpiresAt &&
+    request.approvalExpiresAt > new Date() &&
+    context.bound &&
+    request.policyId === snapshot.policyId &&
+    request.policyVersion === snapshot.policyVersion &&
+    context.policy?.id === snapshot.policyId &&
+    context.policyVersion === snapshot.policyVersion &&
+    clientRevision(context.client) === snapshot.clientVersion &&
+    snapshot.items.every(
+      (item) =>
+        context.allowed.has(item.memoryId) &&
+        versions.get(item.memoryId) === snapshot.versions[item.memoryId]
+    )
+  );
+}

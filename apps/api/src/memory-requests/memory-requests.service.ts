@@ -6,8 +6,8 @@ import {
   MemoryRequestStatus,
   PolicyOperation
 } from "@funes-vault/db";
-import { appPermissionsLabel } from "@funes-vault/shared";
 import {
+  appPermissionsLabel,
   type AuditTransport,
   type CreateMemoryBundleRequest
 } from "@funes-vault/shared";
@@ -128,7 +128,7 @@ export class MemoryRequestsService {
           type: AuditSubjectType.POLICY,
           id: policy.policyId,
           role: AuditSubjectRole.POLICY,
-          label: appPermissionsLabel(policy.client?.name ?? "App")
+          label: appPermissionsLabel(policy.client?.name)
         }
       ];
       const empty = {

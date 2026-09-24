@@ -139,11 +139,13 @@ export function PrivacyOverview({
                   ).label
                 }
               </p>
-              <p className="signal-sub">{policySummary(highestRiskPolicy)}</p>
+              <p className="signal-sub">
+                {policySummary(highestRiskPolicy, highestRiskPolicy.firstParty)}
+              </p>
             </>
           ) : (
             <p className="signal-sub">
-              No App permissions have been created yet.
+              No app permissions have been created yet.
             </p>
           )}
         </Link>
@@ -180,7 +182,7 @@ export function PrivacyOverview({
           </div>
           <p className="signal-sub">
             {providerNotice ??
-              "Chat uses your vault. Memories may be saved directly when your app permissions allows it."}
+              "Chat uses your vault. Memories may be saved directly when your app permissions allow it."}
           </p>
         </Link>
       </section>

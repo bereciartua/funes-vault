@@ -4,13 +4,14 @@ import {
   type Policy,
   type Prisma
 } from "@funes-vault/db";
-import { isFirstPartyClient, voiceClientName } from "@funes-vault/shared";
-import { appPermissionsLabel } from "@funes-vault/shared";
 import {
+  appPermissionsLabel,
   type CreatePolicyRequest,
+  isFirstPartyClient,
   type ListPoliciesQuery,
   listPoliciesQuerySchema,
-  type UpdatePolicyRequest
+  type UpdatePolicyRequest,
+  voiceClientName
 } from "@funes-vault/shared";
 import {
   BadRequestException,
@@ -24,6 +25,9 @@ import { buildPagination, paginationSkip } from "../common/pagination.js";
 import { isPrismaError } from "../common/prisma-errors.js";
 import { toIsoString } from "../common/serialization.js";
 import {
+  firstPartyCategories,
+  type FirstPartyDefinition,
+  firstPartyPolicyFacts,
   voiceDefinition,
   webChatDefinition
 } from "../first-party-access/first-party-access.service.js";
@@ -87,9 +91,7 @@ export class PoliciesService {
       {
         clientId,
         allowedCategoryKeys: (
-          await this.prisma.client.memoryCategory.findMany({
-            select: { key: true }
-          })
+          await firstPartyCategories(this.prisma.client)
         ).map((category) => category.key),
         deniedCategoryKeys: [],
         maxSensitivity: definition.maxSensitivity,
@@ -97,7 +99,7 @@ export class PoliciesService {
         requiresConfirmation: definition.requiresConfirmation,
         expiresAt: null
       },
-      definition.firstPartyDefault
+      definition
     );
   }
 
@@ -131,7 +133,7 @@ export class PoliciesService {
   async createPolicy(
     userId: string,
     input: CreatePolicyRequest,
-    firstPartyDefault?: string
+    firstPartyDefault?: FirstPartyDefinition
   ) {
     await this.ensureClientBelongsToUser(userId, input.clientId);
     await this.categories.assertExist([
@@ -163,7 +165,15 @@ export class PoliciesService {
           actorId: userId,
           metadata: {
             policyId: created.id,
-            ...(firstPartyDefault ? { firstPartyDefault } : {}),
+            ...(firstPartyDefault
+              ? {
+                  clientId: created.clientId,
+                  ...firstPartyPolicyFacts(
+                    firstPartyDefault,
+                    input.allowedCategoryKeys.length
+                  )
+                }
+              : {}),
             policyLabel: appPermissionsLabel(created.client?.name)
           }
         });

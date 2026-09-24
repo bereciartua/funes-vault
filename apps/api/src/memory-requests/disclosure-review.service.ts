@@ -7,8 +7,8 @@ import {
   MemoryRequestStatus,
   Prisma
 } from "@funes-vault/db";
-import { appPermissionsLabel } from "@funes-vault/shared";
 import {
+  appPermissionsLabel,
   type AuditTransport,
   type PaginationQuery,
   type ReviewDisclosureRequest
@@ -32,8 +32,8 @@ import {
 import { disclosureMetadata } from "./disclosure-metadata.js";
 import { previewDisclosure } from "./disclosure-preview.js";
 import {
-  clientRevision,
   disclosureApprovalTtlMs,
+  snapshotIsCurrent,
   snapshotSchema,
   summary
 } from "./disclosure-snapshot.js";
@@ -111,8 +111,8 @@ export class DisclosureReviewService {
       candidates,
       evaluator: this.evaluator,
       compiler: this.compiler,
-      invalidate: (tx, request, version, clientName) =>
-        this.invalidate(tx, request, version, clientName)
+      invalidate: (tx, request, context) =>
+        this.invalidate(tx, request, context)
     });
   }
 
@@ -230,12 +230,12 @@ export class DisclosureReviewService {
         !request.approvalExpiresAt ||
         request.approvalExpiresAt <= new Date()
       ) {
-        await requireFreshReview(tx, request.id, null);
+        await requireFreshReview(tx, request.id, "confirmation_required");
 
         return {
           ...empty,
           status: MemoryRequestStatus.NEEDS_USER_APPROVAL,
-          reason: null
+          reason: "confirmation_required" as const
         };
       }
       const snapshot = parsed.data;
@@ -245,28 +245,9 @@ export class DisclosureReviewService {
         request,
         snapshot.items.map((item) => item.memoryId)
       );
-      const versions = new Map(
-        context.memories.map((m) => [m.id, m.updatedAt.toISOString()])
-      );
-      const unchanged =
-        context.bound &&
-        request.policyId === snapshot.policyId &&
-        request.policyVersion === snapshot.policyVersion &&
-        context.policy?.id === snapshot.policyId &&
-        context.policy.updatedAt.toISOString() === snapshot.policyVersion &&
-        clientRevision(context.client) === snapshot.clientVersion &&
-        snapshot.items.every(
-          (item) =>
-            context.allowed.has(item.memoryId) &&
-            versions.get(item.memoryId) === snapshot.versions[item.memoryId]
-        );
+      const unchanged = snapshotIsCurrent(request, snapshot, context);
       if (!unchanged) {
-        await this.invalidate(
-          tx,
-          request,
-          context.bound ? context.policyVersion : undefined,
-          context.client.name
-        );
+        await this.invalidate(tx, request, context);
 
         return {
           ...empty,
@@ -355,23 +336,27 @@ export class DisclosureReviewService {
   private async invalidate(
     tx: Prisma.TransactionClient,
     request: MemoryRequest,
-    policyVersion?: string | null,
-    clientName?: string
+    context: Awaited<ReturnType<typeof disclosureContext>>
   ) {
     const updated = await requireFreshReview(
       tx,
       request.id,
       "policy_changed",
-      policyVersion
+      context.bound ? context.policyVersion : undefined
     );
     await recordDisclosureDecision(
       this.auditTrail,
       tx,
-      request,
+      updated,
       AuditEventType.MEMORY_REQUEST_DENIED,
       [],
-      "policy_changed",
-      clientName
+      {
+        actorType: AuditActorType.SYSTEM,
+        reason: "policy_changed",
+        clientName: context.client.name,
+        requiresConfirmation: context.policy?.requiresConfirmation ?? false,
+        previousPolicyVersion: request.policyVersion
+      }
     );
 
     return updated;

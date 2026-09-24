@@ -249,7 +249,7 @@ it("privacy: rejects moving permissions to another client", () => {
   ).toThrow();
 });
 
-it("privacy: deletes only an owned policy and records its purpose in the same transaction", async () => {
+it("privacy: deletes only an owned policy and records its app permission label in the same transaction", async () => {
   const prisma = mockPrisma();
   prisma.policy.findFirst
     .mockResolvedValueOnce(null)

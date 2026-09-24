@@ -1,3 +1,4 @@
+import { appPermissionsLabel } from "@funes-vault/shared";
 import {
   defaultMemoryCategories as categories,
   demoAccountEmail
@@ -10,32 +11,29 @@ import {
   AuditEventType,
   AuditSubjectRole,
   AuditSubjectType,
+  type Client,
   ClientRetention,
   ClientTrustLevel,
   ClientType,
   createPrismaClient,
+  type Memory,
   MemoryKind,
   MemoryProvenanceEntryType,
+  type MemoryRequest,
   MemoryRequestStatus,
   MemorySensitivity,
+  type MemorySuggestion,
   MemorySuggestionStatus,
+  type Policy,
   PolicyOperation,
   ProvenanceSubjectRole,
   ProvenanceSubjectType,
-  SourceType
+  SourceType,
+  type User
 } from "../src/index.js";
 
 loadEnv({ path: new URL("../../../.env", import.meta.url), quiet: true });
 const prisma = createPrismaClient();
-
-import type {
-  Client,
-  Memory,
-  MemoryRequest,
-  MemorySuggestion,
-  Policy,
-  User
-} from "../src/index.js";
 
 async function seedDemoUser(email: string, displayName: string) {
   const user = await prisma.user.upsert({
@@ -285,7 +283,7 @@ async function seedAuditTrail(input: {
       metadata: {
         seed: true,
         policyId: policy.id,
-        policyLabel: `${client.name} permissions`
+        policyLabel: appPermissionsLabel(client.name)
       }
     }
   });
@@ -338,7 +336,7 @@ async function seedAuditTrail(input: {
         subjectType: AuditSubjectType.POLICY,
         subjectId: policy.id,
         role: AuditSubjectRole.POLICY,
-        labelSnapshot: `${client.name} permissions`,
+        labelSnapshot: appPermissionsLabel(client.name),
         metadata: { seed: true }
       },
       {
@@ -392,7 +390,7 @@ async function seedAuditTrail(input: {
         subjectType: AuditSubjectType.POLICY,
         subjectId: policy.id,
         role: AuditSubjectRole.POLICY,
-        labelSnapshot: `${client.name} permissions`,
+        labelSnapshot: appPermissionsLabel(client.name),
         metadata: { seed: true }
       }
     ],

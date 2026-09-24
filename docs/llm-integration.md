@@ -71,5 +71,5 @@ a 403 is an authorization refusal; a 409 means the reviewed state changed. Fetch
 fresh state before asking the owner to decide again. Never log bearer credentials
 or whole memory bundles in integration telemetry.
 
-Canonical output fields are camelCase. MCP tools accept only the advertised camelCase fields and uppercase enum values; unknown keys are rejected. Direct HTTP requests retain the documented snake_case aliases. The [shared contracts](../packages/shared/src/index.ts) and generated
+Canonical output fields are camelCase. MCP tools accept only the advertised camelCase fields and uppercase enum values; unknown keys are rejected. Direct HTTP requests retain `requested_categories`, `token_budget`, `third_party_processors`, `category_keys`, `expires_at`, and `source_metadata` aliases; suggestions also accept `categories` and case-normalize enum inputs. The [shared contracts](../packages/shared/src/index.ts) and generated
 OpenAPI are the authoritative field and enum references.

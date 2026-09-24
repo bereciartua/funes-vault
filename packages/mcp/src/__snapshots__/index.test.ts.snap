@@ -4,6 +4,7 @@ exports[`mcp package > exposes described canonical inputs and never retries a de
 {
   "get_memory_request": {
     "$schema": "http://json-schema.org/draft-07/schema#",
+    "additionalProperties": false,
     "properties": {
       "requestId": {
         "description": "Request id returned by request_memory.",
@@ -17,11 +18,14 @@ exports[`mcp package > exposes described canonical inputs and never retries a de
     "type": "object",
   },
   "list_memory_categories": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "additionalProperties": false,
     "properties": {},
     "type": "object",
   },
   "open_consent_review": {
     "$schema": "http://json-schema.org/draft-07/schema#",
+    "additionalProperties": false,
     "properties": {
       "requestId": {
         "description": "Pending disclosure request to review.",

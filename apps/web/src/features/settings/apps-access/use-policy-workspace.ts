@@ -79,7 +79,11 @@ export function usePolicyWorkspace(client: Client) {
       setError(apiErrorMessage(error, "Could not save these permissions."));
       if (error instanceof ApiError && error.status === 409) {
         setPolicyEditor(null);
-        await invalidate(queryKeys.clients.all, queryKeys.policies.all);
+        await invalidate(
+          queryKeys.clients.all,
+          queryKeys.policies.all,
+          queryKeys.overview
+        );
       } else {
         await query.refetch();
       }
@@ -118,7 +122,11 @@ export function usePolicyWorkspace(client: Client) {
       setError(apiErrorMessage(error, "Could not restore permissions."));
       if (error instanceof ApiError && error.status === 409) {
         setPolicyEditor(null);
-        await invalidate(queryKeys.clients.all, queryKeys.policies.all);
+        await invalidate(
+          queryKeys.clients.all,
+          queryKeys.policies.all,
+          queryKeys.overview
+        );
       } else {
         await query.refetch();
       }

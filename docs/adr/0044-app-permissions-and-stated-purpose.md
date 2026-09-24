@@ -1,6 +1,7 @@
 # 0044 — App permissions and stated purpose
 
 Date: 2026-09-24
+
 Status: accepted
 
 ## Context and problem

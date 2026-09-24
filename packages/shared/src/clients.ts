@@ -1,7 +1,10 @@
 import { z } from "zod";
 
-import { requireAtLeastOneField } from "./common.js";
-import { paginationQuerySchema, paginationSchema } from "./common.js";
+import {
+  paginationQuerySchema,
+  paginationSchema,
+  requireAtLeastOneField
+} from "./common.js";
 import {
   clientRetentionSchema,
   clientTrustLevelSchema,
@@ -20,7 +23,7 @@ export const clientSchema = z.object({
   policySummary: z
     .object({
       maxSensitivity: memorySensitivitySchema,
-      expiresAt: z.iso.datetime().nullable().optional(),
+      expiresAt: z.iso.datetime().nullable(),
       allowedCategoryKeys: z.array(z.string()),
       requiresConfirmation: z.boolean()
     })

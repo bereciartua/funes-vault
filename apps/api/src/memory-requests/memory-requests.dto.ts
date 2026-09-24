@@ -124,6 +124,7 @@ export class DisclosureReviewListDto {
   @ApiProperty({ type: Object }) pagination!: object;
 }
 export class DisclosurePreviewDto {
+  @ApiPropertyOptional() approvalExpired?: boolean;
   @ApiProperty({ type: DisclosureSummaryDto }) request!: DisclosureSummaryDto;
   @ApiProperty() revision!: string;
   @ApiProperty({ type: [MemoryBundleItemDto] }) items!: MemoryBundleItemDto[];

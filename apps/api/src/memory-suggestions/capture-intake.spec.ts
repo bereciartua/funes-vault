@@ -79,6 +79,19 @@ describe("privacy: MemorySuggestionsService.createCapture", () => {
       })
     );
   });
+  it("omits caller timestamps when the owner sends none", async () => {
+    await service.intake.createCapture({
+      userId: "user_1",
+      body: createCaptureRequestSchema.parse({
+        text: "Prefer morning appointments."
+      })
+    });
+    expect(prismaClient.memorySuggestion.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        sourceMetadata: expect.objectContaining({ caller: {} })
+      })
+    });
+  });
   it("is idempotent by captureId", async () => {
     prismaClient.memorySuggestion.findFirst.mockResolvedValue(
       createSuggestion()

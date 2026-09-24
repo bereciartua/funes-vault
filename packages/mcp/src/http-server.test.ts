@@ -87,7 +87,7 @@ function startFakeApi() {
 }
 
 const requestMemoryArgs = {
-  purpose: "software_development",
+  purpose: "Help with this repository",
   task: "Help with a repository"
 };
 

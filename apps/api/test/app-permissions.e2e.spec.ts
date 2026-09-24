@@ -10,7 +10,6 @@ import {
   createUserWithSession,
   resetTestDatabase
 } from "./e2e-harness.js";
-
 describe("privacy: app permissions and stated purpose", () => {
   let app: INestApplication;
   let prisma: ReturnType<typeof createE2ePrismaClient>;
@@ -75,7 +74,6 @@ describe("privacy: app permissions and stated purpose", () => {
     });
     memoryId = memory.id;
   });
-
   it("keeps decisions, ranking and authority identical for every stated purpose", async () => {
     let items: unknown;
     for (const purpose of [
@@ -114,7 +112,6 @@ describe("privacy: app permissions and stated purpose", () => {
       await read(purpose).expect(400);
     }
   });
-
   it.each(["blocked", "missing", "expired", "operation"])(
     "denies %s before retrieving memory identifiers",
     async (state) => {
@@ -171,7 +168,6 @@ describe("privacy: app permissions and stated purpose", () => {
       ).toBe(0);
     }
   );
-
   it("distinguishes no matches from filtered matches and missing permissions on an empty vault", async () => {
     await prisma.memory.update({
       where: { id: memoryId },
@@ -183,7 +179,6 @@ describe("privacy: app permissions and stated purpose", () => {
     await prisma.policy.delete({ where: { id: policyId } });
     expect((await read()).body.reason).toBe("no_client_policy");
   });
-
   it("isolates caller dispatch keys and requires WRITE for immediate application", async () => {
     const queued = await suggest(
       {
@@ -246,7 +241,6 @@ describe("privacy: app permissions and stated purpose", () => {
       ).type
     ).toBe("MEMORY_SUGGESTION_DENIED");
   });
-
   it("does not revive an approved request after permission removal and recreation", async () => {
     await prisma.policy.update({
       where: { id: policyId },
@@ -295,7 +289,6 @@ describe("privacy: app permissions and stated purpose", () => {
       .send({ action: "deny" })
       .expect(200);
   });
-
   it("enforces one owner-bound permission set, rejects moves and races", async () => {
     const other = await createUserWithSession(prisma, "other@example.test");
     await expect(
@@ -318,7 +311,6 @@ describe("privacy: app permissions and stated purpose", () => {
       "This app already has permissions"
     );
   });
-
   it.each(["web", "voice"])(
     "explicitly restores %s defaults on the same client and audits them",
     async (channel) => {
@@ -361,11 +353,39 @@ describe("privacy: app permissions and stated purpose", () => {
         }
       });
       expect(events).toHaveLength(1);
-      expect(events[0]?.metadata).toMatchObject({
-        firstPartyDefault: channel === "web" ? "web_chat" : "voice"
+      const initialEvent = await prisma.auditEvent.findFirstOrThrow({
+        where: {
+          clientId: initial.clientId,
+          type: "POLICY_CREATED",
+          actorType: "SYSTEM"
+        }
       });
+      const facts = {
+        firstPartyDefault: channel === "web" ? "web_chat" : "voice",
+        operations: original.operations,
+        maxSensitivity: original.maxSensitivity,
+        requiresConfirmation: original.requiresConfirmation,
+        allowedCategoryCount: await prisma.memoryCategory.count()
+      };
+      expect(events[0]?.metadata).toMatchObject(facts);
+      expect(initialEvent.metadata).toMatchObject(facts);
     }
   );
+  it("never runs first-party chat under a connected app with the same name", async () => {
+    await prisma.client.update({
+      where: { id: clientId },
+      data: { name: "Funes Vault Web Chat" }
+    });
+    await expect(
+      app.get(FirstPartyAccessService).ensureWebChatAccess(owner.userId)
+    ).rejects.toMatchObject({ status: 409 });
+    expect(
+      await prisma.client.findUniqueOrThrow({ where: { id: clientId } })
+    ).toMatchObject({ type: "MCP_CLIENT" });
+    expect(
+      await prisma.policy.findUniqueOrThrow({ where: { id: policyId } })
+    ).toMatchObject({ operations: ["READ", "SUGGEST"] });
+  });
   it("rejects defaults on connected or missing apps", async () => {
     await api()
       .post(`/v1/policies/defaults/${clientId}`)

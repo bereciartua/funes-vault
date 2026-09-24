@@ -105,13 +105,11 @@ describe("privacy: disclosure authority regressions", () => {
   });
   it("audits one policy change across consumption and fresh preview and rebinds the version", async () => {
     const pending = await read();
-    await approve(
-      pending.requestId,
-      (await preview(pending.requestId)).revision
-    ).expect(200);
+    const prior = await preview(pending.requestId);
+    await approve(pending.requestId, prior.revision).expect(200);
     const changed = await prisma.policy.update({
       where: { id: policyId },
-      data: { maxSensitivity: "LOW" }
+      data: { maxSensitivity: "LOW", requiresConfirmation: false }
     });
     expect(await result(pending.requestId)).toMatchObject({
       status: "NEEDS_USER_APPROVAL",
@@ -126,7 +124,12 @@ describe("privacy: disclosure authority regressions", () => {
     expect(events).toHaveLength(1);
     expect(events[0]).toMatchObject({
       actorType: "SYSTEM",
-      metadata: { reason: "policy_changed" }
+      metadata: {
+        reason: "policy_changed",
+        requiresConfirmation: false,
+        policyVersion: changed.updatedAt.toISOString(),
+        previousPolicyVersion: prior.request.policyVersion
+      }
     });
   });
   it("rebinds a pending preview once and does not audit stale clicks", async () => {
@@ -167,9 +170,10 @@ describe("privacy: disclosure authority regressions", () => {
       where: { id: pending.requestId },
       data: { approvalExpiresAt: new Date(0) }
     });
+    expect((await preview(pending.requestId)).approvalExpired).toBe(true);
     expect(await result(pending.requestId)).toMatchObject({
       status: "NEEDS_USER_APPROVAL",
-      reason: null,
+      reason: "confirmation_required",
       items: []
     });
     expect(await denials(pending.requestId)).toHaveLength(0);

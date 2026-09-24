@@ -1,6 +1,8 @@
 import { AuditEventType, MemoryRequestStatus } from "@funes-vault/db";
-import type { FunesDataParts } from "@funes-vault/shared";
-import { memoryRequestReasonLabel } from "@funes-vault/shared";
+import {
+  type FunesDataParts,
+  memoryRequestReasonLabel
+} from "@funes-vault/shared";
 import { zodSchema } from "ai";
 import { z } from "zod";
 
@@ -80,7 +82,9 @@ export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
         tokenBudget
       });
       const decision = policyDecisionForMemoryRequestStatus(bundle.status);
-
+      const explanation = bundle.reason
+        ? memoryRequestReasonLabel(bundle.reason)
+        : "No explanation was recorded.";
       context.emit({
         type: "policy-decision",
         data: {
@@ -157,7 +161,7 @@ export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
           status: decision === "DENY" ? "denied" : "completed",
           summary:
             decision === "DENY"
-              ? memoryRequestReasonLabel(bundle.reason)
+              ? explanation
               : `${items.length} memory references returned.`,
           metadata: {
             requestId: bundle.requestId,
@@ -175,9 +179,7 @@ export const memoryStewardToolDefinitions: StewardToolDefinition[] = [
       return {
         items,
         reason: bundle.reason,
-        explanation: bundle.reason
-          ? memoryRequestReasonLabel(bundle.reason)
-          : null,
+        explanation: bundle.reason ? explanation : null,
         ...(bundle.reason === "no_client_policy"
           ? { managePermissionsUrl: "/settings/clients" }
           : {})

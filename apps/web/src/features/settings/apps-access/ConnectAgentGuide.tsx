@@ -152,7 +152,7 @@ export function ConnectAgentGuideView({
       <p className="muted">
         A connected app never browses your vault. It asks for memories for a
         task and receives only what its app permissions allow, anything it wants
-        to remember follows its saving permissions, and every disclosure is
+        to remember follows its App permissions, and every disclosure is
         recorded in the audit log. You can cut any app off from the list below
         at any moment.
       </p>
@@ -215,8 +215,8 @@ export function ConnectAgentGuideView({
             <li>
               Review what the app is requesting and choose{" "}
               <strong>Approve</strong>. Connectors can only ever request two
-              things: reading memories within its permissions and suggesting new
-              ones according to your saving permissions.
+              things: reading memories within their permissions and suggesting
+              new ones according to your App permissions.
             </li>
             <li>
               Done. The app appears in the list below with an{" "}

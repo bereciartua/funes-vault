@@ -108,10 +108,16 @@ export function DisclosureReviews() {
                   : "Not evaluated"}
               </dd>
             </div>
-            <div>
-              <dt>Reason</dt>
-              <dd>{memoryRequestReasonLabel(preview.request.reason)}</dd>
-            </div>
+            {preview.request.reason || !preview.request.policyVersion ? (
+              <div>
+                <dt>Reason</dt>
+                <dd>
+                  {preview.request.reason
+                    ? memoryRequestReasonLabel(preview.request.reason)
+                    : "Not evaluated"}
+                </dd>
+              </div>
+            ) : null}
             <div>
               <dt>Declared retention</dt>
               <dd>
@@ -130,6 +136,12 @@ export function DisclosureReviews() {
             These are the app’s declarations. Funes cannot control copies after
             disclosure.
           </p>
+          {preview.approvalExpired ? (
+            <p role="status">
+              This approval has expired. The app must request fresh approval
+              before receiving memories.
+            </p>
+          ) : null}
           {preview.items.map((item) => (
             <article className="suggestion-row" key={item.memoryId}>
               <CheckboxField

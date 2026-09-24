@@ -7,8 +7,8 @@ import {
   ReviewState,
   SourceType
 } from "@funes-vault/db";
-import { appPermissionsLabel } from "@funes-vault/shared";
 import {
+  appPermissionsLabel,
   type AuditTransport,
   type CreateCaptureRequest,
   type CreateMemorySuggestionRequest,
@@ -32,6 +32,16 @@ import { createSuggestionRecord } from "./suggestion-records.js";
 import { suggestionAuditSubjects } from "./suggestion-subjects.js";
 import { SuggestionWriterService } from "./suggestion-writer.service.js";
 
+type ClientSuggestionInput = {
+  userId: string;
+  clientId: string;
+  transport?: AuditTransport;
+  transaction?: Prisma.TransactionClient;
+  reviewOnly?: boolean;
+  serverMetadata?: Record<string, unknown>;
+  body: CreateMemorySuggestionRequest;
+};
+
 /**
  * Normalizes owner/client suggestion and capture intake, checks category and secret rules, and
  * evaluates write policy. The writer persists a reviewed suggestion or authorized memory;
@@ -47,15 +57,9 @@ export class SuggestionIntakeService {
     private readonly writer: SuggestionWriterService
   ) {}
 
-  async createSuggestion(input: {
-    userId: string;
-    clientId: string;
-    transport?: AuditTransport;
-    transaction?: Prisma.TransactionClient;
-    reviewOnly?: boolean;
-    serverMetadata?: Record<string, unknown>;
-    body: CreateMemorySuggestionRequest;
-  }): Promise<MemorySuggestionResponse> {
+  async createSuggestion(
+    input: ClientSuggestionInput
+  ): Promise<MemorySuggestionResponse> {
     if (!input.transaction) {
       const response = await this.writer.inTransaction(undefined, (tx) =>
         this.createSuggestion({ ...input, transaction: tx })
@@ -69,6 +73,16 @@ export class SuggestionIntakeService {
 
       return response;
     }
+
+    return (
+      await this.prepareSuggestion({ ...input, transaction: input.transaction })
+    ).apply();
+  }
+
+  /** Prepare and consume once inside the same caller-owned transaction; never cache this decision. */
+  async prepareSuggestion(
+    input: ClientSuggestionInput & { transaction: Prisma.TransactionClient }
+  ) {
     const request = input.body;
     assertNoSecretLikeContent(request);
     await this.categories.assertExist(request.categoryKeys);
@@ -92,18 +106,22 @@ export class SuggestionIntakeService {
           input.transaction
         );
 
-    if (writePolicy?.decision === "ALLOW" && !input.reviewOnly) {
-      return this.writer.createDirectMemoryFromSuggestion({
-        userId: input.userId,
-        clientId: input.clientId,
-        transport: input.transport ?? "http_api",
-        request,
-        transaction: input.transaction,
-        policyVersion: writePolicy.policyVersion,
-        policyLabel: appPermissionsLabel(writePolicy.client?.name ?? "App"),
-        serverMetadata: input.serverMetadata,
-        policyId: writePolicy.policyId
-      });
+    if (writePolicy?.decision === "ALLOW") {
+      return {
+        decision: writePolicy.decision,
+        apply: () =>
+          this.writer.createDirectMemoryFromSuggestion({
+            userId: input.userId,
+            clientId: input.clientId,
+            transport: input.transport ?? "http_api",
+            request,
+            transaction: input.transaction,
+            policyVersion: writePolicy.policyVersion,
+            policyLabel: appPermissionsLabel(writePolicy.client?.name),
+            serverMetadata: input.serverMetadata,
+            policyId: writePolicy.policyId
+          })
+      };
     }
 
     const policy = await this.policyEvaluationService.evaluateForClient(
@@ -116,6 +134,17 @@ export class SuggestionIntakeService {
       input.transaction
     );
 
+    return {
+      decision: policy.decision,
+      apply: () => this.createEvaluatedSuggestion(input, policy)
+    };
+  }
+
+  private async createEvaluatedSuggestion(
+    input: ClientSuggestionInput & { transaction: Prisma.TransactionClient },
+    policy: Awaited<ReturnType<PolicyEvaluationService["evaluateForClient"]>>
+  ): Promise<MemorySuggestionResponse> {
+    const request = input.body;
     if (policy.decision === "DENY") {
       const event = await recordSuggestionDenial(
         input.transaction,
@@ -175,7 +204,7 @@ export class SuggestionIntakeService {
           suggestion,
           clientId: input.clientId,
           policyId: policy.policyId,
-          policyLabel: appPermissionsLabel(policy.client?.name ?? "App")
+          policyLabel: appPermissionsLabel(policy.client?.name)
         })
       });
 

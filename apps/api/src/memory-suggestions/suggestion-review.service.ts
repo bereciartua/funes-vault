@@ -1,4 +1,3 @@
-import { SourceType } from "@funes-vault/db";
 import {
   AuditActorType,
   AuditEventType,
@@ -6,7 +5,8 @@ import {
   MemoryProvenanceEntryType,
   type MemorySuggestion,
   MemorySuggestionStatus,
-  type Prisma
+  type Prisma,
+  SourceType
 } from "@funes-vault/db";
 import { type ListMemorySuggestionsQuery } from "@funes-vault/shared";
 import {

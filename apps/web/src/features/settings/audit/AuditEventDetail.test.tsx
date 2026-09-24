@@ -55,3 +55,53 @@ it("shows Not provided for an explicitly null purpose", () => {
   render(<AuditEventDetail eventId="event" />);
   expect(screen.getByText("Not provided")).toBeTruthy();
 });
+
+it.each([
+  "MEMORY_DISCLOSURE",
+  "MEMORY_REQUEST_APPROVED",
+  "MEMORY_REQUEST_DENIED"
+] as const)("omits a null reason for evaluated %s events", (type) => {
+  vi.mocked(useAuditDetail).mockReturnValue({
+    isPending: false,
+    error: null,
+    data: {
+      auditEvent: {
+        id: "event",
+        type,
+        actorType: type === "MEMORY_DISCLOSURE" ? "CLIENT" : "USER",
+        createdAt: "2026-01-01T00:00:00Z",
+        subjects: [],
+        metadata: {
+          decision: "ALLOW",
+          reason: null,
+          policyVersion: "2026-01-01T00:00:00Z",
+          requiresConfirmation: false
+        }
+      }
+    }
+  } as unknown as ReturnType<typeof useAuditDetail>);
+  render(<AuditEventDetail eventId="event" />);
+  expect(screen.queryByText("Reason")).toBeNull();
+  expect(screen.queryByText("Not evaluated")).toBeNull();
+  expect(screen.getByText("Allowed")).toBeTruthy();
+  expect(screen.getByText("No")).toBeTruthy();
+});
+it("does not render empty facts for unrelated metadata", () => {
+  vi.mocked(useAuditDetail).mockReturnValue({
+    isPending: false,
+    error: null,
+    data: {
+      auditEvent: {
+        id: "event",
+        type: "JOB_CREATED",
+        actorType: "SYSTEM",
+        createdAt: "2026-01-01T00:00:00Z",
+        subjects: [],
+        metadata: { job: "one" }
+      }
+    }
+  } as unknown as ReturnType<typeof useAuditDetail>);
+  expect(
+    render(<AuditEventDetail eventId="event" />).container.querySelector("dl")
+  ).toBeNull();
+});

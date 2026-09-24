@@ -35,9 +35,6 @@ export class CreateCaptureDto {
 }
 
 export class CaptureResponseDto {
-  @ApiProperty({ enum: memoryRequestReasonSchema.options, nullable: true })
-  reason!: string | null;
-
   @ApiProperty({ example: "cmqvt0v580000xeg7jgy7v1u3", nullable: true })
   suggestionId!: string | null;
 
@@ -46,6 +43,9 @@ export class CaptureResponseDto {
 
   @ApiProperty({ example: "cmqvt0v580000xeg7jgy7v1u3", nullable: true })
   auditEventId!: string | null;
+
+  @ApiProperty({ enum: memoryRequestReasonSchema.options, nullable: true })
+  reason!: string | null;
 
   @ApiProperty({
     description:

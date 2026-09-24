@@ -22,33 +22,43 @@ export async function recordDisclosureDecision(
     | typeof AuditEventType.MEMORY_REQUEST_APPROVED
     | typeof AuditEventType.MEMORY_REQUEST_DENIED,
   memoryIds: string[],
-  reason: MemoryRequestReason | null = null,
-  clientName?: string
+  details: {
+    actorType?: typeof AuditActorType.USER | typeof AuditActorType.SYSTEM;
+    reason?: MemoryRequestReason;
+    clientName?: string;
+    requiresConfirmation?: boolean;
+    previousPolicyVersion?: string | null;
+  } = {}
 ) {
-  clientName ??= (
-    await tx.client.findFirst({
-      where: { id: request.clientId, userId: request.userId },
-      select: { name: true }
-    })
-  )?.name;
+  const actorType = details.actorType ?? AuditActorType.USER;
+  const clientName =
+    details.clientName ??
+    (
+      await tx.client.findFirst({
+        where: { id: request.clientId, userId: request.userId },
+        select: { name: true }
+      })
+    )?.name;
 
   return auditTrail.createAuditEvent(tx, {
     userId: request.userId,
     clientId: request.clientId,
     memoryRequestId: request.id,
     type,
-    actorType:
-      reason === "policy_changed" ? AuditActorType.SYSTEM : AuditActorType.USER,
-    actorId: reason === "policy_changed" ? null : request.userId,
+    actorType,
+    actorId: actorType === AuditActorType.SYSTEM ? null : request.userId,
     metadata: {
       memoryIds,
       decision:
         type === AuditEventType.MEMORY_REQUEST_APPROVED ? "ALLOW" : "DENY",
-      requiresConfirmation: true,
+      requiresConfirmation: details.requiresConfirmation ?? true,
+      ...(details.previousPolicyVersion !== undefined
+        ? { previousPolicyVersion: details.previousPolicyVersion }
+        : {}),
       statedPurpose: request.statedPurpose,
       policyId: request.policyId,
       policyVersion: request.policyVersion,
-      reason,
+      reason: details.reason ?? null,
       task: request.task,
       operation: "READ"
     },

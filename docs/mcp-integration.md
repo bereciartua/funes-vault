@@ -111,10 +111,10 @@ Vendor assistant apps (Claude, ChatGPT) add remote MCP servers as custom connect
 
 Scopes:
 
-| Scope            | Grants                                                                   |
-| ---------------- | ------------------------------------------------------------------------ |
-| `memory.read`    | `request_memory` (policy-filtered bundles), maps to the `READ` operation |
-| `memory.suggest` | `suggest_memory` (review-queued suggestions), maps to `SUGGEST`          |
+| Scope            | Grants                                                                                                   |
+| ---------------- | -------------------------------------------------------------------------------------------------------- |
+| `memory.read`    | `request_memory` (policy-filtered bundles), maps to the `READ` operation                                 |
+| `memory.suggest` | `suggest_memory`, maps to `SUGGEST`; proposals queue by default and apply immediately when WRITE permits |
 
 The connector-grant policy defaults to a `maxSensitivity` of `INTERNAL` (`MCP_CONNECTOR_MAX_SENSITIVITY` sets the creation default) with no per-request confirmation; the user can tighten or widen it in Apps & access like any policy. Purpose is optional audit context and never changes the result. Missing permissions deny access with `no_client_policy`; only an existing policy that requires confirmation creates an approval request.
 

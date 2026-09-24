@@ -103,8 +103,8 @@ export function renderConsentPage(input: {
   <p>${context.recreating ? "You removed this app’s permissions. Approving will restore default permissions." : context.createsPermissions ? "Approving creates permissions for this app." : "Existing category, sensitivity, confirmation and expiration settings are preserved."}</p>
   ${context.addedOperations.length ? `<p>Operations added by approving: ${escapeHtml(context.addedOperations.join(", "))}.</p>` : ""}
   <p>Allowed categories: ${escapeHtml(context.allowedCategories.join(", ") || "All categories")}. Denied categories: ${escapeHtml(context.deniedCategories.join(", ") || "None")}.</p>
-  <p>Confirmation: ${context.requiresConfirmation ? "Required" : "Not required"}. Expiration: ${context.expiresAt && new Date(context.expiresAt) <= new Date() ? "Expired — update the expiration in Apps &amp; access before using this app. " : ""}${escapeHtml(context.expiresAt ?? "None")}.</p>
-  ${context.operations.includes("WRITE") && !context.requiresConfirmation && context.scopes.includes("memory.suggest") ? "<p>Proposals from this app are applied immediately without review when permitted by these limits.</p>" : ""}
+  <p>Confirmation: ${context.requiresConfirmation ? "Required" : "Not required"}. Expiration: ${context.expiresAt ? (new Date(context.expiresAt) <= new Date() ? "Expired — update the expiration in Apps &amp; access before using this app" : escapeHtml(new Date(context.expiresAt).toLocaleString("en-US", { timeZone: "UTC", dateStyle: "medium", timeStyle: "short" }) + " UTC")) : "None"}.</p>
+  ${context.operations.includes("WRITE") && !context.requiresConfirmation && context.scopes.includes(oauthScopeSuggest) ? "<p>Proposals from this app are applied immediately without review when permitted by these limits.</p>" : ""}
   <p class="muted">The disclosure ceiling is
   <strong>${escapeHtml(context.maxSensitivity.toLowerCase())}</strong> sensitivity.
   Every disclosure is audited, and you can revoke this grant at any time in

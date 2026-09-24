@@ -9,9 +9,10 @@ import {
   type Prisma
 } from "@funes-vault/db";
 import { voiceClientName, webChatClientName } from "@funes-vault/shared";
-import { Injectable } from "@nestjs/common";
+import { ConflictException, Injectable } from "@nestjs/common";
 
 import { AuditTrailService } from "../audit-trail/audit-trail.service.js";
+import { isPrismaError } from "../common/prisma-errors.js";
 import { apiEnv } from "../config.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 
@@ -39,7 +40,7 @@ type FirstPartyAccessTransaction = Pick<
   "auditEvent" | "auditEventSubject" | "client" | "memoryCategory" | "policy"
 >;
 
-type FirstPartyDefinition = {
+export type FirstPartyDefinition = {
   clientName: string;
   firstPartyDefault: string;
   maxSensitivity: MemorySensitivity;
@@ -69,6 +70,27 @@ export function voiceDefinition(): FirstPartyDefinition {
     requiresConfirmation: false,
     maxSensitivity: defaultVoiceMaxSensitivity(),
     operations: [PolicyOperation.READ, PolicyOperation.SUGGEST]
+  };
+}
+
+export function firstPartyCategories(
+  db: Pick<Prisma.TransactionClient, "memoryCategory">
+) {
+  return db.memoryCategory.findMany({
+    select: { id: true, key: true },
+    orderBy: { name: "asc" }
+  });
+}
+export function firstPartyPolicyFacts(
+  definition: FirstPartyDefinition,
+  categoryCount: number
+) {
+  return {
+    firstPartyDefault: definition.firstPartyDefault,
+    operations: definition.operations,
+    maxSensitivity: definition.maxSensitivity,
+    requiresConfirmation: definition.requiresConfirmation,
+    allowedCategoryCount: categoryCount
   };
 }
 
@@ -155,7 +177,11 @@ export class FirstPartyAccessService {
     userId: string;
   }) {
     const existing = await input.tx.client.findFirst({
-      where: { userId: input.userId, name: input.definition.clientName },
+      where: {
+        userId: input.userId,
+        name: input.definition.clientName,
+        type: ClientType.WEB_APP
+      },
       select: { id: true, name: true, trustLevel: true }
     });
 
@@ -163,16 +189,25 @@ export class FirstPartyAccessService {
       return { ...existing, created: false };
     }
 
-    const created = await input.tx.client.create({
-      data: {
-        userId: input.userId,
-        name: input.definition.clientName,
-        type: ClientType.WEB_APP,
-        trustLevel: ClientTrustLevel.APPROVED,
-        declaredRetention: ClientRetention.NO_STORAGE
-      },
-      select: { id: true, name: true, trustLevel: true }
-    });
+    const created = await input.tx.client
+      .create({
+        data: {
+          userId: input.userId,
+          name: input.definition.clientName,
+          type: ClientType.WEB_APP,
+          trustLevel: ClientTrustLevel.APPROVED,
+          declaredRetention: ClientRetention.NO_STORAGE
+        },
+        select: { id: true, name: true, trustLevel: true }
+      })
+      .catch((error) => {
+        if (isPrismaError(error, "P2002")) {
+          throw new ConflictException(
+            "A connected app uses this first-party name. Rename it in Apps & access before continuing."
+          );
+        }
+        throw error;
+      });
 
     await this.auditService.createAuditEvent(input.tx, {
       userId: input.userId,
@@ -216,10 +251,7 @@ export class FirstPartyAccessService {
       return null;
     }
 
-    const categories = await input.tx.memoryCategory.findMany({
-      select: { id: true },
-      orderBy: { name: "asc" }
-    });
+    const categories = await firstPartyCategories(input.tx);
     const created = await input.tx.policy.create({
       data: {
         userId: input.userId,
@@ -244,11 +276,7 @@ export class FirstPartyAccessService {
       metadata: {
         policyId: created.id,
         clientId: input.clientId,
-        maxSensitivity: input.definition.maxSensitivity,
-        operations: input.definition.operations,
-        requiresConfirmation: input.definition.requiresConfirmation,
-        allowedCategoryCount: categories.length,
-        firstPartyDefault: input.definition.firstPartyDefault
+        ...firstPartyPolicyFacts(input.definition, categories.length)
       }
     });
 

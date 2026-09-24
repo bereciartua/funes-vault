@@ -33,9 +33,31 @@ it.each([null, "<b>Remember_My_Reason</b>"])(
       "DD"
     );
     expect(
-      screen.getByRole("link", { name: "Permissions when proposed" })
+      screen.getByRole("link", { name: "Manage app permissions" })
     ).toBeTruthy();
     expect(screen.getByText("Caller metadata")).toBeTruthy();
     expect(container.querySelector("dd b")).toBeNull();
+  }
+);
+
+it.each(["CONSOLIDATION", "MANUAL", "CHAT"] as const)(
+  "omits client-only facts for %s suggestions",
+  (type) => {
+    render(
+      <SuggestionCard
+        suggestion={suggestionFixture("suggestion", "Owner note", {
+          source: { type, clientId: null, subjects: [], metadata: {} }
+        })}
+        selected={false}
+        duplicate={false}
+        busy={false}
+        onToggleSelected={vi.fn()}
+        onApply={vi.fn()}
+        onReject={vi.fn()}
+      />
+    );
+    expect(screen.queryByText("Stated purpose")).toBeNull();
+    expect(screen.queryByText("App permissions")).toBeNull();
+    expect(screen.queryByText("Caller metadata")).toBeNull();
   }
 );

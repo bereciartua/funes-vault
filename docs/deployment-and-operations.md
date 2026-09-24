@@ -263,13 +263,13 @@ release tag) without touching `latest`.
 
 ## App permissions migration
 
-Deploy API, MCP and web as one coordinated breaking release. Stop the old services, then run the migration before starting the new images:
+Deploy API, MCP and web as one coordinated breaking release. Take and verify a database backup, stop the old services, then run the migration before starting the new images:
 
 ```sh
 docker compose --env-file .env.production -f docker-compose.prod.yml run --rm migrate
 ```
 
-The migration removes invalid cross-owner grants first, then keeps the newest valid policy for each client (`updatedAt`, with id breaking ties). Surplus policies and policy purpose are removed. Old requests retain stated purpose but have null policy bindings; they can only be denied, and apps must submit fresh requests. Accounts, sessions, clients and OAuth grants remain valid.
+The migration removes invalid cross-owner policies first, then keeps the newest valid policy for each client (`updatedAt`, with id breaking ties). Surplus policies and policy purpose are removed. Old requests retain stated purpose but have null policy bindings; they can only be denied, and apps must submit fresh requests. Accounts, sessions, clients and OAuth grants remain valid.
 
 Legacy CLIENT_SUGGESTION metadata is wrapped under `caller` because its top-level keys cannot be trusted. Manual captures, chat and consolidation metadata retain their server-owned shape. Old bearer captures are indistinguishable from other client suggestions, so their old capture ids no longer deduplicate; drain device capture queues before upgrading to avoid retry duplicates. Newly recorded captures retain server-owned capture ids.
 
