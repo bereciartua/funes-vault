@@ -35,8 +35,12 @@ Feature pull requests are squash-merged.
 
 `main` is the production line and only ever advances by a pull request from
 `develop` (or a `hotfix/` branch), merged with a merge commit, and each merge is
-tagged `vX.Y.Z` after the changelog entry is finalized. The `v*` tag is what
-publishes the container images. Hotfixes are merged back into `develop`. Both
+tagged `vX.Y.Z` after the changelog entry is finalized. The Release workflow waits
+for successful push CI on the exact `main` merge, validates the prepared release,
+then tags, publishes images and creates the GitHub Release. Follow the
+[release runbook](docs/releasing.md), including its autonomous compatibility policy;
+tag pushes alone do not publish. Merge `main` back into `develop` with a merge
+commit after every release, including hotfixes. Both
 branches require the CI checks to pass and a pull request; neither accepts
 force pushes.
 

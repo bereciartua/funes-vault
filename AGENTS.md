@@ -11,6 +11,8 @@ controlled, auditable disclosure of the owner's context to AI tools.
 - [Database reference](docs/database-schema.md): ownership and migrations.
 - [ADRs](docs/adr/README.md): accepted decisions and superseded approaches.
 - [Testing guide](docs/testing-and-release.md): test layers and external dependencies.
+- [Release runbook](docs/releasing.md): autonomous version decisions, release commands,
+  authorization scope, publication gates and recovery. Use it for release work.
 
 ## Architecture
 
