@@ -116,7 +116,7 @@ describe("JobsPanel feed", () => {
     const detailButtons = screen.getAllByRole("button", { name: "Details" });
     expect(detailButtons).toHaveLength(2);
     fireEvent.click(detailButtons[0]!);
-    expect(await screen.findByText(/8 memories inspected/)).toBeTruthy();
+    expect(await screen.findByText(/8 memories considered/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Close" }));

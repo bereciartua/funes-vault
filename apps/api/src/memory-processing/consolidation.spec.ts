@@ -71,8 +71,64 @@ describe("privacy: semantic action validation", () => {
     const result = await service.judge("u", memories as never);
     expect(judge.mock.calls[0]![0].pairs).toHaveLength(3);
     expect(result.skippedPairs).toBe(3);
-    expect(result.status).toBe("partial");
+    expect(result.status).toBe("completed");
+    expect(result.skippedSources).toBe(3);
+    expect(result.skippedSourceReasons).toEqual({ above_sensitivity_limit: 3 });
     expect(result.completedSourceIds).toEqual(["0", "1", "2"]);
+  });
+  it("completes the reported 19-memory no-op with six exclusions without calling a provider", async () => {
+    const memories = Array.from({ length: 19 }, (_, i) =>
+      memory(String(i), i < 6 ? "SENSITIVE" : "LOW")
+    );
+    const { service, judge } = await setup([]);
+    const result = await service.judge("u", memories as never);
+    expect(result).toMatchObject({
+      status: "completed",
+      reason: null,
+      skippedSources: 6,
+      skippedPairs: 0,
+      skippedSourceReasons: { above_sensitivity_limit: 6 }
+    });
+    expect(result.completedSourceIds).toHaveLength(13);
+    expect(judge).not.toHaveBeenCalled();
+  });
+  it("reports exclusion reasons without recording private contents or completing excluded versions", async () => {
+    const memories = [
+      { ...memory("pending"), reviewState: "PENDING_REVIEW" },
+      { ...memory("expired"), expiresAt: new Date(0) },
+      { ...memory("secret"), body: "password=syntheticsecretvalue" },
+      { ...memory("archived"), status: "ARCHIVED" }
+    ];
+    const { service, judge } = await setup([]);
+    const result = await service.judge("u", memories as never);
+    expect(result.status).toBe("completed");
+    expect(result.skippedSourceReasons).toEqual({
+      not_approved: 1,
+      expired: 1,
+      secret_like_content: 1,
+      unavailable: 1
+    });
+    expect(result.completedSourceIds).toEqual([]);
+    expect(judge).not.toHaveBeenCalled();
+    expect(JSON.stringify(result)).not.toContain("syntheticsecretvalue");
+  });
+  it("keeps eligible work exceeding the pair limit incomplete", async () => {
+    const pairs = Array.from({ length: 1001 }, (_, i) => ({
+      recentMemory: memory(`a${i}`),
+      candidateMemory: memory(`b${i}`)
+    }));
+    const { service } = await setup(pairs);
+    const result = await service.judge(
+      "u",
+      pairs.map((p) => p.recentMemory) as never
+    );
+    expect(result).toMatchObject({
+      status: "partial",
+      reason: "pair_limit_reached",
+      deferredPairs: 1,
+      skippedSources: 0
+    });
+    expect(result.completedSourceIds).not.toContain("a1000");
   });
   it("rejects unknown pairs, cycles and plans that archive the survivor", async () => {
     const a = memory("a"),
