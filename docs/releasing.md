@@ -121,7 +121,10 @@ surface is unchanged solely because its directory did not change.
    in [Testing and release](testing-and-release.md#release-verification), including
    production smoke/migration checks. Confirm formatting did not change unrelated
    source; that would require reassessment. Record exactly which manual and live
-   checks ran. Commit and push the preparation branch.
+   checks ran. Commit and push with an explicit destination:
+   `git push --set-upstream origin HEAD:refs/heads/chore/release-X.Y.Z`.
+   This also works when the local Git configuration uses `push.default=upstream`
+   and the new branch initially tracks `origin/develop`.
 6. Write a PR body to a file containing the version rationale, migration notes and
    validation evidence. Open the preparation PR with
    `gh pr create --base develop --head chore/release-X.Y.Z --title "chore(release): prepare vX.Y.Z" --body-file /tmp/funes-release-pr.md`.
