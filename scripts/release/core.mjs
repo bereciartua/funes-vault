@@ -9,7 +9,7 @@ export const git = (...args) =>
 export const assert = (condition, message) => {
   if (!condition) throw new Error(message);
 };
-export const stableVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+const stableVersion = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 export const hasBreakingNotes = (notes) =>
   /\*\*Breaking:?\*\*:?(?:\s)|(?:^|\n)\s*(?:[-*]\s*)?Breaking:|(?:^|\n)#{2,6} Breaking\b/i.test(
     notes
@@ -42,7 +42,7 @@ export function latestTag(exclude) {
 }
 
 let manifestPaths;
-export function manifests() {
+function manifests() {
   return (manifestPaths ??= git("ls-files")
     .split("\n")
     .filter((path) =>
