@@ -5,12 +5,14 @@ import { type ReactNode } from "react";
 type SwitchFieldProps = {
   checked: boolean;
   children: ReactNode;
+  disabled?: boolean;
   onCheckedChange: (checked: boolean) => void;
 };
 
 export function SwitchField({
   checked,
   children,
+  disabled,
   onCheckedChange
 }: SwitchFieldProps) {
   return (
@@ -18,6 +20,7 @@ export function SwitchField({
       <SwitchPrimitive.Root
         checked={checked}
         className="ui-switch-root"
+        disabled={disabled}
         onCheckedChange={onCheckedChange}
       >
         <SwitchPrimitive.Thumb className="ui-switch-thumb" />

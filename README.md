@@ -93,6 +93,8 @@ scripts/        Build, migration, icon and publishing helpers
 - Audit history, portable export/import, profile and account controls.
 - Responsive light/dark UI, installable PWA and offline text-capture queue. Sign in once on the device to enable cold-start capture for that vault owner; syncing requires the same owner’s valid session.
 
+In **Settings → Jobs**, the daily consolidation switch saves as soon as it changes. Use **Save** to apply a mode change; enabling daily auto-apply asks for confirmation.
+
 ## Privacy guarantees are tested
 
 | Guarantee                                                            | Evidence                                                                                                                   |

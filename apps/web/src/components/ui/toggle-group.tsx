@@ -8,6 +8,7 @@ export type ToggleGroupOption<T extends string = string> = {
 
 type ToggleGroupFieldProps<T extends string> = {
   ariaLabel: string;
+  disabled?: boolean;
   options: ToggleGroupOption<T>[];
   value: T;
   onValueChange: (value: T) => void;
@@ -15,6 +16,7 @@ type ToggleGroupFieldProps<T extends string> = {
 
 export function ToggleGroupField<T extends string>({
   ariaLabel,
+  disabled,
   onValueChange,
   options,
   value
@@ -23,6 +25,7 @@ export function ToggleGroupField<T extends string>({
     <ToggleGroupPrimitive.Root
       aria-label={ariaLabel}
       className="segmented-control"
+      disabled={disabled}
       type="single"
       value={value}
       onValueChange={(nextValue) => {
