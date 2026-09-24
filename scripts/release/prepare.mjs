@@ -1,10 +1,10 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import {
   assert,
+  assertCompatibility,
   finalizeChangelog,
   fingerprint,
   git,
-  hasBreakingNotes,
   isPublishedVersion,
   latestTag,
   nextVersion,
@@ -16,10 +16,13 @@ import {
 } from "./core.mjs";
 
 try {
-  const [bump, rationaleFile] = process.argv.slice(2);
+  const [bump, rationaleFile, exceptionFlag, ...extra] = process.argv.slice(2);
   assert(
-    rationaleFile,
-    "Usage: pnpm release:prepare <major|minor|patch> <rationale.md>"
+    rationaleFile &&
+      !extra.length &&
+      (exceptionFlag === undefined ||
+        exceptionFlag === "--pre-production-1.1.0"),
+    "Usage: pnpm release:prepare <major|minor|patch> <rationale.md> [--pre-production-1.1.0]"
   );
   assert(
     !git("status", "--porcelain"),
@@ -87,15 +90,13 @@ try {
     date,
     sourceCommit: git("rev-parse", "HEAD"),
     fingerprint: fingerprint(),
-    rationale
+    rationale,
+    ...(exceptionFlag && { compatibilityException: "pre-production-1.1.0" })
   };
   // Validate all in-memory inputs before touching the working tree.
-  assert(
-    bump === "major" ||
-      !hasBreakingNotes(
-        changelog.split(`## [${version}] - `)[1].split("\n## [")[0]
-      ),
-    "Breaking release notes require a major bump"
+  assertCompatibility(
+    plan,
+    changelog.split(`## [${version}] - `)[1].split("\n## [")[0]
   );
   for (const [path, content] of updates) writeFileSync(path, content);
   writeFileSync("CHANGELOG.md", changelog);

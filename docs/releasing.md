@@ -82,6 +82,22 @@ choose a larger bump as a substitute for investigating uncertainty.
   compatibility. The additive SQL migration does not negate those breaks. See
   [the migration guide](deployment-and-operations.md#app-permissions-migration).
 
+### One-time pre-production exception: 1.1.0
+
+On 2026-09-24 the maintainer explicitly selected **1.1.0** for the app-permissions
+release because the vault is not yet in production and its disposable instance can
+be recreated. This overrides the normal major-bump decision for this release only;
+the incompatible contracts and migration/rollback instructions remain documented.
+Future releases follow the compatibility policy above.
+
+For this approved exception, use
+`pnpm release:prepare minor /tmp/funes-release.md --pre-production-1.1.0`.
+Record the authorization and compatibility findings in the rationale. Preparation
+stores `compatibilityException: "pre-production-1.1.0"` in the release plan;
+verification and publication accept it only for **v1.0.0 → v1.1.0**, with a minor
+bump. The flag must be supplied explicitly on reassessment and is not inherited by
+later releases. It does not authorize publication, deployment or a database reset.
+
 Write a concise rationale outside the checkout, for example `/tmp/funes-release.md`:
 
 ```markdown

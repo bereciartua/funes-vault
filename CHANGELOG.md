@@ -4,6 +4,10 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-24
+
+This release uses a minor version by explicit maintainer decision while the vault is not yet in production. It includes the incompatible changes below; the exception applies only to this release.
+
 ### Added
 
 - Agent release runbook and compatibility policy, synchronized version preparation,
@@ -15,6 +19,7 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 - **Breaking:** one App permissions set per authenticated client; optional purpose is audit context only.
 - Check app authority before retrieval, report typed decision reasons, audit denials and bind approvals to policy versions.
 - **Breaking:** MCP inputs accept only camelCase fields and uppercase enum values; snake_case aliases, `categories`, and lowercase kinds are rejected. HTTP input aliases remain supported.
+- **Breaking:** HTTP policy bodies no longer accept `purpose`, updates cannot change `clientId`, and a second permission set for a client returns 409. Client responses replace `policyCount` with `hasPolicy`; disclosure review responses replace `purpose` with nullable `statedPurpose`. Read, suggestion and capture responses expose typed decision reasons.
 - Expose described MCP schemas without purpose hints or retry; isolate caller suggestion metadata from server actions.
 - Show resulting OAuth permissions, never silently recreate removed first-party permissions and offer explicit default restoration.
 - Add the additive app-permissions migration and export v2; old exports and pre-migration approvals are not compatible.
@@ -22,6 +27,17 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 ### Removed
 
 - Purpose-based policy selection, MCP purpose substitution and v1 export import compatibility. See the [migration guide](docs/deployment-and-operations.md#app-permissions-migration) before upgrading.
+- MCP `suggestedPurpose` configuration and the `FUNES_VAULT_SUGGESTED_PURPOSE` hint/retry behavior. Purpose no longer grants access.
+
+### Migration notes
+
+1. Drain pending device capture queues and take a verified database backup. Old bearer-capture identifiers no longer deduplicate after migration, so retries can create duplicates. A v1 JSON export cannot be imported into this release and is not a substitute for the rollback database backup.
+2. Stop the old API, worker, MCP and web services. Select matching 1.1.0 images and run the migration service before starting the new services together. Never run the old and new authorization models against the same database schema.
+3. The migration removes invalid cross-owner policies and keeps only the newest valid policy per client, ordered by `updatedAt` and then id. It discards surplus policies and their purpose field. Review every app's surviving permissions after upgrading.
+4. Existing requests keep their stated purpose but lose approval authority: deny old requests and submit fresh ones. Accounts, sessions, clients and OAuth grants remain valid. Caller-provided suggestion metadata moves under `caller`; server-owned manual-capture, chat and consolidation metadata retain their shape.
+5. Update MCP integrations to the advertised camelCase fields and uppercase enums, update HTTP clients for the response and policy changes above, and create new v2 exports after upgrading. Verify API/web/MCP readiness, worker heartbeat, app permissions and disclosure/revocation flows.
+
+Rollback requires stopping the new services, restoring the pre-upgrade database backup and restarting matching 1.0.0 images. Reverting images alone is insufficient; never reset a personal or deployed vault. See the [operator procedure](docs/deployment-and-operations.md#app-permissions-migration).
 
 ## [1.0.0] - 2026-09-23
 
@@ -47,5 +63,6 @@ This is the first public release. The single baseline replaces development migra
 
 See the [testing guide](docs/testing-and-release.md) for verification commands and the [operations guide](docs/deployment-and-operations.md) for deployment prerequisites. Publication and production rollout remain operator actions.
 
-[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/bereciartua/funes-vault/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/bereciartua/funes-vault/releases/tag/v1.0.0

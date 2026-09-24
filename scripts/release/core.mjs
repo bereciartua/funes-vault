@@ -17,6 +17,25 @@ export const hasBreakingNotes = (notes) =>
     notes
   );
 
+export function assertCompatibility(plan, notes) {
+  const exception = plan.compatibilityException;
+  if (exception !== undefined) {
+    assert(
+      exception === "pre-production-1.1.0" &&
+        plan.previousTag === "v1.0.0" &&
+        plan.version === "1.1.0" &&
+        plan.bump === "minor",
+      "The pre-production compatibility exception applies only to v1.0.0 -> v1.1.0 (minor)"
+    );
+  }
+  assert(
+    plan.bump === "major" ||
+      exception !== undefined ||
+      !hasBreakingNotes(notes),
+    "Breaking release notes require a major bump"
+  );
+}
+
 export function nextVersion(previous, bump) {
   assert(stableVersion.test(previous), "Expected a stable X.Y.Z version");
   const parts = previous.split(".").map(Number);
@@ -327,10 +346,7 @@ export function verifyPlan() {
     "Release date differs from the changelog"
   );
   const notes = releaseNotes(changelog, plan.version);
-  assert(
-    plan.bump === "major" || !hasBreakingNotes(notes),
-    "Breaking release notes require a major bump"
-  );
+  assertCompatibility(plan, notes);
   assert(
     changelog.includes("## [Unreleased]\n") &&
       !changelog.split("## [Unreleased]\n")[1]?.split("\n## [")[0].trim(),

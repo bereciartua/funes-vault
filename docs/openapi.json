@@ -2764,7 +2764,7 @@
   "info": {
     "title": "Funes Vault API",
     "description": "Privacy-first personal memory API for users, LLM clients, and MCP integrations.",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "contact": {}
   },
   "tags": [],
