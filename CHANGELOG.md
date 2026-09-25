@@ -4,15 +4,26 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-09-25
+
 ### Changed
 
 - **Breaking:** extraction and saved-memory consolidation now have independent owner-selectable TypeSafe/OpenAI providers. `POST /v1/memory-processing/consent` is removed; use `POST /v1/memory-processing/provider`. Capabilities return provider `options` instead of `consents` and `consentVersion`. A selected provider authorizes processing for that task without a separate TypeSafe consent toggle.
 - Instance configuration sets the initial provider for all owners, including new owners and existing owners without a saved choice. When a task selector is unset and TypeSafe's required credentials are configured, TypeSafe is now the default; previously the default was OpenAI. TypeSafe extraction still uses OpenAI normalization.
 
+### Fixed
+
+- Persist the daily consolidation switch immediately, restore its previous state if saving fails, and retain confirmation before enabling automatic application.
+- Treat expected consolidation exclusions as completed work and show exclusion counts and reasons. Provider failures, changed sources and unfinished comparisons remain actionable; incomplete runs now record a failed-job audit event.
+- Synchronize voice capture feedback with transcript persistence and extraction, bind delayed tool results to their original utterance, and show durable outcomes and failure reasons. Retry eligibility uses the transcript arrival time, and consolidation-only provider changes no longer invalidate voice extraction sessions.
+
 ### Migration notes
 
 - The migration creates owner provider preferences and maps explicit revoked TypeSafe consents to OpenAI. Active or absent legacy consent rows inherit the instance default. Revocation previously could stop extraction; the new selector has no off state and moves those owners to OpenAI processing.
-- Deploy API, worker and web together after a database backup. Rollback requires restoring the pre-upgrade database backup and matching images because older binaries cannot interpret the new selection model. Review instance provider settings before rollout; switching a provider affects new work while existing runs retain snapshots.
+- Before upgrading from 1.1.0, take a verified database backup and review `MEMORY_EXTRACTION_SYSTEM`, `MEMORY_CONSOLIDATION_SYSTEM` and configured provider credentials. Set explicit task defaults if existing owners without saved choices should remain on OpenAI.
+- Stop the old API and worker, apply `20260924010000_processing_provider_preference`, then start matching 2.0.0 API/worker, web and MCP images. Reconnect active voice sessions and verify owner provider choices, extraction, consolidation, service readiness and worker heartbeat.
+- Update HTTP integrations for the provider endpoint and capabilities response. MCP tool contracts and OAuth grants remain compatible. Export v2 remains supported and adds optional processing provider preferences; JSON import does not restore processing history or provider choices and is not a substitute for a database backup.
+- Switching a provider affects new work while existing runs retain snapshots; stale work is blocked by current-provider checks. Explicit reprocessing can adopt the current selection. Rollback requires restoring the pre-upgrade database backup and matching 1.1.0 images because older binaries cannot interpret the new selection model.
 
 ## [1.1.0] - 2026-09-24
 
@@ -73,6 +84,7 @@ This is the first public release. The single baseline replaces development migra
 
 See the [testing guide](docs/testing-and-release.md) for verification commands and the [operations guide](docs/deployment-and-operations.md) for deployment prerequisites. Publication and production rollout remain operator actions.
 
-[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/bereciartua/funes-vault/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/bereciartua/funes-vault/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/bereciartua/funes-vault/releases/tag/v1.0.0
