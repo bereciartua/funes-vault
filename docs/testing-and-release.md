@@ -56,8 +56,8 @@ and starts the production output. Demo tests instead start the real API with exa
 CI retries a failed browser case once. Use `PLAYWRIGHT_WEB_PORT`/`PLAYWRIGHT_API_PORT`
 and matching `PLAYWRIGHT_WEB_URL`/`PLAYWRIGHT_API_URL` when defaults are occupied.
 
-Processing-consent browser tests reset consent through the API in `beforeEach`.
-They do not depend on the previous test's persisted toggle state. Screenshots for
+Processing-provider browser tests reset provider choices through the API in `beforeEach`.
+They do not depend on the previous test's persisted selection. Screenshots for
 failure diagnosis belong in Playwright artifacts, not hard-coded `/tmp` paths.
 
 ## Coverage and static checks

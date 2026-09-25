@@ -37,7 +37,7 @@ file. PostgreSQL and Redis have no published production ports.
 | API       | Browser `/auth/*`, `/oauth/consent*`, `/v1/*`, discovery and exact `/health` go to API. Readiness and operator routes remain private.          |
 | Connector | `/mcp` goes to MCP; OAuth metadata, authorization, token, registration, revocation and consent routes go to API. Unmatched paths are rejected. |
 
-TypeSafe Jev is an optional external memory classifier, separate from OpenAI; its task-specific consent is described in [memory processing](docs/memory-processing.md).
+TypeSafe Jev is an optional external memory classifier, separate from OpenAI; owner task selections and disclosures are described in [memory processing](docs/memory-processing.md).
 
 Use HTTPS and configure canonical origins and Google callbacks together. MCP
 sessions and rate limits are process-local; run one MCP instance. See the
@@ -60,7 +60,7 @@ Controllers do not access Prisma directly.
 | `ChatModule`              | Threads, turns, guided questions and streaming; `/v1/chat/*`                                                                                                | None directly; tools delegate to memory/request/suggestion services                                                           |
 | `VoiceModule`             | Realtime sessions, turns and tools; `/v1/chat/voice-sessions/*`                                                                                             | None directly; tools delegate to the same domain services                                                                     |
 | `MemoryProcessingModule`  | Extraction/reconciliation and source status, retry, reprocess; `/v1/memory-processing/*`                                                                    | `MEMORY_PROCESSING_COMPLETED`; candidate writes delegate to suggestions                                                       |
-| `ProcessingCoreModule`    | HTTP-free configuration and processor permission services; no routes                                                                                        | `PROCESSING_CONSENT_UPDATED`                                                                                                  |
+| `ProcessingCoreModule`    | HTTP-free configuration and provider-choice services; no routes                                                                                             | `PROCESSING_PROVIDER_SELECTED`                                                                                                |
 | `ConsolidationModule`     | Discovery, provider judgment, proposals and archive application; no routes                                                                                  | `JOB_CREATED`, `JOB_COMPLETED`, `JOB_FAILED`, `MEMORY_ARCHIVED`                                                               |
 | `JobsModule`              | Owner jobs and consolidation settings; `/v1/jobs`, `/v1/jobs/consolidation-settings`, `/v1/jobs/consolidation-runs`                                         | None directly; domain runners record jobs                                                                                     |
 | `JobsRuntimeModule`       | Queue producers/consumers shared by API and worker; no routes                                                                                               | None directly                                                                                                                 |
@@ -152,10 +152,10 @@ plaintext value; login-attempt cleanup and expiry bound its lifetime.
 ```mermaid
 flowchart TD
     Source[Persisted user source turn] --> Claim[Claim source run and configuration snapshot]
-    Claim --> Gate[Check consent, policy, write mode and source identity]
+    Claim --> Gate[Check provider choice, policy, write mode and source identity]
     Gate --> Provider[Call selected provider outside transaction]
     Provider --> Validate[Validate candidate schema, support and secret rules]
-    Validate --> Commit[Lock owner and run; recheck consent, claim and versions]
+    Validate --> Commit[Lock owner and run; recheck provider choice, claim and versions]
     Commit --> Apply[Apply allowed candidates or queue suggestions]
     Apply --> Audit[Persist outcome, provenance, audit and reconciliation receipts]
     Audit --> UI[Typed result to chat and voice]

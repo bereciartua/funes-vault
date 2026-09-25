@@ -3,7 +3,12 @@
   "workspaces": {
     ".": { "entry": ["scripts/smoke-redis-outage.mjs"] },
     "apps/api": {
-      "entry": ["src/main.ts", "src/worker.ts", "scripts/*.ts"],
+      "entry": [
+        "src/main.ts",
+        "src/worker.ts",
+        "scripts/*.ts",
+        "test/web-server.ts"
+      ],
       // Loaded by pino's worker transport at runtime.
       "ignoreDependencies": ["pino-pretty"]
     },

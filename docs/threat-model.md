@@ -121,7 +121,7 @@ OAuth/OIDC client authorization, tenant-isolation tests and role-gated operator 
 
 ## Configurable memory processing
 
-Memory extraction defends against tool bypass with server-issued candidates, against duplicate delivery with database source/candidate uniqueness, and against stale attempts with leases/claim tokens. Exact UTF-16 evidence validation rejects invented support. Consent revocation is rechecked at provider boundaries and commit; historical transmission cannot be revoked. Stale consolidation actions revalidate both target and survivor under transaction locks. See [processing threat boundaries](memory-processing.md).
+Memory extraction defends against tool bypass with server-issued candidates, against duplicate delivery with database source/candidate uniqueness, and against stale attempts with leases/claim tokens. Exact UTF-16 evidence validation rejects invented support. The current owner provider choice is rechecked at provider boundaries and commit; historical transmission cannot be revoked. Stale consolidation actions revalidate both target and survivor under transaction locks. See [processing threat boundaries](memory-processing.md).
 
 ### Login flow secrets
 

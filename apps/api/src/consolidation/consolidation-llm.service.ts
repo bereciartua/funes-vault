@@ -40,10 +40,6 @@ export class ConsolidationLlmService {
     private readonly permission: ProcessingPermissionService
   ) {}
 
-  get configuration() {
-    return this.config.effective;
-  }
-
   configurationForUser(userId: string, tx?: Prisma.TransactionClient) {
     return this.config.forUser(userId, tx);
   }
@@ -51,10 +47,10 @@ export class ConsolidationLlmService {
   async judge(
     userId: string,
     memories: MemoryWithCategories[],
-    snapshot?: ProcessingConfiguration
+    snapshot: ProcessingConfiguration
   ) {
     const startedAt = Date.now();
-    const configuration = snapshot ?? this.config.effective;
+    const configuration = snapshot;
     const task = configuration.consolidation;
     const result = {
       candidates: [] as ArchiveCandidate[],

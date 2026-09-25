@@ -88,7 +88,7 @@ scripts/        Build, migration, icon and publishing helpers
 - Quick capture, suggestions inbox and reversible review workflows.
 - App permissions per authenticated client, selected disclosure approval and one-time retrieval.
 - Revocable client tokens and OAuth connectors, with five MCP tools.
-- Chat and voice with citations, visible processing permissions and persisted transcripts.
+- Chat and voice with citations, visible processing provider choices and persisted transcripts.
 - Optional extraction and consolidation, disabled or review-first by default.
 - Audit history, portable export/import, profile and account controls.
 - Responsive light/dark UI, installable PWA and offline text-capture queue. Sign in once on the device to enable cold-start capture for that vault owner; syncing requires the same owner’s valid session.
@@ -102,7 +102,7 @@ In **Settings → Jobs**, the daily consolidation switch saves as soon as it cha
 | One owner's identifiers cannot expose another owner's records        | [Tenant isolation](apps/api/test/tenant-isolation.e2e.spec.ts): foreign records return 404.                                |
 | Approval discloses only the selected, current text once              | [Disclosure review](apps/api/test/disclosure-review.e2e.spec.ts): stale previews, races and repeat retrieval are rejected. |
 | OAuth credentials cannot be replayed after consumption or revocation | [OAuth integration](apps/api/test/oauth.e2e.spec.ts): PKCE, rotation and replay checks.                                    |
-| Late processor output cannot bypass revoked permission               | [Processing integration](apps/api/test/memory-processing.e2e.spec.ts): authority is checked again before commit.           |
+| Late processor output cannot bypass a changed provider choice        | [Processing integration](apps/api/test/memory-processing.e2e.spec.ts): the choice is checked again before commit.          |
 | Exports and imports cannot transplant working credentials            | [Data control](apps/api/test/data-control.e2e.spec.ts): round trips preserve data while excluding secrets and grants.      |
 
 Read the [privacy model](docs/privacy-and-trust-model.md) and [threat model](docs/threat-model.md) before storing personal data.
@@ -113,7 +113,7 @@ Version **1.1.0** targets a self-hosted, single-instance deployment. Data is ser
 
 ## Deploying
 
-Use the canonical production Compose file with pinned image tags and three HTTPS origins. Configure Google sign-in and provider permissions, then verify readiness and backups. Follow [deployment and operations](docs/deployment-and-operations.md), including the baseline database upgrade requirement.
+Use the canonical production Compose file with pinned image tags and three HTTPS origins. Configure Google sign-in and provider choices, then verify readiness and backups. Follow [deployment and operations](docs/deployment-and-operations.md), including the baseline database upgrade requirement.
 
 ## Connecting an AI tool
 

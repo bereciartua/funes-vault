@@ -59,9 +59,14 @@ export class MemoryProcessingController {
     @Body(new ZodValidationPipe(processingProviderRequestSchema))
     request: ProcessingProviderRequest
   ) {
-    await this.config.setProvider(user.id, request.scope, request.system);
-
-    return this.capabilities(user);
+    return {
+      ...(await this.config.setProvider(
+        user.id,
+        request.scope,
+        request.system
+      )),
+      options: this.config.options
+    };
   }
 
   @Get("sources/:sourceId")

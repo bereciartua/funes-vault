@@ -29,9 +29,9 @@ API and worker must receive identical task settings and restart together. Empty 
 | MEMORY_CONSOLIDATION_APPLY_MODE                                                               | user_setting (or review)                     |
 | MEMORY_CONSOLIDATION_MAX_SENSITIVITY                                                          | INTERNAL                                     |
 
-Extraction needs OpenAI credentials in both systems. Jev consolidation independently works without OpenAI credentials. Owners choose a provider separately for each task in Profile settings. Selecting a provider is immediately effective for new work and authorizes that task's processing; there is no additional TypeSafe permission button. The API rejects a choice whose credentials are unavailable. Existing explicit TypeSafe revocations migrate to OpenAI choices, preserving the owner's intent. Do not copy keys into configuration responses, logs or the browser.
+Extraction needs OpenAI credentials in both systems. Jev consolidation independently works without OpenAI credentials. Owners choose a provider separately for each task in Profile settings. Confirming a manual provider selection makes it effective for new work; there is no additional TypeSafe permission button. The API rejects a choice whose credentials are unavailable. Existing explicit TypeSafe revocations migrate to OpenAI choices; this replaces the former stop-processing state with OpenAI processing. Do not copy keys into configuration responses, logs or the browser.
 
-The effective non-secret configuration and fingerprint are logged at startup and available through authenticated `GET /v1/memory-processing/capabilities`. Compare API and worker startup fingerprints after every deployment. A mismatch requires correcting environment variables and restarting both processes before enabling jobs. Existing voice sessions must reconnect after a switch.
+The deployment default's non-secret configuration and fingerprint are logged at API and worker startup. Authenticated `GET /v1/memory-processing/capabilities` instead returns the requesting owner's effective configuration and fingerprint, which may differ from that default. Compare API and worker startup logs after every deployment. A mismatch requires correcting environment variables and restarting both processes before enabling jobs. Existing voice sessions must reconnect after an extraction switch.
 
 ## Processing and privacy
 
@@ -53,13 +53,13 @@ The assistant can read `memory_capture_result`, but cannot submit arbitrary titl
 
 Semantic consolidation uses supplied pair IDs, source versions and timestamps computed in code. Shared action validation preserves a canonical survivor and rejects self-archival, competing targets and archive cycles. Both automatic and reviewed archival recheck active status and content versions in the write transaction. Semantic progress is separate from deterministic maintenance. Expected memory exclusions (sensitivity, approval, expiration, possible credentials, or unavailable records) do not fail a run: jobs complete with aggregate skipped-memory counts and reasons. Excluded source versions remain uninspected so they can be reconsidered if eligibility changes. No memory bodies or secret values are added to these diagnostics.
 
-Provider failures, missing configuration or consent, changed source versions and comparison limits still leave the job incomplete. Failed outcomes emit `JOB_FAILED`; completed runs, including expected exclusions, emit `JOB_COMPLETED`. The job detail explains the cause and offers Retry for transient failures. Cases requiring changed settings, permission, content or a new run explain that action instead. Older runs without exclusion reasons retain their recorded status and explicitly say those reasons were not recorded. Job details do not describe memory counts as pair comparisons.
+Provider failures, missing configuration, changed provider choice, changed source versions and comparison limits still leave the job incomplete. Failed outcomes emit `JOB_FAILED`; completed runs, including expected exclusions, emit `JOB_COMPLETED`. The job detail explains the cause and offers Retry for transient failures. Cases requiring changed settings, permission, content or a new run explain that action instead. Older runs without exclusion reasons retain their recorded status and explicitly say those reasons were not recorded. Job details do not describe memory counts as pair comparisons.
 
 Full vault export includes processing runs, pending candidate payloads, result links, legacy consent records and provider choices. Filtered memory exports omit unlabelled processing records. Import does not activate exported provider choices or replay extraction. Account deletion cascades processing records. Audits contain identifiers and operational metadata, never raw prompts, provider error bodies or credentials.
 
 ## Verification and live smoke
 
-Ordinary CI uses synthetic sources and fake providers. Fixtures cover preferences, several claims, remember requests, acknowledgments, quotations, hypotheticals, third-person statements, confirmation, correction/retraction, scope, dates, negation, secrets and Spanish. Database integration tests cover routing, policy/review, tenant isolation, durable retries, revoked consent, cancellation, reconciliation and voice identity.
+Ordinary CI uses synthetic sources and fake providers. Fixtures cover preferences, several claims, remember requests, acknowledgments, quotations, hypotheticals, third-person statements, confirmation, correction/retraction, scope, dates, negation, secrets and Spanish. Database integration tests cover routing, policy/review, tenant isolation, durable retries, provider switching, cancellation, reconciliation and voice identity.
 
 To exercise paid providers without writing to the vault, first build the API, then explicitly run:
 
@@ -81,4 +81,4 @@ Vendor references: [primitives](https://docs.typesafe.ai/primitives), [models](h
 `e2e-live/voice-live.spec.ts` is discovered only by `playwright.live.config.ts`.
 See [live verification](testing-and-release.md#live-provider-verification) for the
 explicit synthetic-WAV and provider-credential command. It checks persistence and
-processing structure, not exact model wording, and revokes its test consent afterward.
+processing structure, not exact model wording, using an isolated test account.

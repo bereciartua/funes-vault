@@ -50,7 +50,7 @@ async function setup(
     { provide: ProcessingPermissionService, useValue: { check: vi.fn() } }
   ]);
 
-  return { service, judge };
+  return { service, judge, config };
 }
 describe("privacy: semantic action validation", () => {
   it("filters all six sensitivity levels before serialization", async () => {
@@ -62,13 +62,13 @@ describe("privacy: semantic action validation", () => {
       "RESTRICTED",
       "SECRET"
     ].map((s, i) => memory(String(i), s));
-    const { service, judge } = await setup(
+    const { service, judge, config } = await setup(
       memories.map((m) => ({
         recentMemory: m,
         candidateMemory: memory(`other-${m.id}`)
       }))
     );
-    const result = await service.judge("u", memories as never);
+    const result = await service.judge("u", memories as never, config);
     expect(judge.mock.calls[0]![0].pairs).toHaveLength(3);
     expect(result.skippedPairs).toBe(3);
     expect(result.status).toBe("completed");
@@ -80,8 +80,8 @@ describe("privacy: semantic action validation", () => {
     const memories = Array.from({ length: 19 }, (_, i) =>
       memory(String(i), i < 6 ? "SENSITIVE" : "LOW")
     );
-    const { service, judge } = await setup([]);
-    const result = await service.judge("u", memories as never);
+    const { service, judge, config } = await setup([]);
+    const result = await service.judge("u", memories as never, config);
     expect(result).toMatchObject({
       status: "completed",
       reason: null,
@@ -99,8 +99,8 @@ describe("privacy: semantic action validation", () => {
       { ...memory("secret"), body: "password=syntheticsecretvalue" },
       { ...memory("archived"), status: "ARCHIVED" }
     ];
-    const { service, judge } = await setup([]);
-    const result = await service.judge("u", memories as never);
+    const { service, judge, config } = await setup([]);
+    const result = await service.judge("u", memories as never, config);
     expect(result.status).toBe("completed");
     expect(result.skippedSourceReasons).toEqual({
       not_approved: 1,
@@ -117,10 +117,11 @@ describe("privacy: semantic action validation", () => {
       recentMemory: memory(`a${i}`),
       candidateMemory: memory(`b${i}`)
     }));
-    const { service } = await setup(pairs);
+    const { service, config } = await setup(pairs);
     const result = await service.judge(
       "u",
-      pairs.map((p) => p.recentMemory) as never
+      pairs.map((p) => p.recentMemory) as never,
+      config
     );
     expect(result).toMatchObject({
       status: "partial",
@@ -160,21 +161,21 @@ describe("privacy: semantic action validation", () => {
       ],
       diagnostics: {}
     });
-    const { service } = await setup(
+    const { service, config } = await setup(
       [
         { recentMemory: a, candidateMemory: b },
         { recentMemory: b, candidateMemory: c }
       ],
       judge
     );
-    const result = await service.judge("u", [a, b, c] as never);
+    const result = await service.judge("u", [a, b, c] as never, config);
     expect(result.candidates).toHaveLength(1);
     expect(result.candidates[0]?.canonicalMemory?.id).toBe("b");
   });
   it("rejects competing decisions for the same supplied pair", async () => {
     const a = memory("a"),
       b = memory("b");
-    const { service } = await setup(
+    const { service, config } = await setup(
       [{ recentMemory: a, candidateMemory: b }],
       vi.fn().mockResolvedValue({
         decisions: ["left", "right"].map((archive) => ({
@@ -187,7 +188,9 @@ describe("privacy: semantic action validation", () => {
         diagnostics: {}
       })
     );
-    expect((await service.judge("u", [a, b] as never)).candidates).toEqual([]);
+    expect(
+      (await service.judge("u", [a, b] as never, config)).candidates
+    ).toEqual([]);
   });
   it("retains judged batches and does not complete failed source versions", async () => {
     const pairs = Array.from({ length: 31 }, (_, i) => ({
@@ -198,10 +201,11 @@ describe("privacy: semantic action validation", () => {
       .fn()
       .mockResolvedValueOnce({ decisions: [], diagnostics: {} })
       .mockRejectedValueOnce(new Error("outage"));
-    const { service } = await setup(pairs, judge);
+    const { service, config } = await setup(pairs, judge);
     const result = await service.judge(
       "u",
-      pairs.map((p) => p.recentMemory) as never
+      pairs.map((p) => p.recentMemory) as never,
+      config
     );
     expect(result.status).toBe("partial");
     expect(result.completedSourceIds).toHaveLength(30);
@@ -210,11 +214,11 @@ describe("privacy: semantic action validation", () => {
   it("distinguishes an outage from a completed no-op", async () => {
     const a = memory("a"),
       b = memory("b");
-    const { service } = await setup(
+    const { service, config } = await setup(
       [{ recentMemory: a, candidateMemory: b }],
       vi.fn().mockRejectedValue(new Error("sensitive provider body"))
     );
-    const result = await service.judge("u", [a] as never);
+    const result = await service.judge("u", [a] as never, config);
     expect(result.status).toBe("failed");
     expect(result.completedSourceIds).toEqual([]);
     expect(JSON.stringify(result)).not.toContain("sensitive provider body");

@@ -1,5 +1,6 @@
 "use client";
 import {
+  memoryProcessingCapabilitiesSchema,
   type MemoryProcessingResult,
   memoryProcessingResultSchema,
   memoryRequestReasonLabel,
@@ -8,9 +9,10 @@ import {
 import Link from "next/link";
 
 import { Button } from "../../../components/ui/button";
+import { useConfirm } from "../../../components/ui/confirmation-dialog";
 import { FeedbackMessages } from "../../../components/ui/feedback-messages";
 import { queryKeys } from "../../../lib/api/query-keys";
-import { useApiMutation } from "../../../lib/api/use-api";
+import { useApiMutation, useApiQuery } from "../../../lib/api/use-api";
 import { processorLabel } from "../../../lib/domain/processing";
 import { canRetryProcessing, processingReason } from "./processing-reason";
 export function MemoryProcessingOutcome({
@@ -18,6 +20,12 @@ export function MemoryProcessingOutcome({
 }: {
   initial?: MemoryProcessingResult;
 }) {
+  const confirm = useConfirm();
+  const capabilities = useApiQuery({
+    key: queryKeys.processing,
+    path: "/v1/memory-processing/capabilities",
+    schema: memoryProcessingCapabilitiesSchema
+  });
   const mutation = useApiMutation({
     path: (sourceId: string) =>
       `/v1/memory-processing/sources/${sourceId}/retry`,
@@ -69,10 +77,38 @@ export function MemoryProcessingOutcome({
   const processors =
     result.processors?.map(processorLabel).join(" + ") ?? "Memory processing";
   const explanation = processingReason(result.reason);
+  const reason = result.reason;
+  const sourceMessageId =
+    typeof result.sourceMessageId === "string" ? result.sourceMessageId : null;
+  const selectedProvider =
+    capabilities.data?.extraction.system === "system_1"
+      ? "TypeSafe"
+      : capabilities.data?.extraction.system === "system_2"
+        ? "OpenAI"
+        : null;
   function retry() {
-    if (result?.sourceMessageId) {
-      mutation.mutate(result.sourceMessageId);
+    if (sourceMessageId) {
+      mutation.mutate(sourceMessageId);
     }
+  }
+  async function reprocessCurrent() {
+    if (!sourceMessageId || !selectedProvider) {
+      return;
+    }
+    if (
+      reason === "processing_consent_required" &&
+      selectedProvider === "TypeSafe"
+    ) {
+      const approved = await confirm({
+        title: "Reprocess with TypeSafe?",
+        body: "TypeSafe will receive your latest message and limited preceding context before sensitivity is known. OpenAI will turn selected passages into memory text. Text already sent cannot be recalled.",
+        confirmLabel: "Reprocess with TypeSafe"
+      });
+      if (!approved) {
+        return;
+      }
+    }
+    reprocess.mutate(sourceMessageId);
   }
 
   return (
@@ -111,7 +147,7 @@ export function MemoryProcessingOutcome({
       {canRetryProcessing(result.reason) &&
       result.reason !== "processing_provider_changed" &&
       result.reason !== "processing_consent_required" &&
-      typeof result.sourceMessageId === "string" &&
+      sourceMessageId &&
       ["failed", "skipped"].includes(String(result.status)) ? (
         <Button disabled={busy} onClick={() => void retry()}>
           {busy ? "Retrying…" : "Retry memory processing"}
@@ -120,17 +156,25 @@ export function MemoryProcessingOutcome({
       {["processing_provider_changed", "processing_consent_required"].includes(
         result.reason ?? ""
       ) &&
-      typeof result.sourceMessageId === "string" &&
+      sourceMessageId &&
       ["failed", "skipped"].includes(String(result.status)) ? (
         <Button
-          disabled={busy}
-          onClick={() => reprocess.mutate(result.sourceMessageId!)}
+          disabled={busy || !selectedProvider}
+          onClick={() => void reprocessCurrent()}
         >
-          {busy ? "Reprocessing…" : "Reprocess with current provider"}
+          {busy
+            ? "Reprocessing…"
+            : `Reprocess with ${selectedProvider ?? "selected provider"}`}
         </Button>
       ) : null}
       <FeedbackMessages
-        error={error ? "Could not retry memory processing." : null}
+        error={
+          error
+            ? reprocess.isError
+              ? "Could not reprocess memory."
+              : "Could not retry memory processing."
+            : null
+        }
       />
     </div>
   );

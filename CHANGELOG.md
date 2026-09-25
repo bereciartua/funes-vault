@@ -4,6 +4,16 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking:** extraction and saved-memory consolidation now have independent owner-selectable TypeSafe/OpenAI providers. `POST /v1/memory-processing/consent` is removed; use `POST /v1/memory-processing/provider`. Capabilities return provider `options` instead of `consents` and `consentVersion`. A selected provider authorizes processing for that task without a separate TypeSafe consent toggle.
+- Instance configuration sets the initial provider for all owners, including new owners and existing owners without a saved choice. When a task selector is unset and TypeSafe's required credentials are configured, TypeSafe is now the default; previously the default was OpenAI. TypeSafe extraction still uses OpenAI normalization.
+
+### Migration notes
+
+- The migration creates owner provider preferences and maps explicit revoked TypeSafe consents to OpenAI. Active or absent legacy consent rows inherit the instance default. Revocation previously could stop extraction; the new selector has no off state and moves those owners to OpenAI processing.
+- Deploy API, worker and web together after a database backup. Rollback requires restoring the pre-upgrade database backup and matching images because older binaries cannot interpret the new selection model. Review instance provider settings before rollout; switching a provider affects new work while existing runs retain snapshots.
+
 ## [1.1.0] - 2026-09-24
 
 This release uses a minor version by explicit maintainer decision while the vault is not yet in production. It includes the incompatible changes below; the exception applies only to this release.

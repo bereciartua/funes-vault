@@ -61,6 +61,9 @@ async function seedDemoUser(email: string, displayName: string) {
 
   await prisma.chatSession.deleteMany({ where: { userId: user.id } });
   await prisma.processingConsent.deleteMany({ where: { userId: user.id } });
+  await prisma.processingProviderPreference.deleteMany({
+    where: { userId: user.id }
+  });
 
   return user;
 }

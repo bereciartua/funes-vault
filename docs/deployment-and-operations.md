@@ -192,7 +192,7 @@ ceilings before processing data you do not want sent to those providers.
    reconnect active voice sessions. Existing runs retain their snapshots; only
    eligible explicit reprocessing adopts a new snapshot. Accepted outcomes remain.
 
-The full [processing guide](memory-processing.md) explains consent, retries and
+The full [processing guide](memory-processing.md) explains provider choices, retries and
 reconciliation. Config rollback is distinct from binary/schema rollback.
 
 ## Backup and restore

@@ -196,14 +196,21 @@ test.describe("memory processing providers", () => {
     const consolidation = page.getByRole("combobox", {
       name: "Provider for saved-memory consolidation"
     });
-    await extraction.selectOption("system_1");
-    await expect(extraction).toHaveValue("system_1");
+    await extraction.click();
+    await page.getByRole("option", { name: "TypeSafe + OpenAI" }).click();
+    await expect(page.getByRole("alertdialog")).toContainText(
+      "before sensitivity is known"
+    );
+    await page.getByRole("button", { name: "Use TypeSafe" }).click();
+    await expect(extraction).toContainText("TypeSafe + OpenAI");
     await expect(page.getByText(/before sensitivity is known/)).toBeVisible();
     await page.reload();
-    await expect(extraction).toHaveValue("system_1");
-    await expect(consolidation).toHaveValue("system_2");
-    await extraction.selectOption("system_2");
-    await expect(extraction).toHaveValue("system_2");
+    await expect(extraction).toContainText("TypeSafe + OpenAI");
+    await expect(consolidation).toContainText("OpenAI");
+    await extraction.click();
+    await page.getByRole("option", { name: "OpenAI", exact: true }).click();
+    await page.getByRole("button", { name: "Use OpenAI" }).click();
+    await expect(extraction).toContainText("OpenAI");
   });
 });
 

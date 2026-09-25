@@ -118,6 +118,9 @@ export function processingE2eHarness() {
       async () => service.effective
     );
   }
+  function useRealProviderChoice() {
+    vi.spyOn(app.get(MemoryProcessingConfigService), "forUser").mockRestore();
+  }
   async function source(
     userId: string,
     content = "Remember I prefer concise answers."
@@ -129,5 +132,14 @@ export function processingE2eHarness() {
     });
   }
 
-  return () => ({ app, prisma, extraction, llm, jev, configure, source });
+  return () => ({
+    app,
+    prisma,
+    extraction,
+    llm,
+    jev,
+    configure,
+    useRealProviderChoice,
+    source
+  });
 }

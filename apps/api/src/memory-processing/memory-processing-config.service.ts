@@ -5,6 +5,7 @@ import { AuditActorType, AuditEventType } from "@funes-vault/db";
 import {
   BadRequestException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   OnModuleInit
 } from "@nestjs/common";
@@ -160,12 +161,13 @@ export class MemoryProcessingConfigService implements OnModuleInit {
     const selected = defaultProcessingSystems();
     for (const preference of preferences) {
       if (
-        (preference.scope === "extraction" ||
-          preference.scope === "consolidation") &&
-        (preference.system === "system_1" || preference.system === "system_2")
+        (preference.scope !== "extraction" &&
+          preference.scope !== "consolidation") ||
+        (preference.system !== "system_1" && preference.system !== "system_2")
       ) {
-        selected[preference.scope] = preference.system;
+        throw new InternalServerErrorException("Invalid provider preference");
       }
+      selected[preference.scope] = preference.system;
     }
 
     return resolveProcessingConfiguration(apiEnv(), selected);
@@ -185,6 +187,13 @@ export class MemoryProcessingConfigService implements OnModuleInit {
     }
     await this.prisma.client.$transaction(async (tx) => {
       await lockUser(tx, userId);
+      const saved = await tx.processingProviderPreference.findUnique({
+        where: { userId_scope: { userId, scope } },
+        select: { system: true }
+      });
+      if (saved?.system === system) {
+        return;
+      }
       const previous = (await this.forUser(userId, tx))[scope].system;
       await tx.processingProviderPreference.upsert({
         where: { userId_scope: { userId, scope } },

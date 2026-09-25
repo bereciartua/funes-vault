@@ -44,9 +44,9 @@ export class ExtractionRunService {
   ) {}
 
   async reprocess(userId: string, sourceMessageId: string) {
-    const configuration = await this.config.forUser(userId);
     await this.prisma.client.$transaction(async (tx) => {
       await lockUser(tx, userId);
+      const configuration = await this.config.forUser(userId, tx);
       const run = await tx.memoryExtractionRun.findFirst({
         where: { userId, sourceMessageId }
       });

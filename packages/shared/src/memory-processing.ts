@@ -4,7 +4,7 @@ import { jsonRecordSchema } from "./common.js";
 import { memorySensitivitySchema } from "./enums.js";
 
 export const memoryProcessingTaskSchema = z.object({
-  system: z.string(),
+  system: z.enum(["system_1", "system_2"]),
   model: z.string(),
   available: z.boolean(),
   processors: z.array(z.string())

@@ -152,7 +152,11 @@ Idempotent candidate result, unique by `(runId, candidateId)`. Ownership comes t
 
 ### `ProcessingConsent`
 
-Versioned owner permission for a processor and task scope, unique by `(userId, processor, scope)`. `revokedAt` records withdrawal. Provider execution and commit-time validation require current permission; importing a vault does not activate these permissions.
+Legacy versioned owner permission for a processor and task scope, unique by `(userId, processor, scope)`. `revokedAt` records withdrawal. No new consent rows are written; explicit TypeSafe revocations were mapped to OpenAI provider choices during migration. Retained for historical export and audit compatibility.
+
+### `ProcessingProviderPreference`
+
+Optional owner choice for extraction or consolidation, unique by `(userId, scope)`, with constrained scope and system values. Omission inherits the instance-configured default, including for new owners. Provider calls and commits recheck this choice; importing a vault does not activate exported choices. Deleting the owner cascades to these rows.
 
 ## Seed Data
 
