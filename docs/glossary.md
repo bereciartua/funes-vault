@@ -25,7 +25,7 @@
 | Memory steward      | The chat tool orchestration that retrieves context, proposes edits and reports authoritative extraction results. It cannot override API policy checks.                                          |
 | Extraction          | Finding durable claims in a conversation, checking them, and applying or queuing them under policy.                                                                                             |
 | Consolidation       | Reviewing related saved memories for duplicates, conflicts, supersession and explicit expiry. It does not forget memories merely because they are old.                                          |
-| Processing consent  | Versioned permission for a processor and task, separate from an external client's disclosure policy.                                                                                            |
+| Provider choice     | Owner selection of TypeSafe or OpenAI for extraction or consolidation, separate from external client app permissions.                                                                           |
 | System 1            | The `system_1` configuration name for the classifier-led processing pipeline. The name evokes fast judgment; it is not a measured latency promise.                                              |
 | System 2            | The `system_2` configuration name for the OpenAI LLM processing pipeline. The name evokes deliberate reasoning; it is not a quality guarantee.                                                  |
 | Classifier provider | TypeSafe's Jev model, used to select and independently check candidate memories in System 1. Extraction also uses OpenAI to normalize selected passages.                                        |

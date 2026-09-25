@@ -1,7 +1,7 @@
 import type { AuthUser } from "@funes-vault/shared";
 import {
-  type ProcessingConsentRequest,
-  processingConsentRequestSchema
+  type ProcessingProviderRequest,
+  processingProviderRequestSchema
 } from "@funes-vault/shared";
 import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
 import {
@@ -18,7 +18,6 @@ import { SessionAuthGuard } from "../auth/session-auth.guard.js";
 import { ZodValidationPipe } from "../common/zod-validation.pipe.js";
 import { ExtractionRunService } from "./extraction-run.service.js";
 import { MemoryProcessingConfigService } from "./memory-processing-config.service.js";
-import { ProcessingPermissionService } from "./processing-permission.service.js";
 @ApiTags("memory processing")
 @ApiCookieAuth(sessionCookieName)
 @UseGuards(SessionAuthGuard)
@@ -26,46 +25,48 @@ import { ProcessingPermissionService } from "./processing-permission.service.js"
 export class MemoryProcessingController {
   constructor(
     private readonly config: MemoryProcessingConfigService,
-    private readonly permission: ProcessingPermissionService,
     private readonly extractionRunService: ExtractionRunService
   ) {}
 
   @Get("capabilities")
   @ApiOperation({
-    summary:
-      "Read effective memory processors and current user's processing permissions"
+    summary: "Read available providers and the current user's task selections"
   })
   @ApiOkResponse({
-    description:
-      "Sanitized effective configuration, fingerprint and versioned consent scopes."
+    description: "Sanitized effective configuration and provider availability."
   })
   async capabilities(@CurrentUser() user: AuthUser) {
     return {
-      ...this.config.effective,
-      consentVersion: 1,
-      consents: await this.permission.listConsents(user.id)
+      ...(await this.config.forUser(user.id)),
+      options: this.config.options
     };
   }
 
-  @Post("consent")
-  @ApiOperation({ summary: "Grant or revoke TypeSafe processing for one task" })
+  @Post("provider")
+  @ApiOperation({ summary: "Select a memory processing provider for one task" })
   @ApiBody({
     schema: {
       type: "object",
-      required: ["scope", "granted", "version"],
+      required: ["scope", "system"],
       properties: {
         scope: { enum: ["extraction", "consolidation"] },
-        granted: { type: "boolean" },
-        version: { type: "integer", enum: [1] }
+        system: { enum: ["system_1", "system_2"] }
       }
     }
   })
-  consent(
+  async provider(
     @CurrentUser() user: AuthUser,
-    @Body(new ZodValidationPipe(processingConsentRequestSchema))
-    request: ProcessingConsentRequest
+    @Body(new ZodValidationPipe(processingProviderRequestSchema))
+    request: ProcessingProviderRequest
   ) {
-    return this.permission.setConsent(user.id, request.scope, request.granted);
+    return {
+      ...(await this.config.setProvider(
+        user.id,
+        request.scope,
+        request.system
+      )),
+      options: this.config.options
+    };
   }
 
   @Get("sources/:sourceId")

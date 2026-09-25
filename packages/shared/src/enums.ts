@@ -111,6 +111,7 @@ export const memorySuggestionStatusSchema = z.enum([
 export const auditEventTypeSchema = z.enum([
   "MEMORY_PROCESSING_COMPLETED",
   "PROCESSING_CONSENT_UPDATED",
+  "PROCESSING_PROVIDER_SELECTED",
   "MEMORY_CREATED",
   "MEMORY_UPDATED",
   "MEMORY_ARCHIVED",

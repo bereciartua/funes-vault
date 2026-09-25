@@ -4,17 +4,10 @@ import { jsonRecordSchema } from "./common.js";
 import { memorySensitivitySchema } from "./enums.js";
 
 export const memoryProcessingTaskSchema = z.object({
-  system: z.string(),
+  system: z.enum(["system_1", "system_2"]),
   model: z.string(),
   available: z.boolean(),
   processors: z.array(z.string())
-});
-export const processingConsentSchema = z.object({
-  processor: z.string(),
-  scope: z.string(),
-  revokedAt: z.iso.datetime().nullable(),
-  version: z.number().int(),
-  grantedAt: z.iso.datetime().optional()
 });
 export const memoryProcessingCapabilitiesSchema = z.object({
   fingerprint: z.string(),
@@ -22,14 +15,18 @@ export const memoryProcessingCapabilitiesSchema = z.object({
   consolidation: memoryProcessingTaskSchema.extend({
     maxSensitivity: memorySensitivitySchema
   }),
-  consentVersion: z.number().int().optional(),
-  consents: z.array(processingConsentSchema)
+  options: z.object({
+    extraction: z.object({ typesafe: z.boolean(), openai: z.boolean() }),
+    consolidation: z.object({ typesafe: z.boolean(), openai: z.boolean() })
+  })
 });
-export const processingConsentRequestSchema = z.object({
+export const processingProviderRequestSchema = z.object({
   scope: z.enum(["extraction", "consolidation"]),
-  granted: z.boolean(),
-  version: z.literal(1)
+  system: z.enum(["system_1", "system_2"])
 });
+export type ProcessingProviderRequest = z.infer<
+  typeof processingProviderRequestSchema
+>;
 export const memoryProcessingOutcomeSchema = z
   .object({
     status: z.string(),
@@ -80,10 +77,6 @@ export const consolidationSemanticMetadataSchema = z
   })
   .catchall(z.unknown());
 export type MemoryProcessingTask = z.infer<typeof memoryProcessingTaskSchema>;
-export type ProcessingConsent = z.infer<typeof processingConsentSchema>;
-export type ProcessingConsentRequest = z.infer<
-  typeof processingConsentRequestSchema
->;
 export type MemoryProcessingCapabilities = z.infer<
   typeof memoryProcessingCapabilitiesSchema
 >;
@@ -100,7 +93,9 @@ export type ConsolidationSemanticMetadata = z.infer<
 export function consolidationFailureMessage(reason?: string | null) {
   switch (reason) {
     case "processing_consent_required":
-      return "Memory comparison needs your processing permission. Review it in Settings → Profile before running consolidation again.";
+      return "This run used an older TypeSafe permission. Choose a provider in Settings → Profile, then start a new consolidation run.";
+    case "processing_provider_changed":
+      return "The provider changed while this run was active. Start a new consolidation run with the current choice.";
     case "provider_not_configured":
       return "Memory comparison is unavailable because its provider is not configured. Ask your vault administrator to check the processing configuration.";
     case "source_versions_changed":

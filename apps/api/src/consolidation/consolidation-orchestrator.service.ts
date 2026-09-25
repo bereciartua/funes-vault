@@ -81,7 +81,9 @@ export class ConsolidationOrchestratorService {
         version: m.updatedAt.toISOString()
       }));
     const configuration = (previous.configuration ??
-      this.llm.configuration) as ProcessingConfiguration;
+      (await this.llm.configurationForUser(
+        data.userId
+      ))) as ProcessingConfiguration;
     await this.prisma.client.jobRun.update({
       where: { id: data.jobRunId },
       data: {
@@ -180,22 +182,13 @@ export class ConsolidationOrchestratorService {
 
     await this.prisma.client.$transaction(async (tx) => {
       await lockUser(tx, data.userId);
-      if (configuration.consolidation.processors.includes("typesafe")) {
-        const consent = await tx.processingConsent.findUnique({
-          where: {
-            userId_processor_scope: {
-              userId: data.userId,
-              processor: "typesafe",
-              scope: "consolidation"
-            }
-          }
-        });
-        if (!consent || consent.revokedAt || consent.version !== 1) {
-          semantic.status = "partial";
-          semantic.reason = "processing_consent_required";
+      const selected = (await this.llm.configurationForUser(data.userId, tx))
+        .consolidation.system;
+      if (selected !== configuration.consolidation.system) {
+        semantic.status = "partial";
+        semantic.reason = "processing_provider_changed";
 
-          return;
-        }
+        return;
       }
       for (const memory of recentMemories.filter((m) =>
         semantic.completedSourceIds.includes(m.id)

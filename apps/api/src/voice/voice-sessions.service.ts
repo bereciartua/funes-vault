@@ -120,10 +120,14 @@ export class VoiceSessionsService {
       instructions
     });
 
+    const processingConfiguration = await this.processingConfig.forUser(
+      input.userId
+    );
+
     const voiceSession = await this.prisma.client.voiceSession.create({
       data: {
         userId: input.userId,
-        extractionFingerprint: this.processingConfig.effective.fingerprint,
+        extractionFingerprint: processingConfiguration.extractionFingerprint,
         chatSessionId: chatSession.id,
         model
       }

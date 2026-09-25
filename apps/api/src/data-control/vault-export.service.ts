@@ -76,7 +76,11 @@ export class VaultExportService {
       }),
       consents: await this.prisma.client.processingConsent.findMany({
         where: { userId }
-      })
+      }),
+      providerPreferences:
+        await this.prisma.client.processingProviderPreference.findMany({
+          where: { userId }
+        })
     };
     const exportedCategoryKeys = new Set(
       memories.flatMap((memory) =>

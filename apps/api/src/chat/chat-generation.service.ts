@@ -96,7 +96,7 @@ export class ChatGenerationService {
       model: this.model,
       usesThirdParty: true,
       disclosure:
-        "Chat sends messages and retrieved memory snippets to OpenAI. Memory extraction also processes the latest message and limited preceding context with the configured memory processors. Review memory processing permissions in settings."
+        "Chat sends messages and retrieved memory snippets to OpenAI. Memory extraction also processes the latest message and limited preceding context with the selected memory provider. Review provider choices in settings."
     };
   }
 

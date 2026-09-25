@@ -16,18 +16,18 @@ Choose the deployment and provider settings accordingly.
 
 ## Guarantees and evidence
 
-| Guarantee                                                                           | Mechanism                                                                           | Tests                                                                                                                                 |
-| ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Another user cannot read or mutate an owned record                                  | Owner-scoped queries and relation checks, including subjects and extraction sources | [Tenant isolation](../apps/api/test/tenant-isolation.e2e.spec.ts)                                                                     |
-| A blocked or ungranted client cannot bypass policy through request text             | Bearer identity, app permissions, deny precedence, operation and sensitivity checks | [Policy evaluator](../apps/api/src/policies/policy-evaluation.service.spec.ts)                                                        |
-| One-time approval discloses only selected text                                      | Revision snapshot, locked revalidation and client-bound single-use consumption      | [Disclosure review](../apps/api/test/disclosure-review.e2e.spec.ts)                                                                   |
-| Revocation and expiry affect future access                                          | Live client/policy checks at retrieval and token validation                         | [OAuth integration](../apps/api/test/oauth.e2e.spec.ts), [disclosure review](../apps/api/test/disclosure-review.e2e.spec.ts)          |
-| Secret-like values do not become durable memories through ordinary writes           | Shared secret detection before create, update, capture and candidate application    | [Memory integration](../apps/api/test/memories.e2e.spec.ts), [processing integration](../apps/api/test/memory-processing.e2e.spec.ts) |
-| Expired claims and revoked processing permission cannot commit late provider output | Run leases, owner/run locks and commit-time consent/configuration checks            | [Processing integration](../apps/api/test/memory-processing.e2e.spec.ts)                                                              |
-| Imported data does not copy usable credentials or activate processor permission     | Explicit import/export field maps, owner remapping and review defaults              | [Data-control round trips](../apps/api/test/data-control.e2e.spec.ts)                                                                 |
-| The queue dashboard requires an administrative owner role                           | Shared session resolution and `ADMIN`/`OWNER` role check                            | [Dashboard middleware](../apps/api/src/jobs/queue-dashboard-auth.spec.ts)                                                             |
-| Changing owners removes private browser query data                                  | Cache cancellation/removal and session replacement                                  | [Session boundary](../apps/web/src/shell/use-session.test.tsx)                                                                        |
-| Cached shell resources do not include API responses                                 | Service-worker route filtering and versioned shell caches                           | [PWA tests](../apps/web/src/features/pwa/pwa.test.ts)                                                                                 |
+| Guarantee                                                                       | Mechanism                                                                           | Tests                                                                                                                                 |
+| ------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Another user cannot read or mutate an owned record                              | Owner-scoped queries and relation checks, including subjects and extraction sources | [Tenant isolation](../apps/api/test/tenant-isolation.e2e.spec.ts)                                                                     |
+| A blocked or ungranted client cannot bypass policy through request text         | Bearer identity, app permissions, deny precedence, operation and sensitivity checks | [Policy evaluator](../apps/api/src/policies/policy-evaluation.service.spec.ts)                                                        |
+| One-time approval discloses only selected text                                  | Revision snapshot, locked revalidation and client-bound single-use consumption      | [Disclosure review](../apps/api/test/disclosure-review.e2e.spec.ts)                                                                   |
+| Revocation and expiry affect future access                                      | Live client/policy checks at retrieval and token validation                         | [OAuth integration](../apps/api/test/oauth.e2e.spec.ts), [disclosure review](../apps/api/test/disclosure-review.e2e.spec.ts)          |
+| Secret-like values do not become durable memories through ordinary writes       | Shared secret detection before create, update, capture and candidate application    | [Memory integration](../apps/api/test/memories.e2e.spec.ts), [processing integration](../apps/api/test/memory-processing.e2e.spec.ts) |
+| Expired claims and changed provider choices cannot commit late provider output  | Run leases, owner/run locks and commit-time provider-choice checks                  | [Processing integration](../apps/api/test/memory-processing.e2e.spec.ts)                                                              |
+| Imported data does not copy usable credentials or activate processor permission | Explicit import/export field maps, owner remapping and review defaults              | [Data-control round trips](../apps/api/test/data-control.e2e.spec.ts)                                                                 |
+| The queue dashboard requires an administrative owner role                       | Shared session resolution and `ADMIN`/`OWNER` role check                            | [Dashboard middleware](../apps/api/src/jobs/queue-dashboard-auth.spec.ts)                                                             |
+| Changing owners removes private browser query data                              | Cache cancellation/removal and session replacement                                  | [Session boundary](../apps/web/src/shell/use-session.test.tsx)                                                                        |
+| Cached shell resources do not include API responses                             | Service-worker route filtering and versioned shell caches                           | [PWA tests](../apps/web/src/features/pwa/pwa.test.ts)                                                                                 |
 
 Tests establish these application behaviors under their fixtures; they are not a
 penetration test or a guarantee against a compromised host or downstream client.
@@ -61,8 +61,9 @@ content rejection still applies before storage, but it is pattern-based and cann
 recognize every possible secret.
 
 Conversational extraction and semantic consolidation select providers independently.
-The optional TypeSafe Jev memory classifier requires task-specific, versioned user
-permission. System 1 extraction also sends selected passages to OpenAI normalization;
+The optional TypeSafe Jev memory classifier is activated by the task's provider
+selection, initially determined by server configuration and subsequently controlled
+by the owner. System 1 extraction also sends selected passages to OpenAI normalization;
 System 2 uses the OpenAI LLM pipeline. See [memory processing](memory-processing.md)
 for the exact boundaries. Provider choice does not weaken write policy or review
 mode. No automatic provider fallback occurs.

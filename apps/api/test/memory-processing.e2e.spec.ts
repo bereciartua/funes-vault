@@ -1,7 +1,8 @@
 import request from "supertest";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ChatService } from "../src/chat/chat.service.js";
+import { resetEnvironmentForTests } from "../src/config.js";
 import type { ExtractionInput } from "../src/memory-processing/contracts.js";
 import { ExtractionReconciliationService } from "../src/memory-processing/extraction-reconciliation.service.js";
 import { createUserWithSession } from "./e2e-harness.js";
@@ -14,9 +15,19 @@ describe("privacy: memory processing persistence (e2e)", () => {
   let llm: ReturnType<typeof state>["llm"];
   let jev: ReturnType<typeof state>["jev"];
   let configure: ReturnType<typeof state>["configure"];
+  let useRealProviderChoice: ReturnType<typeof state>["useRealProviderChoice"];
   let source: ReturnType<typeof state>["source"];
   beforeEach(() => {
-    ({ app, prisma, extraction, llm, jev, configure, source } = state());
+    ({
+      app,
+      prisma,
+      extraction,
+      llm,
+      jev,
+      configure,
+      useRealProviderChoice,
+      source
+    } = state());
   });
   it.each(["system_1", "system_2"] as const)(
     "routes %s through direct policy and review, independently of consolidation",
@@ -28,14 +39,6 @@ describe("privacy: memory processing persistence (e2e)", () => {
             prisma,
             `${system}-${mode}-${consolidation}@example.com`
           );
-          await prisma.processingConsent.create({
-            data: {
-              userId: user.userId,
-              processor: "typesafe",
-              scope: "extraction",
-              version: 1
-            }
-          });
           const message = await source(user.userId);
           const result = await extraction.process(user.userId, message.id);
           expect(result.status).toBe("completed");
@@ -93,20 +96,11 @@ describe("privacy: memory processing persistence (e2e)", () => {
       "Source turn not found"
     );
   });
-  it("skips missing consent, retries after opt-in, and blocks secret context", async () => {
+  it("uses TypeSafe immediately and blocks secret context", async () => {
     configure("system_1", "review");
-    const user = await createUserWithSession(prisma, "consent@example.com");
+    const user = await createUserWithSession(prisma, "configured@example.com");
     const message = await source(user.userId);
     expect((await extraction.process(user.userId, message.id)).status).toBe(
-      "skipped"
-    );
-    expect(jev).not.toHaveBeenCalled();
-    await request(app.getHttpServer())
-      .post("/v1/memory-processing/consent")
-      .set("Cookie", user.cookie)
-      .send({ scope: "extraction", granted: true, version: 1 })
-      .expect(201);
-    expect((await extraction.retry(user.userId, message.id)).status).toBe(
       "completed"
     );
     const secret = await source(
@@ -117,6 +111,65 @@ describe("privacy: memory processing persistence (e2e)", () => {
       "skipped"
     );
     expect(jev).toHaveBeenCalledTimes(1);
+  });
+  it("uses the saved owner choice in processing and audits provider changes", async () => {
+    configure("system_1", "review");
+    useRealProviderChoice();
+    const user = await createUserWithSession(
+      prisma,
+      "owner-choice@example.com"
+    );
+    const selected = await request(app.getHttpServer())
+      .post("/v1/memory-processing/provider")
+      .set("Cookie", user.cookie)
+      .send({ scope: "extraction", system: "system_2" })
+      .expect(201);
+    expect(selected.body.extraction.system).toBe("system_2");
+    const message = await source(user.userId);
+    expect((await extraction.process(user.userId, message.id)).status).toBe(
+      "completed"
+    );
+    expect(llm).toHaveBeenCalledOnce();
+    expect(jev).not.toHaveBeenCalled();
+    const audit = await prisma.auditEvent.findFirstOrThrow({
+      where: { userId: user.userId, type: "PROCESSING_PROVIDER_SELECTED" }
+    });
+    expect(audit.metadata).toMatchObject({
+      scope: "extraction",
+      previous: "system_1",
+      system: "system_2"
+    });
+    await request(app.getHttpServer())
+      .post("/v1/memory-processing/provider")
+      .set("Cookie", user.cookie)
+      .send({ scope: "extraction", system: "system_2" })
+      .expect(201);
+    expect(
+      await prisma.auditEvent.count({
+        where: { userId: user.userId, type: "PROCESSING_PROVIDER_SELECTED" }
+      })
+    ).toBe(1);
+  });
+  it("rejects a provider whose credentials are unavailable", async () => {
+    useRealProviderChoice();
+    const user = await createUserWithSession(prisma, "unavailable@example.com");
+    vi.stubEnv("TYPESAFE_API_KEY", "");
+    resetEnvironmentForTests();
+    try {
+      await request(app.getHttpServer())
+        .post("/v1/memory-processing/provider")
+        .set("Cookie", user.cookie)
+        .send({ scope: "extraction", system: "system_1" })
+        .expect(400);
+      expect(
+        await prisma.processingProviderPreference.count({
+          where: { userId: user.userId }
+        })
+      ).toBe(0);
+    } finally {
+      vi.stubEnv("TYPESAFE_API_KEY", "fake");
+      resetEnvironmentForTests();
+    }
   });
   it("retains pending corrections and requires actual reconciliation receipts", async () => {
     const user = await createUserWithSession(prisma, "correction@example.com");
@@ -161,23 +214,12 @@ describe("privacy: memory processing persistence (e2e)", () => {
       1
     );
   });
-  it("prevents revoked or cancelled results from committing and can retry failures", async () => {
+  it("prevents switched or cancelled results from committing and can retry failures", async () => {
     configure("system_1", "review");
     const user = await createUserWithSession(prisma, "revoked@example.com");
     const message = await source(user.userId);
-    await prisma.processingConsent.create({
-      data: {
-        userId: user.userId,
-        processor: "typesafe",
-        scope: "extraction",
-        version: 1
-      }
-    });
     jev.mockImplementationOnce(async (input: ExtractionInput) => {
-      await prisma.processingConsent.updateMany({
-        where: { userId: user.userId },
-        data: { revokedAt: new Date() }
-      });
+      configure("system_2", "review");
 
       return output(input);
     });

@@ -99,6 +99,7 @@ export interface MemoryConsolidationProvider {
 export const processingConfigurationSchema = z.object({
   rubric: z.string(),
   fingerprint: z.string(),
+  extractionFingerprint: z.string().default(""),
   extraction: z.object({
     system: z.enum(["system_1", "system_2"]),
     model: z.string(),

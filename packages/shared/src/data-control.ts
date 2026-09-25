@@ -55,7 +55,8 @@ export const vaultExportSchema = z
     processing: z
       .object({
         runs: z.array(jsonRecordSchema),
-        consents: z.array(jsonRecordSchema)
+        consents: z.array(jsonRecordSchema),
+        providerPreferences: z.array(jsonRecordSchema).optional()
       })
       .optional(),
     metadata: vaultExportMetadataSchema,

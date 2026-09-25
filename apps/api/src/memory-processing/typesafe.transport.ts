@@ -7,7 +7,7 @@ import {
 
 import { apiEnv } from "../config.js";
 import type { ProcessingContext } from "./contracts.js";
-/** Runs bounded TypeSafe requests using supplied processing configuration. Callers obtain consent and scope the payload; transport performs no vault writes. */
+/** Runs bounded TypeSafe requests using supplied processing configuration. Callers check the owner's provider choice and scope the payload; transport performs no vault writes. */
 @Injectable()
 export class TypeSafeTransport {
   async ask(

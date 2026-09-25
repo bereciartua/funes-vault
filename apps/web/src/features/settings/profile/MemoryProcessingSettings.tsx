@@ -1,98 +1,131 @@
 import {
   memoryProcessingCapabilitiesSchema,
-  type ProcessingConsentRequest,
-  processingConsentSchema
+  type ProcessingProviderRequest
 } from "@funes-vault/shared";
+import { useQueryClient } from "@tanstack/react-query";
 
-import { Button } from "../../../components/ui/button";
+import { useConfirm } from "../../../components/ui/confirmation-dialog";
 import { FeedbackMessages } from "../../../components/ui/feedback-messages";
-import { queryKeys } from "../../../lib/api/query-keys";
+import { SelectField } from "../../../components/ui/select";
+import { useApiOwner, useApiUrl } from "../../../lib/api/api-context";
+import { apiQueryKey, queryKeys } from "../../../lib/api/query-keys";
 import { useApiMutation, useApiQuery } from "../../../lib/api/use-api";
-import { processorLabel } from "../../../lib/domain/processing";
+
 export function MemoryProcessingSettings() {
+  const confirm = useConfirm();
+  const client = useQueryClient();
+  const apiUrl = useApiUrl();
+  const ownerId = useApiOwner();
   const query = useApiQuery({
     key: queryKeys.processing,
     path: "/v1/memory-processing/capabilities",
     schema: memoryProcessingCapabilitiesSchema
   });
   const mutation = useApiMutation({
-    path: "/v1/memory-processing/consent",
-    schema: processingConsentSchema,
-    body: (request: ProcessingConsentRequest) => request,
-    invalidate: [queryKeys.processing]
+    path: "/v1/memory-processing/provider",
+    schema: memoryProcessingCapabilitiesSchema,
+    body: (request: ProcessingProviderRequest) => request,
+    invalidate: [queryKeys.processing],
+    onSuccess: (data) => {
+      client.setQueryData(
+        apiQueryKey(apiUrl, queryKeys.processing, ownerId),
+        data
+      );
+    }
   });
   const capabilities = query.data;
-  const busy = mutation.isPending;
   const error = mutation.error
-    ? "Could not update processing permission."
+    ? "Could not update the processing provider."
     : query.error
       ? "Could not load memory processing settings."
       : null;
-  function consent(scope: ProcessingConsentRequest["scope"], granted: boolean) {
-    mutation.mutate({ scope, granted, version: 1 });
+  async function selectProvider(request: ProcessingProviderRequest) {
+    if (capabilities?.[request.scope].system === request.system) {
+      return;
+    }
+    const typesafe = request.system === "system_1";
+    const extraction = request.scope === "extraction";
+    const approved = await confirm({
+      title: `Use ${typesafe ? "TypeSafe" : "OpenAI"} for ${extraction ? "extraction" : "consolidation"}?`,
+      body: extraction
+        ? typesafe
+          ? "TypeSafe will receive your latest message and limited preceding context before sensitivity is known. OpenAI will turn selected passages into memory text. Text already sent cannot be recalled."
+          : "OpenAI will check your latest message and limited preceding context for memories. Text already sent cannot be recalled."
+        : `${typesafe ? "TypeSafe" : "OpenAI"} will compare saved memories at or below INTERNAL, including source information. Text already sent cannot be recalled.`,
+      confirmLabel: `Use ${typesafe ? "TypeSafe" : "OpenAI"}`
+    });
+    if (approved) {
+      mutation.mutate(request);
+    }
   }
 
   return (
     <section className="form-stack">
       <h3>Memory processing</h3>
       <p>
-        Memory extraction checks your latest message and limited conversation
-        context for useful memories. Consolidation reviews related saved
-        memories. Chat, voice, and explicit memory edits continue to use OpenAI.
+        Choose a provider for each task. Chat answers, voice audio, and explicit
+        memory edits continue to use OpenAI.
       </p>
       {capabilities ? (
         (["extraction", "consolidation"] as const).map((scope) => {
           const task = capabilities[scope];
-          const granted = capabilities.consents.some(
-            (c) =>
-              c.processor === "typesafe" &&
-              c.scope === scope &&
-              c.version === 1 &&
-              !c.revokedAt
-          );
+          const title =
+            scope === "extraction"
+              ? "Conversational extraction"
+              : "Saved-memory consolidation";
 
           return (
             <div key={scope}>
-              <h4>
-                {scope === "extraction"
-                  ? "Conversational extraction"
-                  : "Saved-memory consolidation"}
-              </h4>
+              <h4>{title}</h4>
+              <label htmlFor={`processing-${scope}`}>
+                Provider for {title.toLowerCase()}
+              </label>
+              <SelectField<ProcessingProviderRequest["system"]>
+                id={`processing-${scope}`}
+                value={task.system}
+                disabled={mutation.isPending}
+                onValueChange={(system) =>
+                  void selectProvider({ scope, system })
+                }
+                options={[
+                  {
+                    value: "system_1" as const,
+                    disabled: !capabilities.options[scope].typesafe,
+                    label: `${scope === "extraction" ? "TypeSafe + OpenAI" : "TypeSafe"}${capabilities.options[scope].typesafe ? "" : " (not configured)"}`
+                  },
+                  {
+                    value: "system_2" as const,
+                    disabled: !capabilities.options[scope].openai,
+                    label: `OpenAI${capabilities.options[scope].openai ? "" : " (not configured)"}`
+                  }
+                ]}
+              />
               <p>
-                {task.processors.map(processorLabel).join(" + ")} · {task.model}{" "}
-                · {task.available ? "Available" : "Unavailable"}
+                {task.available
+                  ? `Using ${task.model}`
+                  : "Provider unavailable"}
               </p>
-              {scope === "consolidation" ? (
+              {scope === "extraction" ? (
                 <p>
-                  Only memories at or below{" "}
-                  {capabilities.consolidation.maxSensitivity} are sent for
-                  review.
+                  {task.system === "system_1"
+                    ? "TypeSafe checks your latest message and limited conversation context before sensitivity is known. OpenAI turns selected passages into memory text."
+                    : "OpenAI checks your latest message and limited conversation context for useful memories."}{" "}
+                  Voice audio goes to OpenAI.
                 </p>
-              ) : null}
-              {task.processors.includes("typesafe") || granted ? (
-                <>
-                  <p>
-                    {scope === "extraction"
-                      ? "Allow TypeSafe, the memory classifier, to process your latest message and limited preceding context before sensitivity is known. OpenAI turns selected passages into memory text; TypeSafe checks the result. Voice audio still goes to OpenAI."
-                      : "Allow TypeSafe, the memory classifier, to compare permitted saved-memory pairs, including their source information, to propose archival."}{" "}
-                    Revoking stops future processing; text already sent cannot
-                    be recalled.
-                  </p>
-                  <Button
-                    disabled={busy}
-                    onClick={() => void consent(scope, !granted)}
-                  >
-                    {granted
-                      ? `Revoke TypeSafe ${scope}`
-                      : `Allow TypeSafe ${scope}`}
-                  </Button>
-                </>
-              ) : null}
+              ) : (
+                <p>
+                  {task.system === "system_1" ? "TypeSafe" : "OpenAI"} compares
+                  saved memories at or below{" "}
+                  {capabilities.consolidation.maxSensitivity}, including their
+                  source information. Consolidation scheduling and review
+                  settings are separate.
+                </p>
+              )}
             </div>
           );
         })
       ) : (
-        <p>Loading processors…</p>
+        <p>Loading providers…</p>
       )}
       <FeedbackMessages error={error} />
     </section>

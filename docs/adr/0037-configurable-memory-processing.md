@@ -2,7 +2,7 @@
 
 Date: 2026-09-20
 
-Status: accepted
+Status: accepted; provider selection and consent superseded by [0046](0046-owner-selected-memory-processing-providers.md)
 
 ## Context and problem
 
@@ -14,6 +14,6 @@ Extraction and consolidation select their processing pipelines independently. Sy
 
 ## Consequences
 
-Task-specific, versioned TypeSafe consent and independent review overrides remain authoritative. No live configuration editor or automatic fallback is provided. Runs snapshot their configuration. See [memory processing](../memory-processing.md).
+At the time, task-specific, versioned TypeSafe consent and independent review overrides were authoritative, with no owner provider selector or automatic fallback. Runs snapshotted their configuration. Owner selection and the retirement of the consent control are specified by [0046](0046-owner-selected-memory-processing-providers.md). See [memory processing](../memory-processing.md) for current behavior.
 
 Keep the existing `MEMORY_EXTRACTION_SYSTEM` and `MEMORY_CONSOLIDATION_SYSTEM` environment names and `system_1`/`system_2` values for deployment compatibility. Product copy uses provider names. TypeSafe is the vendor of the optional Jev classifier, configured with `TYPESAFE_API_KEY`; it is an external data processor.

@@ -45,6 +45,7 @@ export class ConsolidationJobService {
     userId: string,
     trigger: ConsolidationTrigger
   ) {
+    const configuration = await this.llm.configurationForUser(userId);
     const user = await this.prisma.client.user.findUniqueOrThrow({
       where: { id: userId },
       select: { consolidationMode: true }
@@ -59,7 +60,7 @@ export class ConsolidationJobService {
           maxAttempts: defaultJobOptions.attempts,
           metadata: {
             trigger,
-            configuration: toJson(this.llm.configuration),
+            configuration: toJson(configuration),
             mode: user.consolidationMode,
             queueName: CONSOLIDATION_QUEUE_NAME,
             schedulerId:

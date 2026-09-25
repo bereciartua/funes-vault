@@ -13,7 +13,10 @@ import { Injectable } from "@nestjs/common";
 import { AuditTrailService } from "../audit-trail/audit-trail.service.js";
 import { lockMemories, lockUser } from "../common/db-locks.js";
 import { toJson } from "../common/serialization.js";
-import { ProcessingPermissionService } from "../memory-processing/processing-permission.service.js";
+import {
+  ProcessingBlocked,
+  ProcessingPermissionService
+} from "../memory-processing/processing-permission.service.js";
 import { PrismaService } from "../prisma/prisma.service.js";
 import {
   type ArchiveCandidate,
@@ -144,22 +147,27 @@ export class ConsolidationWriterService {
         return false;
       }
     }
-    if (
-      candidate.processing &&
-      Array.isArray(candidate.processing.processors) &&
-      candidate.processing.processors.includes("typesafe")
-    ) {
-      const consent = await tx.processingConsent.findUnique({
-        where: {
-          userId_processor_scope: {
-            userId,
-            processor: "typesafe",
-            scope: "consolidation"
-          }
-        }
-      });
-      if (!this.permission.isConsentValid(consent)) {
+    if (candidate.processing) {
+      const processors = candidate.processing.processors;
+      if (
+        !Array.isArray(processors) ||
+        !processors.every((processor) => typeof processor === "string")
+      ) {
         return false;
+      }
+      try {
+        await this.permission.check(
+          userId,
+          "consolidation",
+          processors,
+          undefined,
+          tx
+        );
+      } catch (error) {
+        if (error instanceof ProcessingBlocked) {
+          return false;
+        }
+        throw error;
       }
     }
 

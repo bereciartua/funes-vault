@@ -905,7 +905,7 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Sanitized effective configuration, fingerprint and versioned consent scopes."
+            "description": "Sanitized effective configuration and provider availability."
           }
         },
         "security": [
@@ -913,13 +913,13 @@
             "funes_vault_session": []
           }
         ],
-        "summary": "Read effective memory processors and current user's processing permissions",
+        "summary": "Read available providers and the current user's task selections",
         "tags": ["memory processing"]
       }
     },
-    "/v1/memory-processing/consent": {
+    "/v1/memory-processing/provider": {
       "post": {
-        "operationId": "MemoryProcessingController_consent",
+        "operationId": "MemoryProcessingController_provider",
         "parameters": [],
         "requestBody": {
           "required": true,
@@ -927,17 +927,13 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": ["scope", "granted", "version"],
+                "required": ["scope", "system"],
                 "properties": {
                   "scope": {
                     "enum": ["extraction", "consolidation"]
                   },
-                  "granted": {
-                    "type": "boolean"
-                  },
-                  "version": {
-                    "type": "integer",
-                    "enum": [1]
+                  "system": {
+                    "enum": ["system_1", "system_2"]
                   }
                 }
               }
@@ -954,7 +950,7 @@
             "funes_vault_session": []
           }
         ],
-        "summary": "Grant or revoke TypeSafe processing for one task",
+        "summary": "Select a memory processing provider for one task",
         "tags": ["memory processing"]
       }
     },
@@ -6085,6 +6081,7 @@
             "enum": [
               "MEMORY_PROCESSING_COMPLETED",
               "PROCESSING_CONSENT_UPDATED",
+              "PROCESSING_PROVIDER_SELECTED",
               "MEMORY_CREATED",
               "MEMORY_UPDATED",
               "MEMORY_ARCHIVED",

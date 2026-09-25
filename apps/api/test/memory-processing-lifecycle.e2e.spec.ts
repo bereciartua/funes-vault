@@ -88,14 +88,6 @@ describe("privacy: memory processing run lifecycle (e2e)", () => {
     llm.mockRejectedValueOnce(new Error("unavailable"));
     await extraction.process(user.userId, message.id);
     configure("system_1", "review");
-    await prisma.processingConsent.create({
-      data: {
-        userId: user.userId,
-        processor: "typesafe",
-        scope: "extraction",
-        version: 1
-      }
-    });
     const result = await extraction.reprocess(user.userId, message.id);
     expect(result.status).toBe("completed");
     expect(jev).toHaveBeenCalledOnce();

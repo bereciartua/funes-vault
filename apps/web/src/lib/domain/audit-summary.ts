@@ -97,6 +97,16 @@ function auditEventDescription(
   actor: string,
   affected: string
 ) {
+  if (event.type === "PROCESSING_PROVIDER_SELECTED") {
+    const scope = metadataString(event.metadata, "scope");
+    const system = metadataString(event.metadata, "system");
+    if (
+      (scope === "extraction" || scope === "consolidation") &&
+      (system === "system_1" || system === "system_2")
+    ) {
+      return `${actor} selected ${system === "system_1" ? "TypeSafe" : "OpenAI"} for ${scope}.`;
+    }
+  }
   const jobVerb = jobEventVerb(event.type);
 
   if (jobVerb) {

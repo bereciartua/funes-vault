@@ -25,7 +25,7 @@ import {
 import { validateCandidate } from "./validation.js";
 
 /**
- * Loads an owner’s source message, verifies processing permission and prepares bounded provider
+ * Loads an owner's source message, verifies the provider choice and prepares bounded provider
  * input. Invokes the configured provider outside transactions and validates its output; run and
  * outcome services own persistence.
  */
@@ -73,7 +73,8 @@ export class ExtractionProviderService {
       }
       if (
         voice.extractionFingerprint &&
-        voice.extractionFingerprint !== run.fingerprint
+        voice.extractionFingerprint !==
+          (configuration.extractionFingerprint || run.fingerprint)
       ) {
         throw new ProcessingBlocked("reconnect_voice_session");
       }

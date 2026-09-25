@@ -10,7 +10,9 @@ const reasons: Record<string, string> = {
   configuration_unavailable:
     "The original memory processor is unavailable. Ask the administrator to restore its configuration before retrying.",
   processing_consent_required:
-    "Memory processing needs your permission in settings before it can continue.",
+    "This run used an older TypeSafe permission. Choose a provider in settings, then reprocess the turn.",
+  processing_provider_changed:
+    "The processing provider changed while this turn was being handled. Reprocess it with the current provider.",
   secret_like_content:
     "Memory processing was skipped because this text appears to contain a secret.",
   transcript_persistence_failed:
