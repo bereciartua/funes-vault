@@ -1,7 +1,7 @@
 # Contributing to Funes Vault
 
 Funes Vault keeps personal context under its owner's control. Changes must preserve
-tenant isolation, explicit processing consent, revocation and auditable disclosure.
+tenant isolation, explicit processing provider choices, revocation and auditable disclosure.
 Start with [the architecture](ARCHITECTURE.md) and [the privacy model](docs/privacy-and-trust-model.md).
 
 ## Set up

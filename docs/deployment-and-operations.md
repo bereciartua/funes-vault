@@ -184,15 +184,15 @@ ceilings before processing data you do not want sent to those providers.
 1. Deploy matching API/worker code and apply compatible migrations.
 2. Select tasks independently. `system_2` uses OpenAI; `system_1` uses the TypeSafe
    Jev classifier (plus OpenAI normalization for extraction).
-3. Start with review overrides, compare sanitized configuration fingerprints on
-   API and worker, then enable task-specific TypeSafe permission where intended.
+3. Start with review overrides and compare sanitized configuration fingerprints on
+   API and worker. Owners can select each provider in Profile settings.
 4. Inspect missed claims, rejected candidates, incorrect saves and latency before
-   widening automatic-write policies. Provider selection does not grant permission.
+   widening automatic-write policies. Choosing TypeSafe activates it for that task.
 5. To roll a task back, select its prior configuration, restart API/worker and
    reconnect active voice sessions. Existing runs retain their snapshots; only
    eligible explicit reprocessing adopts a new snapshot. Accepted outcomes remain.
 
-The full [processing guide](memory-processing.md) explains consent, retries and
+The full [processing guide](memory-processing.md) explains provider choices, retries and
 reconciliation. Config rollback is distinct from binary/schema rollback.
 
 ## Backup and restore

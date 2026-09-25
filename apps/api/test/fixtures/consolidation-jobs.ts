@@ -318,17 +318,17 @@ export async function createJobsHarness() {
         useValue: {
           get effective() {
             return resolveProcessingConfiguration();
-          }
+          },
+          forUser: vi
+            .fn()
+            .mockImplementation(async () => resolveProcessingConfiguration())
         }
       },
       { provide: JevMemoryConsolidationProvider, useValue: {} },
       {
         provide: ProcessingPermissionService,
         useValue: {
-          check: vi.fn().mockResolvedValue(undefined),
-          isConsentValid: (
-            consent: { version: number; revokedAt: Date | null } | null
-          ) => consent?.version === 1 && consent.revokedAt === null
+          check: vi.fn().mockResolvedValue(undefined)
         }
       }
     ]

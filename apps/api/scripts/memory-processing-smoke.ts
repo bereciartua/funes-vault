@@ -11,10 +11,10 @@ import {
   LlmMemoryExtractionProvider,
   MemoryTextNormalizer
 } from "../src/memory-processing/llm-memory-extraction.provider.js";
-import { MemoryProcessingConfigService } from "../src/memory-processing/memory-processing-config.service.js";
+import { resolveProcessingConfiguration } from "../src/memory-processing/memory-processing-config.service.js";
 import { TypeSafeTransport } from "../src/memory-processing/typesafe.transport.js";
 import { memoryFixtures } from "../test/fixtures/memory-processing.js";
-const configuration = new MemoryProcessingConfigService().effective;
+const configuration = resolveProcessingConfiguration();
 const task =
   process.argv[2] === "consolidation" ? "consolidation" : "extraction";
 if (!configuration[task].available) {

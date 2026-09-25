@@ -25,7 +25,7 @@ import {
 import { validateCandidate } from "./validation.js";
 
 /**
- * Loads an owner’s source message, verifies processing permission and prepares bounded provider
+ * Loads an owner's source message, verifies the provider choice and prepares bounded provider
  * input. Invokes the configured provider outside transactions and validates its output; run and
  * outcome services own persistence.
  */
@@ -61,16 +61,20 @@ export class ExtractionProviderService {
       const voice = await this.prisma.client.voiceSession.findFirst({
         where: { id: source.voiceSessionId, userId }
       });
+      // Eligibility belongs to the persisted transcript, not the time of a retry.
+      // Current processor permission is still checked before each provider call.
       if (
         !voice ||
         (voice.endedAt &&
-          Date.now() - voice.endedAt.getTime() > voiceFinalizationWindowMs)
+          source.createdAt.getTime() - voice.endedAt.getTime() >
+            voiceFinalizationWindowMs)
       ) {
-        throw new ProcessingBlocked("voice_finalization_window_closed");
+        throw new ProcessingBlocked("voice_transcript_arrived_too_late");
       }
       if (
         voice.extractionFingerprint &&
-        voice.extractionFingerprint !== run.fingerprint
+        voice.extractionFingerprint !==
+          (configuration.extractionFingerprint || run.fingerprint)
       ) {
         throw new ProcessingBlocked("reconnect_voice_session");
       }

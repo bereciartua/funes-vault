@@ -1,9 +1,11 @@
+import type { Job } from "bullmq";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   JevMemoryConsolidationProvider,
   LlmMemoryConsolidationProvider
 } from "../src/consolidation/consolidation.providers.js";
+import type { ConsolidationJobData } from "../src/consolidation/consolidation.types.js";
 import { ConsolidationCandidatesService } from "../src/consolidation/consolidation-candidates.service.js";
 import { ConsolidationJobService } from "../src/consolidation/consolidation-job.service.js";
 import { ConsolidationOrchestratorService } from "../src/consolidation/consolidation-orchestrator.service.js";
@@ -19,6 +21,73 @@ describe("privacy: memory processing consolidation (e2e)", () => {
   beforeEach(() => {
     ({ app, prisma, configure } = state());
   });
+  it("records a successful run with six excluded memories and leaves their semantic versions pending", async () => {
+    const user = await createUserWithSession(
+      prisma,
+      "expected-skips@example.com"
+    );
+    const memories = await Promise.all(
+      Array.from({ length: 19 }, (_, i) =>
+        prisma.memory.create({
+          data: {
+            userId: user.userId,
+            kind: "PREFERENCE",
+            title: `Synthetic preference ${i}`,
+            body: `Distinct synthetic preference number ${i}.`,
+            reviewState: "APPROVED",
+            sensitivity: i < 6 ? "SENSITIVE" : "LOW"
+          }
+        })
+      )
+    );
+    const discovery = vi
+      .spyOn(
+        app.get(ConsolidationCandidatesService),
+        "findRecentCandidatePairs"
+      )
+      .mockResolvedValue([]);
+    const runner = app.get(ConsolidationJobService);
+    try {
+      const job = await runner.createConsolidationJobRun(user.userId, "manual");
+      await runner.processConsolidation({
+        data: { userId: user.userId, jobRunId: job.id }
+      } as Job<ConsolidationJobData>);
+      const saved = await prisma.jobRun.findUniqueOrThrow({
+        where: { id: job.id }
+      });
+      expect(saved).toMatchObject({
+        status: "SUCCEEDED",
+        error: null,
+        metadata: {
+          semantic: {
+            status: "completed",
+            skippedSources: 6,
+            skippedSourceReasons: { above_sensitivity_limit: 6 }
+          },
+          suggestionIds: [],
+          appliedMemoryIds: []
+        }
+      });
+      const excluded = await prisma.memory.findMany({
+        where: {
+          userId: user.userId,
+          id: { in: memories.slice(0, 6).map((m) => m.id) }
+        }
+      });
+      expect(
+        excluded.every(
+          (m) => m.semanticInspectedAt === null && m.status === "ACTIVE"
+        )
+      ).toBe(true);
+      expect(
+        await prisma.memory.count({
+          where: { userId: user.userId, semanticInspectedAt: { not: null } }
+        })
+      ).toBe(13);
+    } finally {
+      discovery.mockRestore();
+    }
+  });
   it.each(["system_1", "system_2"] as const)(
     "queues %s archive proposals and rejects approval after a concurrent edit",
     async (system) => {
@@ -27,14 +96,6 @@ describe("privacy: memory processing consolidation (e2e)", () => {
         prisma,
         `${system}-archive@example.com`
       );
-      await prisma.processingConsent.create({
-        data: {
-          userId: user.userId,
-          processor: "typesafe",
-          scope: "consolidation",
-          version: 1
-        }
-      });
       const left = await prisma.memory.create({
         data: {
           userId: user.userId,
@@ -170,6 +231,12 @@ describe("privacy: memory processing consolidation (e2e)", () => {
         .semanticInspectedAt
     ).toBeNull();
     configure("system_2", "policy", "system_1");
+    const switched = await app
+      .get(ConsolidationOrchestratorService)
+      .runConsolidation({ userId: user.userId, jobRunId: job.id });
+    expect(switched.semantic.status).toBe("partial");
+    expect(switched.semantic.reason).toBe("processing_provider_changed");
+    configure("system_2", "policy", "system_2");
     const retried = await app
       .get(ConsolidationOrchestratorService)
       .runConsolidation({

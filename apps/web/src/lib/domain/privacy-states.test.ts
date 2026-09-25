@@ -91,6 +91,21 @@ describe("privacy state helpers", () => {
     });
   });
 
+  it("names the selected provider and task in the audit trail", () => {
+    expect(
+      auditEventSummary({
+        ...baseAuditEvent,
+        type: "PROCESSING_PROVIDER_SELECTED",
+        actorType: "USER",
+        metadata: {
+          scope: "extraction",
+          previous: "system_1",
+          system: "system_2"
+        }
+      }).description
+    ).toBe("You selected OpenAI for extraction.");
+  });
+
   it("uses memory titles in disclosure summaries when available", () => {
     const disclosureEvent: AuditEvent = {
       ...baseAuditEvent,

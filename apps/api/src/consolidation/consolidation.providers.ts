@@ -13,7 +13,7 @@ import {
 import { withProviderRetry } from "../memory-processing/provider-retry.js";
 import { TypeSafeTransport } from "../memory-processing/typesafe.transport.js";
 import { minimumLlmConfidence } from "./consolidation.types.js";
-/** Compares supplied memory pairs with the configured external model. The orchestrator obtains processing permission and the writer revalidates results; providers do not write the vault. */
+/** Compares supplied memory pairs with the selected external model. The orchestrator checks the provider choice and the writer revalidates results; providers do not write the vault. */
 @Injectable()
 export class LlmMemoryConsolidationProvider implements MemoryConsolidationProvider {
   async judge(

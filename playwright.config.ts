@@ -38,6 +38,7 @@ export default defineConfig({
       env: {
         NODE_ENV: "test",
         OPENAI_API_KEY: "synthetic-browser-test-key",
+        TYPESAFE_API_KEY: "synthetic-browser-test-key",
         API_PORT: String(apiPort),
         GOOGLE_REDIRECT_URI: `${apiBaseUrl}/auth/google/callback`,
         LOG_FORMAT: "json",

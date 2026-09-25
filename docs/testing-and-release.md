@@ -56,8 +56,8 @@ and starts the production output. Demo tests instead start the real API with exa
 CI retries a failed browser case once. Use `PLAYWRIGHT_WEB_PORT`/`PLAYWRIGHT_API_PORT`
 and matching `PLAYWRIGHT_WEB_URL`/`PLAYWRIGHT_API_URL` when defaults are occupied.
 
-Processing-consent browser tests reset consent through the API in `beforeEach`.
-They do not depend on the previous test's persisted toggle state. Screenshots for
+Processing-provider browser tests reset provider choices through the API in `beforeEach`.
+They do not depend on the previous test's persisted selection. Screenshots for
 failure diagnosis belong in Playwright artifacts, not hard-coded `/tmp` paths.
 
 ## Coverage and static checks
@@ -96,8 +96,8 @@ REDIS_URL=redis://localhost:6379 pnpm test:e2e:live
 Use a synthetic recording with a clear remember request and leading/trailing silence.
 Chromium reads the WAV as its microphone. The test checks structural persistence,
 processing status and durable result links rather than exact model wording. It
-revokes its extraction consent afterward. To exercise the TypeSafe Jev classifier,
-set the task selector and credentials described in [memory processing](memory-processing.md).
+uses the selected extraction provider. To exercise the TypeSafe Jev classifier,
+configure its credentials and select it as described in [memory processing](memory-processing.md).
 Physical-device installation, microphone acoustics and provider quality still need
 separate evaluation. Never use a personal recording or vault as a smoke fixture.
 

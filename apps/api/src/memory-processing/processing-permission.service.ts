@@ -1,47 +1,19 @@
 import type { Prisma } from "@funes-vault/db";
-import { AuditActorType, AuditEventType } from "@funes-vault/db";
 import { Injectable } from "@nestjs/common";
 
-import { AuditTrailService } from "../audit-trail/audit-trail.service.js";
-import { lockUser } from "../common/db-locks.js";
 import { detectSecretLikeContent } from "../common/secret-like-content.js";
-import { PrismaService } from "../prisma/prisma.service.js";
-import { ProcessorName } from "./extraction.constants.js";
+import { MemoryProcessingConfigService } from "./memory-processing-config.service.js";
+
 export class ProcessingBlocked extends Error {
   constructor(readonly reason: string) {
     super(reason);
   }
 }
-/**
- * Reads and updates versioned owner consent, recording PROCESSING_CONSENT_UPDATED. Checks
- * configured processors and secret-content restrictions before processing. It does not load
- * source messages or persist extraction outcomes.
- */
+
+/** Rechecks the owner's current provider before disclosure and before writes. */
 @Injectable()
 export class ProcessingPermissionService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly auditTrail: AuditTrailService
-  ) {}
-
-  listConsents(userId: string) {
-    return this.prisma.client.processingConsent.findMany({
-      where: { userId },
-      select: {
-        processor: true,
-        scope: true,
-        version: true,
-        grantedAt: true,
-        revokedAt: true
-      }
-    });
-  }
-
-  isConsentValid(consent: { version: number; revokedAt: Date | null } | null) {
-    return (
-      consent !== null && consent.revokedAt === null && consent.version === 1
-    );
-  }
+  constructor(private readonly config: MemoryProcessingConfigService) {}
 
   async check(
     userId: string,
@@ -56,63 +28,16 @@ export class ProcessingPermissionService {
     ) {
       throw new ProcessingBlocked("secret_like_content");
     }
-    if (!processors.includes(ProcessorName.classifier)) {
-      return;
+    const selected = (await this.config.forUser(userId, tx))[scope];
+    const expected = selected.processors;
+    if (
+      expected.length !== processors.length ||
+      expected.some((processor, index) => processor !== processors[index])
+    ) {
+      throw new ProcessingBlocked("processing_provider_changed");
     }
-    const consent = await (
-      tx ?? this.prisma.client
-    ).processingConsent.findUnique({
-      where: {
-        userId_processor_scope: {
-          userId,
-          processor: ProcessorName.classifier,
-          scope
-        }
-      }
-    });
-    if (!this.isConsentValid(consent)) {
-      throw new ProcessingBlocked("processing_consent_required");
+    if (!selected.available) {
+      throw new ProcessingBlocked("provider_not_configured");
     }
-  }
-
-  async setConsent(userId: string, scope: string, granted: boolean) {
-    return this.prisma.client.$transaction(async (tx) => {
-      await lockUser(tx, userId);
-      const consent = await tx.processingConsent.upsert({
-        where: {
-          userId_processor_scope: {
-            userId,
-            processor: ProcessorName.classifier,
-            scope
-          }
-        },
-        create: {
-          userId,
-          processor: ProcessorName.classifier,
-          scope,
-          version: 1,
-          revokedAt: granted ? null : new Date()
-        },
-        update: {
-          version: 1,
-          grantedAt: new Date(),
-          revokedAt: granted ? null : new Date()
-        }
-      });
-      await this.auditTrail.createAuditEvent(tx, {
-        userId,
-        actorType: AuditActorType.USER,
-        actorId: userId,
-        type: AuditEventType.PROCESSING_CONSENT_UPDATED,
-        metadata: {
-          processor: ProcessorName.classifier,
-          scope,
-          version: 1,
-          granted
-        }
-      });
-
-      return consent;
-    });
   }
 }

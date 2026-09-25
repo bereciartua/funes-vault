@@ -152,7 +152,11 @@ Idempotent candidate result, unique by `(runId, candidateId)`. Ownership comes t
 
 ### `ProcessingConsent`
 
-Versioned owner permission for a processor and task scope, unique by `(userId, processor, scope)`. `revokedAt` records withdrawal. Provider execution and commit-time validation require current permission; importing a vault does not activate these permissions.
+Legacy versioned owner permission for a processor and task scope, unique by `(userId, processor, scope)`. `revokedAt` records withdrawal. No new consent rows are written; explicit TypeSafe revocations were mapped to OpenAI provider choices during migration. Retained for historical export and audit compatibility.
+
+### `ProcessingProviderPreference`
+
+Optional owner choice for extraction or consolidation, unique by `(userId, scope)`, with constrained scope and system values. Omission inherits the instance-configured default, including for new owners. Provider calls and commits recheck this choice; importing a vault does not activate exported choices. Deleting the owner cascades to these rows.
 
 ## Seed Data
 
@@ -330,6 +334,7 @@ DISMISSED DISMISSED
         AuditEventType {
             MEMORY_PROCESSING_COMPLETED MEMORY_PROCESSING_COMPLETED
 PROCESSING_CONSENT_UPDATED PROCESSING_CONSENT_UPDATED
+PROCESSING_PROVIDER_SELECTED PROCESSING_PROVIDER_SELECTED
 MEMORY_CREATED MEMORY_CREATED
 MEMORY_UPDATED MEMORY_UPDATED
 MEMORY_ARCHIVED MEMORY_ARCHIVED
@@ -905,6 +910,14 @@ FAILED failed
     DateTime revokedAt "nullable"
     }
 
+
+  "ProcessingProviderPreference" {
+    String userId "PK"
+    String scope "PK"
+    String system
+    DateTime updatedAt
+    }
+
     "User" |o--|| "UserRole" : "enum:role"
     "User" |o--|| "ConsolidationMode" : "enum:consolidationMode"
     "ChatSession" }o--|| "User" : "user"
@@ -987,6 +1000,7 @@ FAILED failed
     "MemoryExtractionRun" |o--|| "ChatMessage" : "source"
     "MemoryCandidateApplication" }o--|| "MemoryExtractionRun" : "run"
     "ProcessingConsent" }o--|| "User" : "user"
+    "ProcessingProviderPreference" }o--|| "User" : "user"
 ```
 
 <!-- ERD:END -->

@@ -37,7 +37,10 @@ describe("profile settings", () => {
             processors: [],
             maxSensitivity: "INTERNAL"
           },
-          consents: []
+          options: {
+            extraction: { typesafe: false, openai: false },
+            consolidation: { typesafe: false, openai: false }
+          }
         }
       },
       {
@@ -49,6 +52,9 @@ describe("profile settings", () => {
     const onUserUpdated = vi.fn();
     render(<ProfileSettings user={user} onUserUpdated={onUserUpdated} />, {
       wrapper: queryWrapper().wrapper
+    });
+    await screen.findByRole("combobox", {
+      name: "Provider for conversational extraction"
     });
     fireEvent.change(screen.getByLabelText("Display name"), {
       target: { value: "  Morgan  " }

@@ -6,7 +6,7 @@ import { MemoryProcessingConfigService } from "./memory-processing-config.servic
 import { ProcessingPermissionService } from "./processing-permission.service.js";
 import { TypeSafeTransport } from "./typesafe.transport.js";
 
-/** Shared provider configuration and consent; importing it never installs extraction routes. */
+/** Shared provider configuration and selection; importing it never installs extraction routes. */
 @Module({
   imports: [AuditTrailModule],
   providers: [

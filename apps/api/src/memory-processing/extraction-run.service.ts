@@ -46,6 +46,7 @@ export class ExtractionRunService {
   async reprocess(userId: string, sourceMessageId: string) {
     await this.prisma.client.$transaction(async (tx) => {
       await lockUser(tx, userId);
+      const configuration = await this.config.forUser(userId, tx);
       const run = await tx.memoryExtractionRun.findFirst({
         where: { userId, sourceMessageId }
       });
@@ -64,8 +65,8 @@ export class ExtractionRunService {
           leaseUntil: null
         },
         data: {
-          configuration: toJson(this.config.effective),
-          fingerprint: this.config.effective.fingerprint,
+          configuration: toJson(configuration),
+          fingerprint: configuration.fingerprint,
           status: MemoryExtractionRunStatus.PENDING,
           result: {},
           failureReason: null
@@ -86,7 +87,7 @@ export class ExtractionRunService {
           runId: run.id,
           sourceMessageId,
           previousFingerprint: run.fingerprint,
-          fingerprint: this.config.effective.fingerprint
+          fingerprint: configuration.fingerprint
         }
       });
     });
@@ -160,13 +161,14 @@ export class ExtractionRunService {
     abortSignal?: AbortSignal
   ) {
     const source = await this.provider.loadSource(userId, sourceMessageId);
+    const currentConfiguration = await this.config.forUser(userId);
     const run = await this.prisma.client.memoryExtractionRun.upsert({
       where: { sourceMessageId },
       create: {
         userId,
         sourceMessageId,
-        configuration: toJson(this.config.effective),
-        fingerprint: this.config.effective.fingerprint
+        configuration: toJson(currentConfiguration),
+        fingerprint: currentConfiguration.fingerprint
       },
       update: {}
     });

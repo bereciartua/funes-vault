@@ -147,7 +147,10 @@ export async function createService(
       },
       {
         provide: MemoryProcessingConfigService,
-        useValue: { effective: { fingerprint: "test" } }
+        useValue: {
+          effective: { fingerprint: "test" },
+          forUser: vi.fn().mockResolvedValue({ extractionFingerprint: "test" })
+        }
       }
     ],
     [RealtimeClientService]

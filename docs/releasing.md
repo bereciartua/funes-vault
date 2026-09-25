@@ -51,7 +51,7 @@ Assess every supported surface; record "unchanged" where appropriate:
    and enums, error contracts and client-visible behavior.
 2. **MCP:** tool names, input/output schemas, accepted aliases and protocol behavior.
 3. **Identity/OAuth:** login, token/grant compatibility, refresh and revocation.
-4. **Authority:** app permissions, disclosure approvals and processing consent.
+4. **Authority:** app permissions, disclosure approvals and processing provider choices.
    Requiring owners to reconstruct permissions or invalidating previously valid
    approvals because the authority model changed is a major change.
 5. **Data:** supported export/import formats, preservation of existing vault data

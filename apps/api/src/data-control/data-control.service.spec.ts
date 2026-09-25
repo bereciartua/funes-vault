@@ -166,6 +166,7 @@ function createPrismaMock() {
   const client = mockPrisma({
     memoryExtractionRun: { findMany: vi.fn().mockResolvedValue([]) },
     processingConsent: { findMany: vi.fn().mockResolvedValue([]) },
+    processingProviderPreference: { findMany: vi.fn().mockResolvedValue([]) },
     user: {
       findUnique: vi.fn().mockResolvedValue({
         id: "user_1",
@@ -262,6 +263,21 @@ describe("privacy: DataControlService", () => {
       hasToken: false
     });
     expect(response.export.clients[0]).not.toHaveProperty("tokenHash");
+    expect(response.export).not.toHaveProperty("processing");
+  });
+
+  it("includes owner provider choices in a full vault export", async () => {
+    prismaClient.processingProviderPreference.findMany.mockResolvedValue([
+      { userId: "user_1", scope: "extraction", system: "system_2" }
+    ]);
+    const response = await exporter.exportVault(
+      "user_1",
+      exportVaultQuerySchema.parse({})
+    );
+
+    expect(response.export.processing?.providerPreferences).toEqual([
+      { userId: "user_1", scope: "extraction", system: "system_2" }
+    ]);
   });
 
   it("excludes archived memories from the export when includeArchived is false", async () => {
