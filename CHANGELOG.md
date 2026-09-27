@@ -4,18 +4,12 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-27
+
 ### Changed
 
 - Keep pre-production releases on 1.x: compatible fixes increment the patch version; new features and breaking changes increment the minor version. Release plans retain the assessed compatibility impact and phase. Production readiness explicitly restores standard major/minor/patch rules.
 - Align the current release identity with the pre-production version sequence; application behavior and database migrations are unchanged by the numbering correction.
-
-### Migration notes
-
-- Instances already running the withdrawn provider-selection build need only matching replacement images; this numbering correction introduces no additional database migration. Upgrades from 1.1.0 still require the provider-preference migration and checks below.
-
-## [2.0.0] - 2026-09-25
-
-### Changed
 
 - **Breaking:** extraction and saved-memory consolidation now have independent owner-selectable TypeSafe/OpenAI providers. `POST /v1/memory-processing/consent` is removed; use `POST /v1/memory-processing/provider`. Capabilities return provider `options` instead of `consents` and `consentVersion`. A selected provider authorizes processing for that task without a separate TypeSafe consent toggle.
 - Instance configuration sets the initial provider for all owners, including new owners and existing owners without a saved choice. When a task selector is unset and TypeSafe's required credentials are configured, TypeSafe is now the default; previously the default was OpenAI. TypeSafe extraction still uses OpenAI normalization.
@@ -27,6 +21,8 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 - Synchronize voice capture feedback with transcript persistence and extraction, bind delayed tool results to their original utterance, and show durable outcomes and failure reasons. Retry eligibility uses the transcript arrival time, and consolidation-only provider changes no longer invalidate voice extraction sessions.
 
 ### Migration notes
+
+- Instances already running the withdrawn provider-selection build need only matching replacement images; this numbering correction introduces no additional database migration. Upgrades from 1.1.0 still require the provider-preference migration and checks below.
 
 - The migration creates owner provider preferences and maps explicit revoked TypeSafe consents to OpenAI. Active or absent legacy consent rows inherit the instance default. Revocation previously could stop extraction; the new selector has no off state and moves those owners to OpenAI processing.
 - Before upgrading from 1.1.0, take a verified database backup and review `MEMORY_EXTRACTION_SYSTEM`, `MEMORY_CONSOLIDATION_SYSTEM` and configured provider credentials. Set explicit task defaults if existing owners without saved choices should remain on OpenAI.
@@ -93,7 +89,7 @@ This is the first public release. The single baseline replaces development migra
 
 See the [testing guide](docs/testing-and-release.md) for verification commands and the [operations guide](docs/deployment-and-operations.md) for deployment prerequisites. Publication and production rollout remain operator actions.
 
-[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v2.0.0...HEAD
-[2.0.0]: https://github.com/bereciartua/funes-vault/compare/v1.1.0...v2.0.0
+[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/bereciartua/funes-vault/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/bereciartua/funes-vault/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/bereciartua/funes-vault/releases/tag/v1.0.0
