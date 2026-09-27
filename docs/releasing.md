@@ -28,9 +28,12 @@ prove compatibility from commit subjects or a scan for breaking-change keywords.
 
 ## Choose the version autonomously
 
-Funes uses one stable `X.Y.Z` version across its packages, runtime OpenAPI document,
-changelog, Git tag and container images. For releases from 1.0.0 onward, compare
-the entire candidate with the latest stable release on the production line.
+Funes uses one `X.Y.Z` version across its packages, runtime OpenAPI document,
+changelog, Git tag and container images. `.release/policy.json` records the release
+phase. The application is currently **pre-production** and stays on **1.x** until
+the maintainer explicitly declares production readiness. Plain 1.x numbers during
+this phase are a project-specific convention, not a SemVer compatibility promise.
+Compare the entire candidate with the latest non-withdrawn release on `main`.
 Review the actual diff, tests and migration notes, using PR descriptions and
 Conventional Commit subjects as evidence rather than the final authority.
 
@@ -41,7 +44,19 @@ Conventional Commit subjects as evidence rather than the final authority.
 | Major  | An existing supported use needs adaptation, loses compatibility, or changes authority semantics. | Remove/rename an API or MCP field; reject accepted enum values; drop an import format; require a renamed deployment variable without fallback; change which permissions authorize disclosure. |
 
 Use the highest impact present: a release containing patches and one breaking
-change is major. Size of the diff, number of PRs, marketing significance, a new
+change has major **impact**. Preparation maps that assessment to the version bump:
+
+| Compatibility impact | Pre-production | Production |
+| -------------------- | -------------- | ---------- |
+| Patch                | Patch          | Patch      |
+| Minor                | Minor          | Minor      |
+| Major                | Minor          | Major      |
+
+Pass the actual impact to `release:prepare`; do not downplay breaking changes to
+obtain a minor version. Each plan records `phase`, `impact` and the resulting
+`bump`. Breaking release notes are forbidden in patch releases in either phase.
+Migration, backup and rollback instructions remain mandatory when applicable.
+Size of the diff, number of PRs, marketing significance, a new
 database migration, and a UI redesign do not by themselves determine the bump.
 No prerelease or build-metadata versions are supported by this automation yet.
 
@@ -76,32 +91,31 @@ choose a larger bump as a substitute for investigating uncertainty.
 
 - `1.4.2` plus compatible fixes → `1.4.3`.
 - `1.4.2` plus fixes and an optional new MCP tool → `1.5.0`.
-- `1.4.2` plus those changes and removal of an MCP alias → `2.0.0`.
-- The app-permissions changes following `1.0.0` require **`2.0.0`**: they change
-  authorization semantics, remove accepted MCP aliases and drop v1 export import
-  compatibility. The additive SQL migration does not negate those breaks. See
-  [the migration guide](deployment-and-operations.md#app-permissions-migration).
+- `1.4.2` plus removal of an MCP alias has major impact: pre-production → `1.5.0`;
+  production → `2.0.0`.
+- The app-permissions release has major impact because it changes authorization,
+  removes MCP aliases and drops v1 export import. Under the pre-production policy
+  it is `1.1.0`, with the [migration guide](deployment-and-operations.md#app-permissions-migration)
+  still required.
 
-### One-time pre-production exception: 1.1.0
+### Production readiness
 
-On 2026-09-24 the maintainer explicitly selected **1.1.0** for the app-permissions
-release because the vault is not yet in production and its disposable instance can
-be recreated. This overrides the normal major-bump decision for this release only;
-the incompatible contracts and migration/rollback instructions remain documented.
-Future releases follow the compatibility policy above.
+Production readiness is an explicit maintainer decision recorded in a reviewed PR.
+Publish the first production-ready 1.x release with its final pre-production
+assessment, then change `phase` to `production` on `develop` before preparing the
+next release. Record that published tag as the supported compatibility baseline in
+the PR and release notes. From then on, the table's production column applies.
+Graduation does not require resetting to 1.0.0 or increasing the major version.
+Changing phase during a pending release invalidates its assessment; reassess it.
+Do not infer readiness from a date, deployment, GitHub Latest badge or version.
 
-For this approved exception, use
-`pnpm release:prepare minor /tmp/funes-release.md --pre-production-1.1.0`.
-Record the authorization and compatibility findings in the rationale. Preparation
-stores `compatibilityException: "pre-production-1.1.0"` in the release plan;
-verification and publication accept it only for **v1.0.0 → v1.1.0**, with a minor
-bump. The flag must be supplied explicitly on reassessment and is not inherited by
-later releases. It does not authorize publication, deployment or a database reset.
+The historical `pre-production-1.1.0` exception remains readable for old plans;
+new releases use the persistent phase policy without an exception flag.
 
 Write a concise rationale outside the checkout, for example `/tmp/funes-release.md`:
 
 ```markdown
-Selected major: 1.0.0 → 2.0.0.
+Assessed major impact; pre-production minor bump: 1.0.0 → 1.1.0.
 
 - MCP: removed snake_case aliases; integrations must update inputs.
   Evidence: CHANGELOG.md and the MCP schemas/tests in packages/mcp.
@@ -131,7 +145,7 @@ surface is unchanged solely because its directory did not change.
    outside the repository.
 4. Run `pnpm release:prepare major /tmp/funes-release.md`, substituting the assessed
    `minor` or `patch` when appropriate. It computes the version from the latest
-   reachable stable tag and updates all workspace manifests, API version,
+   reachable non-withdrawn tag using the phase policy and updates all workspace manifests, API version,
    generated OpenAPI version, README status, dated changelog/comparison links and
    `.release/plan.json`. It does not create a tag, push, publish or deploy.
 5. Review the diff. Run `pnpm format`, `pnpm release:verify` and the relevant checks
@@ -192,7 +206,12 @@ After the release merge's **push CI on `main` succeeds**, `release.yml`:
    build for amd64 and arm64 with provenance/SBOMs. Each job records its digest.
 5. Creates the GitHub Release with the changelog entry, version rationale and image
    references only after all three image jobs succeed. An existing published
-   release is reused, without rewriting its notes.
+   release is reused, without rewriting its notes. New releases explicitly become
+   GitHub Latest, including an authorized numbering correction to a lower version.
+
+GitHub Latest identifies the current release, not production readiness. Release
+notes and the README state the phase; plain versions and existing image aliases
+remain supported during pre-production.
 
 Image names are `ghcr.io/<owner>/funes-vault-{api,web,mcp}:X.Y.Z`; API also serves
 worker and migration containers. Versioned releases also update `X.Y`, `latest`
@@ -233,6 +252,39 @@ this code does not create rulesets or imply that protections are active. Ensure
 GHCR package visibility permits the intended deployment's pulls.
 
 ## Recovery and completion
+
+### Authorized version correction
+
+The maintainer authorized replacing the premature 2.0.0 release with 1.2.0 on
+2026-09-27. `.release/policy.json` records the withdrawn tag's exact original
+commit so stale local tags cannot become a baseline. The match is by tag **and
+commit**: a future production 2.0.0 on a different commit is not excluded.
+
+Prepare this correction from the synchronized source with the original published
+plan intact, updated migration image references, and the explicit command
+`pnpm release:prepare major /tmp/funes-release.md --replace-version=2.0.0`.
+It requires pre-production mode, the recorded withdrawn commit, the original
+baseline, an unchanged published plan and an unused target tag. It carries the
+withdrawn release's notes into 1.2.0 and synchronizes all version metadata.
+Normal preparation still rejects rewriting any published release.
+
+Publish and verify 1.2.0 images and the GitHub Release before deleting the old
+GitHub release and Git tag. Check deployed image references before removing old
+container versions; preserve any still-needed digest or SHA reference. Remove
+2.0.0/2.0 aliases and verify 1.2.0/1.2/latest point to the new images. Remove the
+old tag from local checkouts too. This does not rewrite Git commits, change schema
+or deploy a vault. Tag deletion alone cannot erase copies fetched elsewhere.
+The withdrawal record is historical identity metadata, not an active release.
+
+The manual **Withdraw Release Images** workflow uses the publishing repository's
+existing package access. Run `inspect` after publication and review all three
+digests and version IDs. Run `remove` only after checking that no deployment needs
+those images. It validates the replacement aliases and restricts deletion to the
+old version's 2.0.0/2.0/SHA tags; unexpected tags stop cleanup. Package deletion
+removes that manifest's SHA alias too, so do not run it while any deployment pins
+the old SHA or digest. Untagged architecture manifests are not cleanup targets.
+
+### Publication recovery
 
 | State                                  | Action                                                                                                                                                                                                     |
 | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

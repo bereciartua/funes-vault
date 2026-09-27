@@ -109,7 +109,7 @@ Read the [privacy model](docs/privacy-and-trust-model.md) and [threat model](doc
 
 ## Status and limitations
 
-Version **2.0.0** targets a self-hosted, single-instance deployment. Data is server-readable; this is not end-to-end encryption. OpenAI is the default chat, embedding and voice provider, with pluggable memory-extraction adapters and explicit processing settings. Already-disclosed text is beyond the vault's control. Browser checks do not replace physical-device microphone/PWA validation. See [release notes](CHANGELOG.md).
+Version **1.2.0** is **pre-production** and targets a self-hosted, single-instance deployment. Releases remain on 1.x until production readiness is explicitly declared; minor releases may include breaking changes, which are documented with migration instructions. Data is server-readable; this is not end-to-end encryption. OpenAI is the default chat, embedding and voice provider, with pluggable memory-extraction adapters and explicit processing settings. Already-disclosed text is beyond the vault's control. Browser checks do not replace physical-device microphone/PWA validation. See [release notes](CHANGELOG.md) and the [release policy](docs/releasing.md).
 
 ## Deploying
 

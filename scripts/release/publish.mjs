@@ -50,6 +50,7 @@ try {
         "--repo",
         repository,
         "--verify-tag",
+        "--latest",
         "--title",
         `Funes Vault ${plan.version}`,
         "--notes-file",

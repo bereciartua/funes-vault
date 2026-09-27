@@ -14,15 +14,25 @@ import {
   versionPaths,
   verifyPlan
 } from "./core.mjs";
+import {
+  assertPhase,
+  assertReplacement,
+  readPolicy,
+  releaseBump
+} from "./policy.mjs";
 
 try {
-  const [bump, rationaleFile, exceptionFlag, ...extra] = process.argv.slice(2);
+  const [impact, rationaleFile, option, ...extra] = process.argv.slice(2);
+  const exceptionFlag =
+    option === "--pre-production-1.1.0" ? option : undefined;
+  const replacementFlag = option?.startsWith("--replace-version=")
+    ? option
+    : undefined;
   assert(
     rationaleFile &&
       !extra.length &&
-      (exceptionFlag === undefined ||
-        exceptionFlag === "--pre-production-1.1.0"),
-    "Usage: pnpm release:prepare <major|minor|patch> <rationale.md> [--pre-production-1.1.0]"
+      (option === undefined || exceptionFlag || replacementFlag),
+    "Usage: pnpm release:prepare <major|minor|patch impact> <rationale.md> [--replace-version=X.Y.Z]"
   );
   assert(
     !git("status", "--porcelain"),
@@ -34,6 +44,8 @@ try {
     "Prepare on chore/release-* or hotfix/*"
   );
   const previousTag = latestTag();
+  const policy = readPolicy();
+  const bump = releaseBump(policy.phase, impact);
   const version = nextVersion(previousTag.slice(1), bump);
   const rationale = read(rationaleFile).trim();
   assert(
@@ -42,11 +54,26 @@ try {
   );
   const currentVersion = JSON.parse(read("package.json")).version;
   const oldPlan = existsSync(planPath) ? JSON.parse(read(planPath)) : null;
+  const replacing = assertReplacement(replacementFlag, {
+    currentVersion,
+    previousTag,
+    version,
+    oldPlan,
+    git,
+    policy
+  });
+  if (replacing) {
+    assert(
+      isPublishedVersion(currentVersion),
+      "Restore the original published plan before replacement"
+    );
+  }
   const pending =
     currentVersion !== previousTag.slice(1) ||
     (oldPlan && !isPublishedVersion(currentVersion));
   assert(
-    !pending ||
+    replacing ||
+      !pending ||
       git("tag", "--merged", "HEAD", "--list", `v${currentVersion}`) !==
         `v${currentVersion}`,
     `v${currentVersion} is already published; restore .release/plan.json from the tag instead of reassessing it`
@@ -86,6 +113,8 @@ try {
   const plan = {
     version,
     previousTag,
+    phase: policy.phase,
+    impact,
     bump,
     date,
     sourceCommit: git("rev-parse", "HEAD"),
@@ -94,6 +123,7 @@ try {
     ...(exceptionFlag && { compatibilityException: "pre-production-1.1.0" })
   };
   // Validate all in-memory inputs before touching the working tree.
+  assertPhase(plan, policy);
   assertCompatibility(
     plan,
     changelog.split(`## [${version}] - `)[1].split("\n## [")[0]
