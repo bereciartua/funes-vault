@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { replaceJsonString } from "./json-string.mjs";
+import { assertPhase, isWithdrawnTag, readPolicy } from "./policy.mjs";
 
 export const planPath = ".release/plan.json";
 export const read = (path) =>
@@ -31,8 +32,9 @@ export function assertCompatibility(plan, notes) {
   assert(
     plan.bump === "major" ||
       exception !== undefined ||
+      (plan.phase === "pre-production" && plan.bump === "minor") ||
       !hasBreakingNotes(notes),
-    "Breaking release notes require a major bump"
+    "Breaking release notes require a major bump in production or a minor bump in pre-production"
   );
 }
 
@@ -47,9 +49,11 @@ export function nextVersion(previous, bump) {
 }
 
 export function latestTag(exclude) {
+  const policy = readPolicy();
   const tags = git("tag", "--merged", "HEAD", "--list", "v*")
     .split("\n")
     .filter((tag) => tag !== exclude && stableVersion.test(tag.slice(1)))
+    .filter((tag) => !isWithdrawnTag(tag, git, policy))
     .sort((a, b) => {
       const x = a.slice(1).split(".").map(Number);
       const y = b.slice(1).split(".").map(Number);
@@ -307,6 +311,7 @@ export function finalizeChangelog(
 export function verifyPlan() {
   const plan = JSON.parse(read(planPath));
   assert(stableVersion.test(plan.version), "Invalid release version");
+  assertPhase(plan, readPolicy());
   assert(
     plan.previousTag === latestTag(`v${plan.version}`),
     "Release baseline changed; reassess the release"

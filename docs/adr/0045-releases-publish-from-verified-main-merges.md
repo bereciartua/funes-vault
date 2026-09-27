@@ -20,6 +20,11 @@ use merge commits into `main`. Synchronize `main` back into `develop` after rele
 Agents choose the highest compatibility impact in the complete candidate using the
 [release policy](../releasing.md#choose-the-version-autonomously), record the
 rationale, and prepare one version plus a fingerprint of the reviewed source.
+The persistent phase policy keeps pre-production releases on 1.x, mapping major
+compatibility impact to a minor version while retaining breaking-change notes.
+Production readiness is an explicit maintainer decision; subsequent releases
+restore the normal compatibility-to-version mapping. See the runbook for the
+authorized numbering correction and exact-commit withdrawal record.
 Successful push CI for the current release merge on `main` triggers validation,
 an immutable annotated tag, a direct call to the reusable image workflow at that
 exact SHA, and a GitHub Release after all image builds succeed.

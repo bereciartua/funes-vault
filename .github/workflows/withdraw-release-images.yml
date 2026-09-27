@@ -1,0 +1,36 @@
+name: Withdraw Release Images
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Inspect first; remove only after deployments stop using the withdrawn images
+        type: choice
+        required: true
+        default: inspect
+        options: [inspect, remove]
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: production-release
+  cancel-in-progress: false
+
+jobs:
+  withdraw:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+      - name: Inspect or remove the explicitly withdrawn image versions
+        run: node scripts/release/withdraw-images.mjs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WITHDRAW_ACTION: ${{ inputs.action }}
