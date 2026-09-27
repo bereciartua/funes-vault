@@ -39,7 +39,9 @@ tagged `vX.Y.Z` after the changelog entry is finalized. The Release workflow wai
 for successful push CI on the exact `main` merge, validates the prepared release,
 then tags, publishes images and creates the GitHub Release. Follow the
 [release runbook](docs/releasing.md), including its autonomous compatibility policy;
-tag pushes alone do not publish. Merge `main` back into `develop` with a merge
+tag pushes alone do not publish. The current pre-production phase keeps releases
+on 1.x, including documented breaking changes in minor releases. Production
+readiness explicitly restores normal semantic versioning. Merge `main` back into `develop` with a merge
 commit after every release, including hotfixes. Both
 branches require the CI checks to pass and a pull request; neither accepts
 force pushes.

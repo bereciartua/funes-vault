@@ -1,8 +1,17 @@
 # Changelog
 
-All notable changes are documented here, following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and Semantic Versioning.
+All notable changes are documented here, following [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). During pre-production, releases stay on 1.x and breaking changes increment the minor version. Production releases follow Semantic Versioning. See the [release policy](docs/releasing.md).
 
 ## [Unreleased]
+
+### Changed
+
+- Keep pre-production releases on 1.x: compatible fixes increment the patch version; new features and breaking changes increment the minor version. Release plans retain the assessed compatibility impact and phase. Production readiness explicitly restores standard major/minor/patch rules.
+- Align the current release identity with the pre-production version sequence; application behavior and database migrations are unchanged by the numbering correction.
+
+### Migration notes
+
+- Instances already running the withdrawn provider-selection build need only matching replacement images; this numbering correction introduces no additional database migration. Upgrades from 1.1.0 still require the provider-preference migration and checks below.
 
 ## [2.0.0] - 2026-09-25
 
@@ -21,7 +30,7 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 
 - The migration creates owner provider preferences and maps explicit revoked TypeSafe consents to OpenAI. Active or absent legacy consent rows inherit the instance default. Revocation previously could stop extraction; the new selector has no off state and moves those owners to OpenAI processing.
 - Before upgrading from 1.1.0, take a verified database backup and review `MEMORY_EXTRACTION_SYSTEM`, `MEMORY_CONSOLIDATION_SYSTEM` and configured provider credentials. Set explicit task defaults if existing owners without saved choices should remain on OpenAI.
-- Stop the old API and worker, apply `20260924010000_processing_provider_preference`, then start matching 2.0.0 API/worker, web and MCP images. Reconnect active voice sessions and verify owner provider choices, extraction, consolidation, service readiness and worker heartbeat.
+- Stop the old API and worker, apply `20260924010000_processing_provider_preference`, then start matching 1.2.0 API/worker, web and MCP images. Reconnect active voice sessions and verify owner provider choices, extraction, consolidation, service readiness and worker heartbeat.
 - Update HTTP integrations for the provider endpoint and capabilities response. MCP tool contracts and OAuth grants remain compatible. Export v2 remains supported and adds optional processing provider preferences; JSON import does not restore processing history or provider choices and is not a substitute for a database backup.
 - Switching a provider affects new work while existing runs retain snapshots; stale work is blocked by current-provider checks. Explicit reprocessing can adopt the current selection. Rollback requires restoring the pre-upgrade database backup and matching 1.1.0 images because older binaries cannot interpret the new selection model.
 
