@@ -98,6 +98,10 @@ export function HomeSurface({
           </Link>
         </section>
 
+        <p className="home-overview-link">
+          <Link href="/overview">View privacy overview</Link>
+        </p>
+
         <p className="home-footer-status">
           {overview.suggestionTotal > 0 ? (
             <>
