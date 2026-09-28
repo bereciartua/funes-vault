@@ -148,7 +148,12 @@ test("hands Home text and voice into fresh chat threads without remounting the a
   expect(voiceRequestBody).toMatchObject({ startNewThread: true });
 
   await page.getByRole("link", { name: "Home", exact: true }).click();
-  await page.getByRole("link", { name: /Memories/ }).click();
+  await expect(
+    page
+      .getByRole("navigation", { name: "Application navigation" })
+      .getByRole("link", { name: "Overview" })
+  ).toHaveCount(0);
+  await page.getByRole("link", { name: "View privacy overview" }).click();
   await expect(page).toHaveURL(/\/overview$/);
   await expect(
     page.getByRole("heading", { name: "Your vault at a glance" })

@@ -4,6 +4,17 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-09-28
+
+### Added
+
+- Link from Home to the privacy overview, keeping the existing `/overview` page available while moving its entry out of the main navigation.
+
+### Migration notes
+
+- No database migration, environment change or client integration change is required from 1.2.0. Update the API/worker, web and MCP images together to 1.3.0; the privacy overview is reached from Home.
+- To roll back, select the matching 1.2.0 images. The release changes no stored data.
+
 ## [1.2.0] - 2026-09-27
 
 ### Changed
@@ -89,7 +100,8 @@ This is the first public release. The single baseline replaces development migra
 
 See the [testing guide](docs/testing-and-release.md) for verification commands and the [operations guide](docs/deployment-and-operations.md) for deployment prerequisites. Publication and production rollout remain operator actions.
 
-[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/bereciartua/funes-vault/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/bereciartua/funes-vault/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/bereciartua/funes-vault/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/bereciartua/funes-vault/releases/tag/v1.0.0
