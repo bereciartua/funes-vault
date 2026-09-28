@@ -6,7 +6,6 @@ import { useVaultSession } from "./AuthGate";
 
 const items = [
   { href: "/", label: "Home" },
-  { href: "/overview", label: "Overview" },
   { href: "/vault", label: "Vault" },
   { href: "/chat", label: "Chat" },
   { href: "/inbox", label: "Inbox" },

@@ -1,5 +1,5 @@
 import type { AuthUser, OverviewResponse } from "@funes-vault/shared";
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { render } from "../../test/render";
@@ -44,7 +44,7 @@ describe("HomeSurface", () => {
     expect(greetingForHour(18)).toBe("evening");
   });
 
-  it("renders the composer, three signals, and pending review footer", () => {
+  it("renders the composer, three signals, overview link, and pending review footer", () => {
     render(
       <HomeSurface
         overview={overview}
@@ -60,14 +60,15 @@ describe("HomeSurface", () => {
     ).toBeTruthy();
     expect(screen.getByText("What should I remember?")).toBeTruthy();
     expect(
-      screen
-        .getAllByRole("link")
-        .filter((link) =>
-          ["/vault", "/settings/clients", "/overview"].includes(
-            link.getAttribute("href") ?? ""
-          )
-        )
+      within(
+        screen.getByRole("region", { name: "Vault signals" })
+      ).getAllByRole("link")
     ).toHaveLength(3);
+    expect(
+      screen
+        .getByRole("link", { name: "View privacy overview" })
+        .getAttribute("href")
+    ).toBe("/overview");
     expect(screen.getByText(/2 suggestions waiting for review/)).toBeTruthy();
   });
 

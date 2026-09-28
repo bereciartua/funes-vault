@@ -15,3 +15,7 @@ The aggregate overview had become too busy to serve simultaneously as a landing 
 ## Consequences
 
 Home and overview share one `/v1/overview` request; no memory content is added to home; the service worker precaches both route shells.
+
+## Navigation update (2026-09-27)
+
+Home links explicitly to the privacy overview. The overview is a secondary destination rather than a separate item in the main navigation.

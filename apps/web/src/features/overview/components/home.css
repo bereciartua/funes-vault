@@ -66,8 +66,26 @@
   margin-top: 30px;
 }
 
-.home-footer-status {
+.home-overview-link {
   margin: 22px 0 0;
+  text-align: center;
+}
+
+.home-overview-link a {
+  color: var(--brand);
+  font-size: 0.84rem;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.home-overview-link a:focus-visible {
+  border-radius: var(--radius-xs);
+  outline: 2px solid var(--brand);
+  outline-offset: 4px;
+}
+
+.home-footer-status {
+  margin: 16px 0 0;
   color: var(--text-muted);
   font-size: 0.78rem;
   text-align: center;
