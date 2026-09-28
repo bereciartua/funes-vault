@@ -4,6 +4,15 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Added
+
+- Link from Home to the privacy overview, keeping the existing `/overview` page available while moving its entry out of the main navigation.
+
+### Migration notes
+
+- No database migration, environment change or client integration change is required from 1.2.0. Update the API/worker, web and MCP images together to 1.3.0; the privacy overview is reached from Home.
+- To roll back, select the matching 1.2.0 images. The release changes no stored data.
+
 ## [1.2.0] - 2026-09-27
 
 ### Changed
