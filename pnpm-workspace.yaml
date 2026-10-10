@@ -9,6 +9,14 @@ overrides:
   mysql2: ">=3.23.1 <4"
   # Prisma configuration dependency: use the maintained merge implementation.
   deepmerge-ts: "^8.0.0"
+  # Nest Swagger pins js-yaml 5.3.0: merge-key CPU exhaustion fix.
+  "@nestjs/swagger>js-yaml": ">=5.4.1 <6"
+auditConfig:
+  ignoreGhsas:
+    # braces stack exhaustion has no patched release. It is reached only through
+    # lint tooling (eslint, stylelint) on repository-controlled patterns, never in
+    # a shipped image. Remove once braces publishes a fix.
+    - GHSA-vfj7-8cjw-p6xm
 allowBuilds:
   simple-git-hooks: true
   "@prisma/engines": true
