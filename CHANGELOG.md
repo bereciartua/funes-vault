@@ -4,6 +4,17 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+### Security
+
+- Update Next.js to 16.3.8 and sharp to 0.35.5 for the `next/og` remote code execution, image optimizer request forgery, self-hosted cache poisoning and `use cache` advisories. The web app does not use `next/og`, `next/image` or `use cache`.
+- Update the MCP TypeScript SDK to 1.32.1, which binds stored OAuth client credentials to their issuing authorization server. MCP tool contracts, OAuth metadata and grants are unchanged.
+- Update source-map-js, smol-toml and the Swagger js-yaml dependency to patched releases. The dependency audit ignores the braces advisory, which has no patched release and is reached only by lint tooling.
+
+### Migration notes
+
+- No database migration, environment change or client integration change is required from 1.3.0. Update the API/worker, web and MCP images together to 1.3.1.
+- To roll back, select the matching 1.3.0 images. The release changes no stored data.
+
 ## [1.3.0] - 2026-09-28
 
 ### Added
