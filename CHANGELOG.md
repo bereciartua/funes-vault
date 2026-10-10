@@ -4,6 +4,8 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-10-10
+
 ### Security
 
 - Update Next.js to 16.3.8 and sharp to 0.35.5 for the `next/og` remote code execution, image optimizer request forgery, self-hosted cache poisoning and `use cache` advisories. The web app does not use `next/og`, `next/image` or `use cache`.
@@ -111,7 +113,8 @@ This is the first public release. The single baseline replaces development migra
 
 See the [testing guide](docs/testing-and-release.md) for verification commands and the [operations guide](docs/deployment-and-operations.md) for deployment prerequisites. Publication and production rollout remain operator actions.
 
-[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/bereciartua/funes-vault/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/bereciartua/funes-vault/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/bereciartua/funes-vault/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/bereciartua/funes-vault/compare/v1.0.0...v1.1.0
