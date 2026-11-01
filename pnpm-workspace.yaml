@@ -4,7 +4,13 @@ packages:
 overrides:
   # Remove overrides as upstream dependencies adopt patched releases.
   # Nest platform-express: multipart parser security fixes.
-  multer: ">=2.3.0 <3"
+  multer: ">=2.5.0 <3"
+  # Express compressed request parsing: trailing-byte denial-of-service fix.
+  body-parser: ">=2.4.0 <3"
+  # Test tooling: HTTP client security fixes.
+  undici: ">=7.30.1 <8"
+  # Validation tooling also consumes Zod; keep its copy on the patched 4.x line.
+  zod: "^4.6.7"
   # Bull Board optional SQL adapter: patched mysql2 parser.
   mysql2: ">=3.23.1 <4"
   # Prisma configuration dependency: use the maintained merge implementation.
