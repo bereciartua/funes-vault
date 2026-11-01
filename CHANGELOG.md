@@ -4,6 +4,18 @@ All notable changes are documented here, following [Keep a Changelog](https://ke
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-11-01
+
+### Security
+
+- Update Next.js to 16.4.1 for the Cache Components typed-array remote code execution, SVG image optimization remote code execution and Server Actions denial-of-service advisories. The web app does not use `use cache`, Server Actions or `next/image`; the shipped images use Alpine rather than glibc Linux, and sharp remains on patched 0.35.5.
+- Update Zod, body-parser and multer to patched releases, and update the Vite and undici test dependencies to clear high-severity audit findings. Keep the 24-hour dependency release-age policy and existing audit scope unchanged.
+
+### Migration notes
+
+- No database migration, environment change or client integration change is required from 1.3.1. Update the API/worker, web and MCP images together to 1.3.2.
+- To roll back, select the matching 1.3.1 images. The release changes no stored data; rollback reintroduces the older dependencies and their security advisories.
+
 ## [1.3.1] - 2026-10-10
 
 ### Security
@@ -113,7 +125,8 @@ This is the first public release. The single baseline replaces development migra
 
 See the [testing guide](docs/testing-and-release.md) for verification commands and the [operations guide](docs/deployment-and-operations.md) for deployment prerequisites. Publication and production rollout remain operator actions.
 
-[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/bereciartua/funes-vault/compare/v1.3.2...HEAD
+[1.3.2]: https://github.com/bereciartua/funes-vault/compare/v1.3.1...v1.3.2
 [1.3.1]: https://github.com/bereciartua/funes-vault/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/bereciartua/funes-vault/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/bereciartua/funes-vault/compare/v1.1.0...v1.2.0
