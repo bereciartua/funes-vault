@@ -1,5 +1,10 @@
 # Funes Vault
 
+> [!WARNING]
+> **This project is no longer maintained.** The self-hosted web version of Funes Vault has been replaced by the native **[Funes Vault app for Mac and iPhone](https://github.com/bereciartua/funes-vault-app)**. This repository stays up for reference only: it won't get new features, fixes or security updates.
+>
+> **Start here instead:** [funes-vault-app](https://github.com/bereciartua/funes-vault-app) · [Download for Mac](https://github.com/bereciartua/funes-vault-app/releases/latest/download/FunesVault.dmg) · [iPhone app on the App Store](https://apps.apple.com/app/id6823794639)
+
 Funes Vault is a self-hosted personal memory vault for AI tools. Keep durable context in one place, decide what each tool may receive, review exact disclosures, and inspect the audit trail. AI conversations repeatedly lose useful context, while copying everything into every tool gives away too much. Funes makes memory portable and sharing deliberate.[^name]
 
 [![CI](https://github.com/bereciartua/funes-vault/actions/workflows/ci.yml/badge.svg)](https://github.com/bereciartua/funes-vault/actions/workflows/ci.yml)
